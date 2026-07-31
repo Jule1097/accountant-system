@@ -1,7 +1,7 @@
 # Spec-Driven Development: Accounting System (Sales & Purchases)
 
 ## 1. Introduction and Scope
-The purpose of this document is to specify the technical and functional requirements for the initial development of an accounting system focused on managing and storing purchase and sales vouchers for multiple companies (initially **TEEM** and **GRIB**). It includes an automated extraction feature using the Gemini API to parse PDF and image invoices via temporary buffer/memory.
+The purpose of this document is to specify the technical and functional requirements for the initial development of an accounting system focused on managing and storing purchase and sales vouchers for multiple companies (initially **TEEM** and **GRIB**). It includes an automated extraction feature using the Gemini API to parse PDF and image invoices via temporary buffer/memory. All development and specifications are managed using the **OpenSpec** framework.
 
 ---
 
@@ -152,6 +152,7 @@ The core entity of the system. Each voucher strictly belongs to a `Company` and 
 * **Backend & API Architecture:** REST API endpoints (explicitly avoiding Server Actions for this phase)
 * **Database & ORM:** Supabase (PostgreSQL), Prisma ORM
 * **Testing:** Jest
+* **Spec-Driven Development:** OpenSpec framework (managing changes, proposals, specs, design, and tasks via CLI)
 
 ---
 

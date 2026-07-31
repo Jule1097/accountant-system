@@ -3,16 +3,23 @@
 - This file is ALWAYS your entry point. Read it and re-read it periodically.
 - Never modify this file unless the user explicitly asks for it. You can re-read it periodically to refresh your memory.
 - Use Spanish labels in the UI when displaying enum values. Keep enum identifiers unchanged in code, API contracts, persistence, tests, and technical documentation.
-- **Spec-Driven Development (SpecDD):** For any new feature, module, or structural change, you must strictly follow the SpecDD workflow using dedicated documentation folders (`docs/specs/` and `docs/reports/`). Minor bug fixes or small refactors can bypass this formal workflow.
+- **Spec-Driven Development (SpecDD):** For any new feature, module, or structural change, you must strictly follow the SpecDD workflow using the **OpenSpec** framework. Minor bug fixes or small refactors can bypass this formal workflow.
 
-## Spec-Driven Development (SpecDD) Workflow
-Whenever the user requests a new feature, module, or structural change, **never start coding immediately**. Follow these phases sequentially:
-1. **Spec Creation:** Create a markdown file inside `docs/specs/` named after the feature (e.g., `docs/specs/create-purchase-voucher.md`) detailing the objective, data structures, Zod validations, and testing plan based on `requirements.md`.
-   - **Interactive Review & Refinement:** Once the spec is drafted (and during any iteration), the agent **must reread it** to search for ambiguities, redundancies, unaddressed scenarios, or doubts (covering main/alternative flows, database constraints, Zod schemas, business logic, and UI/UX details).
-   - Before assuming, deciding, or coding, the agent **must list the ambiguous items and potential solutions directly in the chat**, asking the user questions to clarify them. This interactive process continues until the spec is completely defined and clear.
-2. **User Validation & Approval:** Present the spec to the user and wait for explicit approval. Do not write code without approval.
-3. **Execution & Testing:** Implement the feature following the technical stack and ensuring all business rules (company data isolation, global unique CUITs, duplicate prevention, etc.) are met. Run Jest tests.
-4. **Closing Report:** Once the feature is approved and tested, create a report file inside `docs/reports/` named after the feature (e.g., `docs/reports/create-purchase-voucher-report.md`) summarizing changes, modified files, and test metrics.
+## Next.js: ALWAYS read docs before coding
+Before any Next.js work, find and read the relevant doc in `node_modules/next/dist/docs/`. Your training data is outdated — the docs are the source of truth.
+
+## Spec-Driven Development (SpecDD) Workflow (OpenSpec)
+Whenever the user requests a new feature, module, or structural change, **never start coding immediately**. Follow the OpenSpec workflow:
+1. **Change Creation:** Initialize a new change using `openspec new change <change-name>`.
+2. **Spec & Design Drafting:** Edit the generated artifacts (e.g., `proposal.md`, `specs.md`, `design.md`, `tasks.md`) under `openspec/changes/<change-name>/` detailing the objective, data structures, Zod validations, and testing plan based on `requirements.md`.
+   - **Interactive Review & Refinement:** Once the artifacts are drafted (and during any iteration), you **must reread them** to search for ambiguities, redundancies, unaddressed scenarios, or doubts (covering main/alternative flows, database constraints, Zod schemas, business logic, and UI/UX details).
+   - Before assuming, deciding, or coding, you **must list the ambiguous items and potential solutions directly in the chat**, asking the user questions to clarify them. This interactive process continues until the specification is completely defined and clear.
+3. **User Validation & Approval:** Present the proposal, specs, and design to the user and wait for explicit approval. Do not write code or apply tasks without approval.
+4. **Execution & Testing (Apply Phase):** 
+   - Retrieve apply instructions with `openspec instructions apply --change "<change-name>"`.
+   - Implement the feature following the technical stack and ensuring all business rules (company data isolation, global unique CUITs, duplicate prevention, etc.) are met. Run Jest tests.
+   - Mark tasks complete in the change's `tasks.md` file (updating `[ ]` to `[x]`).
+5. **Archiving & Merging:** Once all tasks are completed, run `openspec archive <change-name>` to merge and update the main project specifications.
 
 ## Language Policy
 - User-facing pages, HTML copy, labels, validation messages, error messages, and demo content must be written in Spanish.
@@ -88,7 +95,7 @@ Whenever the user requests a new feature, module, or structural change, **never 
 - Commit messages must follow the **Conventional Commits** standard (without scopes) in English and in an imperative, present-tense form.
   - Format: `<type>: <description>` (e.g., `feat: add voucher schema`, `docs: add spec for create-purchase-voucher`).
   - Allowed types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `perf`, `ci`.
-  - Use incremental commits corresponding to SpecDD phases (e.g., `docs: add spec for <feature-name>` during Spec Creation, `feat: ...` / `test: ...` during execution/testing, and `docs: add closing report for <feature-name>` upon completion).
+  - Use incremental commits corresponding to OpenSpec phases (e.g., `docs: add proposal/specs/design/tasks for <change-name>` during Spec/Design drafting, `feat: ...` / `test: ...` during execution/testing, and `chore: archive change <change-name>` / `docs: update main specs` upon completion).
 
 ## Architecture & Code Design
 - **Architecture Style:** Implement clean code principles and modular layering inspired by Clean Architecture / Hexagonal Architecture where applicable (separating domain rules, application use cases, adapters, and infrastructure/Prisma layers).

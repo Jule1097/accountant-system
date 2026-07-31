@@ -23,6 +23,8 @@ model Company {
   clients   Client[]
   suppliers Supplier[]
   vouchers  Voucher[]
+
+  @@map("company")
 }
 
 // 2. User (Linked to Supabase auth.users.id)
@@ -35,6 +37,8 @@ model User {
   // Relations
   companies UserCompany[]
   vouchers  Voucher[]
+
+  @@map("users")
 }
 
 // 3. UserCompany (Many-to-Many intermediate table)
@@ -48,6 +52,7 @@ model UserCompany {
   company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@id([userId, companyId])
+  @@map("user_company")
 }
 
 // 4. Client
@@ -64,6 +69,7 @@ model Client {
   vouchers  Voucher[]
 
   @@unique([companyId, cuit], name: "companyClientCuitUnique")
+  @@map("client")
 }
 
 // 5. Supplier
@@ -80,6 +86,7 @@ model Supplier {
   vouchers  Voucher[]
 
   @@unique([companyId, cuit], name: "companySupplierCuitUnique")
+  @@map("supplier")
 }
 
 // 6. VoucherType (Catalog)
@@ -87,6 +94,8 @@ model VoucherType {
   id       String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name     String    @unique @db.VarChar(100)
   vouchers Voucher[]
+
+  @@map("voucher_type")
 }
 
 // 7. VoucherLetter (Catalog)
@@ -94,6 +103,8 @@ model VoucherLetter {
   id       String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   letter   String    @unique @db.VarChar(10)
   vouchers Voucher[]
+
+  @@map("voucher_letter")
 }
 
 // 8. RetentionConcept (Catalog)
@@ -102,6 +113,8 @@ model RetentionConcept {
   name       String             @unique @db.VarChar(255)
   type       String             @db.VarChar(20) // 'sale' | 'purchase'
   retentions VoucherRetention[]
+
+  @@map("retention_concept")
 }
 
 // 9. VatRate (Catalog)
@@ -110,6 +123,8 @@ model VatRate {
   name      String            @unique @db.VarChar(50) // e.g. '21%', '10.5%', 'Exento'
   rate      Decimal           @db.Decimal(5, 4)       // e.g. 0.2100, 0.1050, 0.0000
   details   VoucherVatDetail[]
+
+  @@map("vat_rate")
 }
 
 // 10. Voucher
@@ -150,6 +165,8 @@ model Voucher {
   createdByUser     User               @relation(fields: [createdByUserId], references: [id])
   retentions        VoucherRetention[]
   vatDetails        VoucherVatDetail[]
+
+  @@map("voucher")
 }
 
 // 11. VoucherRetention
@@ -163,6 +180,8 @@ model VoucherRetention {
   // Relations
   voucher            Voucher          @relation(fields: [voucherId], references: [id], onDelete: Cascade)
   retentionConcept   RetentionConcept @relation(fields: [retentionConceptId], references: [id])
+
+  @@map("voucher_retention")
 }
 
 // 12. VoucherVatDetail
@@ -176,4 +195,6 @@ model VoucherVatDetail {
   // Relations
   voucher   Voucher  @relation(fields: [voucherId], references: [id], onDelete: Cascade)
   vatRate   VatRate  @relation(fields: [vatRateId], references: [id])
+
+  @@map("voucher_vat_detail")
 }
