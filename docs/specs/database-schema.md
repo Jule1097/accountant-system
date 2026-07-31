@@ -1,13 +1,32 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+# Spec-Driven Development (SpecDD): Database Schema Setup
+
+This specification defines the database architecture, constraints, validation schemas, and security isolation rules for the Accounting System, based on the specifications in [requirements.md](file:///d:/progra/accountant-system/requirements.md).
+
+---
+
+## 1. Objectives & Requirements
+- Define all relational tables, types, fields, and indexes required for multi-tenant sales and purchase operations.
+- Enforce strict business constraints directly at the database level where possible, or through application-level Zod schemas.
+- Implement strict multi-tenant isolation so that users can only access vouchers belonging to companies they are associated with.
+- Maintain a clean catalog seeding structure for VAT rates, voucher types, letters, and retention concepts.
+
+---
+
+## 2. Relational Database Design & Prisma Models
+
+We will use standard PostgreSQL datatypes. For all currency and percentage/decimal values (such as `subtotal`, `vatAmount`, `totalAmount`, `netAmount`, `paidAmount`, `exchangeRate`, and `rate`), we will use the `Decimal` data type in Prisma (which maps to `numeric` in PostgreSQL) to prevent floating-point errors.
+
+### 2.1. Prisma Schema Definition
+
+```prisma
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
 
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
-}
-
-datasource db {
-  provider = "postgresql"
 }
 
 // 1. Company
@@ -150,6 +169,10 @@ model Voucher {
   createdByUser     User               @relation(fields: [createdByUserId], references: [id])
   retentions        VoucherRetention[]
   vatDetails        VoucherVatDetail[]
+
+  // Note: Due to PostgreSQL treating NULL values as distinct, standard unique constraints
+  // will allow duplicate records if either clientId or supplierId is NULL.
+  // We will enforce strict uniqueness using two separate composite partial indexes in PostgreSQL.
 }
 
 // 11. VoucherRetention
@@ -177,3 +200,125 @@ model VoucherVatDetail {
   voucher   Voucher  @relation(fields: [voucherId], references: [id], onDelete: Cascade)
   vatRate   VatRate  @relation(fields: [vatRateId], references: [id])
 }
+```
+
+---
+
+## 3. Database-Level Unique Indexes & Constraints
+
+Since we cannot write PostgreSQL partial indexes directly inside Prisma's `@unique` tag, we will execute a custom SQL script via Supabase CLI to apply the following indexes:
+
+### 3.1. Unique Sales Vouchers (Client is NOT NULL, Supplier is NULL)
+Ensures that for a specific company, we cannot duplicate sales invoices:
+```sql
+CREATE UNIQUE INDEX voucher_unique_sale_idx ON "Voucher" (
+  "companyId", 
+  "type", 
+  "clientId", 
+  "voucherTypeId", 
+  "voucherLetterId", 
+  "posNumber", 
+  "number"
+) 
+WHERE "type" = 'sale' AND "clientId" IS NOT NULL AND "supplierId" IS NULL;
+```
+
+### 3.2. Unique Purchase Vouchers (Supplier is NOT NULL, Client is NULL)
+Ensures that for a specific company, we cannot duplicate purchase invoices:
+```sql
+CREATE UNIQUE INDEX voucher_unique_purchase_idx ON "Voucher" (
+  "companyId", 
+  "type", 
+  "supplierId", 
+  "voucherTypeId", 
+  "voucherLetterId", 
+  "posNumber", 
+  "number"
+) 
+WHERE "type" = 'purchase' AND "supplierId" IS NOT NULL AND "clientId" IS NULL;
+```
+
+---
+
+## 4. Multi-Tenant Row Level Security (RLS) Policies
+
+To ensure strict data isolation at the database layer (preventing data leaks if SQL commands run directly or via Data API), we will define RLS policies:
+
+1. **Enable RLS on tables:** `Company`, `UserCompany`, `Client`, `Supplier`, `Voucher`, `VoucherRetention`, `VoucherVatDetail`.
+2. **Access logic:**
+   - A user can select/insert/update/delete on `Company` if they have a matching record in `UserCompany`.
+   - A user can access/modify `Client`, `Supplier`, or `Voucher` if their `companyId` exists in the user's `UserCompany` associations:
+     ```sql
+     CREATE POLICY user_company_isolation_policy ON "Voucher"
+     FOR ALL
+     TO authenticated
+     USING (
+       "companyId" IN (
+         SELECT "companyId" FROM "UserCompany" WHERE "userId" = auth.uid()
+       )
+     )
+     WITH CHECK (
+       "companyId" IN (
+         SELECT "companyId" FROM "UserCompany" WHERE "userId" = auth.uid()
+       )
+     );
+     ```
+
+---
+
+## 5. Catalog Seeding Plan
+
+The seed script (`prisma/seed.ts`) will insert the default values for the catalogs. Since catalogs are shared globally, they will have fixed static UUID values or check for name existence.
+
+### 5.1. VatRate
+- `21%` (rate: 0.21)
+- `10.5%` (rate: 0.105)
+- `27%` (rate: 0.27)
+- `5%` (rate: 0.05)
+- `3%` (rate: 0.03)
+- `2.5%` (rate: 0.025)
+- `Exento` (rate: 0)
+- `No Gravado` (rate: 0)
+
+### 5.2. VoucherType
+- `Factura`
+- `Nota de Débito`
+- `Nota de Crédito`
+- `Recibo`
+- `Factura de Crédito Electrónica MiPyME`
+
+### 5.3. VoucherLetter
+- `A`
+- `B`
+- `C`
+- `M`
+- `E`
+
+### 5.4. RetentionConcept (Catalogs)
+
+**Ventas (Sales) - Retenciones Sufridas:**
+- `Retención de Ganancias Sufrida`
+- `Retención de IVA Sufrida`
+- `Retención de Ingresos Brutos Sufrida` (Supported jurisdictions: `CABA`, `PBA`, `Tucumán`, `Córdoba`, `La Pampa`, `Mendoza`, `Santa Fe`, `Misiones`, `Santa Cruz`, `Neuquén`, `Entre Ríos`)
+- `Retención Osseg/ansal Sufrida`
+
+**Compras (Purchases) - Retenciones/Percepciones Aplicadas:**
+- `Retención de Ganancias`
+- `Retención de IVA`
+- `Percepción de IVA`
+- `Retención de Ingresos Brutos` (Supported jurisdictions: `CABA`, `BUENOS AIRES`, `Córdoba`)
+- `Percepción de Ingresos Brutos` (Supported jurisdictions: `CABA`, `BUENOS AIRES`, `Córdoba`)
+- `Otros Impuestos`
+
+---
+
+## 6. Testing Plan
+
+We will add a suite of Jest tests to verify:
+1. **Model structure mapping:** Prisma client models type check successfully.
+2. **Zod Validation schemas:** Checking edge cases such as:
+   - Currency USD: Exchange rate must be > 0.
+   - Currency ARS: Exchange rate defaults to 1.
+   - PosNumber padding: Padding POS to 5 digits, number to 8 digits.
+   - Sale: Client is required, Supplier is null.
+   - Purchase: Supplier is required, Client is null.
