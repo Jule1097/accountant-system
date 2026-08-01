@@ -98,7 +98,11 @@ Whenever the user requests a new feature, module, or structural change, **never 
   - Use incremental commits corresponding to OpenSpec phases (e.g., `docs: add proposal/specs/design/tasks for <change-name>` during Spec/Design drafting, `feat: ...` / `test: ...` during execution/testing, and `chore: archive change <change-name>` / `docs: update main specs` upon completion).
 
 ## Architecture & Code Design
-- **Architecture Style:** Implement clean code principles and modular layering inspired by Clean Architecture / Hexagonal Architecture where applicable (separating domain rules, application use cases, adapters, and infrastructure/Prisma layers).
+- **Architecture Style:** Implement clean code principles and modular layering inspired by Clean Architecture / Hexagonal Architecture. 
+  - **Framework Layer (`src/app/api/...`)**: Route handlers must only parse requests, invoke services, and return HTTP responses. Do NOT place business logic, complex validations, or database queries in Next.js `route.ts` files.
+  - **Application Layer (`src/services/`)**: Use case orchestration, transaction boundaries, and business rules execution.
+  - **Domain Layer (`src/models/`)**: Rich domain models. Entities must encapsulate their own business rules and state mutations as methods (e.g., `voucher.calculateTotal()`) rather than acting as anemic data structures.
+  - **Infrastructure Layer (`src/repositories/`)**: All Prisma queries must be abstracted behind repositories or data-access services to decouple the application from the ORM.
 - Keep domain logic decoupled from framework-specific routing or database drivers.
 
 ## Testing Standards
