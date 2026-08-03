@@ -27,6 +27,21 @@ export const supplierSchema = z.object({
   companyId: z.string().uuid('ID de empresa inválido'),
 })
 
+// 5. Voucher Retention Validator
+export const voucherRetentionSchema = z.object({
+  retentionConceptId: z.string().uuid('ID de concepto de retención inválido'),
+  amount: z.coerce.number().nonnegative('El monto de retención no puede ser negativo'),
+  province: z.string().optional().nullable(),
+})
+
+// 6. Voucher VAT Detail Validator
+export const voucherVatDetailSchema = z.object({
+  vatRateId: z.string().uuid('ID de alícuota de IVA inválido'),
+  subtotal: z.coerce.number().nonnegative('El subtotal de IVA no puede ser negativo'),
+  vatAmount: z.coerce.number().nonnegative('El monto de IVA no puede ser negativo'),
+})
+
+
 // 5. Voucher Validator
 export const voucherSchema = z
   .object({
@@ -70,6 +85,8 @@ export const voucherSchema = z
     paidAmount: z.coerce.number().nonnegative().optional().default(0),
     comments: z.string().optional(),
     createdByUserId: z.string().uuid('ID de usuario creador inválido'),
+    retentions: z.array(voucherRetentionSchema).optional().default([]),
+    vatDetails: z.array(voucherVatDetailSchema).optional().default([]),
   })
   .refine(
     (data) => {

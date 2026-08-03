@@ -25,18 +25,18 @@
 
 ## 5. API Vouchers (Layered Implementation)
 
-- [ ] 5.1 Extend Zod validation schema in `src/lib/schemas/voucher.ts` to support nested arrays (`vatDetails`, `retentions`)
-- [ ] 5.2 Implement Rich Domain Model for Vouchers (`src/models/Voucher.ts`) encapsulating methods for `calculateNetAmount()`, `deriveStatus()`, and duplicate validation rules.
-- [ ] 5.3 Implement `VoucherRepository` to encapsulate database operations (queries, updates, deletions) mapping Prisma objects to `Voucher` models.
-- [ ] 5.4 Implement `VoucherService` to orchestrate creation, updating, and deleting of vouchers (managing Prisma transactions by interacting with the Repository and Domain Model)
-- [ ] 5.5 Implement route handlers (`/api/vouchers`) that delegate all business logic to `VoucherService`
+- [x] 5.1 Extend Zod validation schema in `src/lib/schemas/voucher.ts` to support nested arrays (`vatDetails`, `retentions`)
+- [x] 5.2 Implement Rich Domain Model for Vouchers (`src/models/Voucher.ts`) encapsulating methods for `calculateNetAmount()`, `deriveStatus()`, and duplicate validation rules.
+- [x] 5.3 Implement `VoucherRepository` to encapsulate database operations (queries, updates, deletions) mapping Prisma objects to `Voucher` models.
+- [x] 5.4 Implement `VoucherService` to orchestrate creation, updating, and deleting of vouchers (managing Prisma transactions by interacting with the Repository and Domain Model)
+- [x] 5.5 Implement route handlers (`/api/vouchers`) that delegate all business logic to `VoucherService`
 
 ## 6. AI Document Parsing
 
-- [ ] 6.1 Implement in-memory Gemini AI invoice extractor wrapper under `src/lib/gemini.ts`
-- [ ] 6.2 Implement parsing upload endpoint `POST /api/vouchers/parse` enforcing 2MB file size limits and supporting fallback for missing fields
+- [x] 6.1 Implement in-memory Gemini AI invoice extractor wrapper under `src/lib/gemini.ts`
+- [x] 6.2 Implement parsing upload endpoint `POST /api/vouchers/parse` enforcing 2MB file size limits and supporting fallback for missing fields
 
 ## 7. Verification & Testing
 
-- [ ] 7.1 Implement Jest tests verifying success cases, company data isolation, and validation constraints for the API routes
-- [ ] 7.2 Run lint, test, and build scripts to verify project compiles successfully
+- [x] 7.1 Implement Jest tests verifying success cases, company data isolation, and validation constraints for the API routes
+- [x] 7.2 Run lint, test, and build scripts to verify project compiles successfully

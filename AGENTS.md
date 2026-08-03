@@ -57,6 +57,8 @@ Whenever the user requests a new feature, module, or structural change, **never 
 - Use `unknown` with narrowing when the runtime shape is not known.
 - Avoid type assertions. A type assertion is allowed only after validation, narrowing, or when adapting a third-party API with an inaccurate type.
 - Use discriminated unions for workflow states, async states, and approval states when they make invalid states impossible to represent.
+- Whenever creating types or interfaces, they MUST be modularized into a folder named `types` inside `src` (e.g., `src/types/`). Do not define them inline within models, services, or controllers.
+
 
 ## Security Baseline & Business Constraints
 - Treat all client input as untrusted.
