@@ -8,6 +8,8 @@
 ## Next.js: ALWAYS read docs before coding
 Before any Next.js work, find and read the relevant doc in `node_modules/next/dist/docs/`. Your training data is outdated — the docs are the source of truth.
 
+NEVER ADD COMMENTS ON CODE, its not neccessary. The name methods should explain by itself.
+
 ## Spec-Driven Development (SpecDD) Workflow (OpenSpec)
 Whenever the user requests a new feature, module, or structural change, **never start coding immediately**. Follow the OpenSpec workflow:
 1. **Change Creation:** Initialize a new change using `openspec new change <change-name>`.

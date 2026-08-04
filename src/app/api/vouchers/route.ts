@@ -7,13 +7,13 @@ export async function GET(request: NextRequest) {
     const companyId = request.headers.get('x-company-id')!
     const searchParams = request.nextUrl.searchParams
     const filters: Record<string, unknown> = {}
-    
+
     const type = searchParams.get('type')
     if (type) filters.type = type
 
     const voucherService = new VoucherService()
     const vouchers = await voucherService.getAllVouchers(companyId, filters)
-    
+
     return NextResponse.json(vouchers)
   } catch (error) {
     console.error('Error fetching vouchers:', error)
@@ -25,8 +25,7 @@ export async function POST(request: NextRequest) {
   try {
     const companyId = request.headers.get('x-company-id')!
     const body = await request.json()
-    
-    // Inject companyId to satisfy schema
+
     const payload = { ...body, companyId }
 
     const parsed = voucherSchema.safeParse(payload)
@@ -36,7 +35,7 @@ export async function POST(request: NextRequest) {
 
     const voucherService = new VoucherService()
     const newVoucher = await voucherService.createVoucher(parsed.data)
-    
+
     return NextResponse.json(newVoucher, { status: 201 })
   } catch (error: unknown) {
     const err = error as Error

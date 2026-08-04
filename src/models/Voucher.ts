@@ -67,7 +67,7 @@ export class Voucher {
       (sum, r) => sum.plus(new Prisma.Decimal(r.amount.toString())),
       new Prisma.Decimal(0)
     )
-    
+
     const net = total.minus(retentionSum)
     this.netAmount = net
     return net
@@ -84,11 +84,10 @@ export class Voucher {
     } else {
       this.status = 'pending'
     }
-    
+
     return this.status
   }
 
-  // Business logic to check for duplicates
   isDuplicateOf(other: Voucher): boolean {
     return (
       this.companyId === other.companyId &&
@@ -101,7 +100,6 @@ export class Voucher {
     )
   }
 
-  // Recalculate derived fields
   recalculate() {
     this.calculateNetAmount()
     this.deriveStatus()

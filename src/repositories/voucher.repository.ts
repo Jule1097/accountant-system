@@ -3,7 +3,6 @@ import { Prisma } from 'src/generated/prisma/client'
 import { Voucher } from 'src/models/Voucher'
 
 export class VoucherRepository {
-  // Queries
   async findById(companyId: string, id: string): Promise<Voucher | null> {
     const raw = await prisma.voucher.findUnique({
       where: { id, companyId },
@@ -18,7 +17,6 @@ export class VoucherRepository {
   }
 
   async findDuplicate(voucher: Voucher): Promise<Voucher | null> {
-    // Exact combination of company, type, third-party, voucher type, letter, posNumber, number
     const whereClause: Record<string, unknown> = {
       companyId: voucher.companyId,
       type: voucher.type,
@@ -59,7 +57,6 @@ export class VoucherRepository {
     return raw.map(r => new Voucher(r))
   }
 
-  // Persists a new Voucher
   async create(voucher: Voucher): Promise<Voucher> {
     const data: Prisma.VoucherUncheckedCreateInput = {
       companyId: voucher.companyId,
@@ -112,7 +109,6 @@ export class VoucherRepository {
     return new Voucher(created)
   }
 
-  // Update existing Voucher
   async update(voucher: Voucher): Promise<Voucher> {
     if (!voucher.id) throw new Error('Voucher ID is required for update')
 

@@ -1,48 +1,40 @@
 import { z } from 'zod'
 
-// 1. CUIT Validator
 export const cuitSchema = z
   .string()
   .min(10, 'El CUIT debe tener al menos 10 dígitos')
   .max(13, 'El CUIT no puede exceder los 13 caracteres')
   .regex(/^\d{2}-\d{8}-\d{1}$|^\d{11}$/, 'Formato de CUIT inválido (ej: 30-11111111-9 o 30111111119)')
 
-// 2. Base Company Validator
 export const companySchema = z.object({
   name: z.string().min(1, 'El nombre es obligatorio'),
   cuit: cuitSchema,
 })
 
-// 3. Client Validator
 export const clientSchema = z.object({
   name: z.string().min(1, 'El nombre es obligatorio'),
   cuit: cuitSchema,
   companyId: z.string().uuid('ID de empresa inválido'),
 })
 
-// 4. Supplier Validator
 export const supplierSchema = z.object({
   name: z.string().min(1, 'El nombre es obligatorio'),
   cuit: cuitSchema,
   companyId: z.string().uuid('ID de empresa inválido'),
 })
 
-// 5. Voucher Retention Validator
 export const voucherRetentionSchema = z.object({
   retentionConceptId: z.string().uuid('ID de concepto de retención inválido'),
   amount: z.coerce.number().nonnegative('El monto de retención no puede ser negativo'),
   province: z.string().optional().nullable(),
 })
 
-// 6. Voucher VAT Detail Validator
 export const voucherVatDetailSchema = z.object({
   vatRateId: z.string().uuid('ID de alícuota de IVA inválido'),
   subtotal: z.coerce.number().nonnegative('El subtotal de IVA no puede ser negativo'),
   vatAmount: z.coerce.number().nonnegative('El monto de IVA no puede ser negativo'),
 })
 
-
-// 5. Voucher Validator
 export const voucherSchema = z
   .object({
     companyId: z.string().uuid('ID de empresa inválido'),
@@ -90,11 +82,9 @@ export const voucherSchema = z
   })
   .refine(
     (data) => {
-      // Rule: For sales, clientId is required and supplierId is empty
       if (data.type === 'sale') {
         return !!data.clientId && !data.supplierId
       }
-      // Rule: For purchases, supplierId is required and clientId is empty
       if (data.type === 'purchase') {
         return !!data.supplierId && !data.clientId
       }
@@ -107,11 +97,10 @@ export const voucherSchema = z
   )
   .refine(
     (data) => {
-      // Rule: If currency is USD, exchangeRate is mandatory and must be > 0 (handled by positive() above)
+
       if (data.currency === 'USD') {
-        return data.exchangeRate > 0 && data.exchangeRate !== 1 // Assuming 1 is default, USD needs real rate
+        return data.exchangeRate > 0 && data.exchangeRate !== 1
       }
-      // Rule: If currency is $, exchangeRate must be 1
       if (data.currency === '$') {
         return data.exchangeRate === 1
       }
@@ -123,8 +112,6 @@ export const voucherSchema = z
     }
   )
   .transform((data) => {
-    // Auto-derive accountingPeriod from date if not provided
-    // standardized to first day of the month
     const derivedPeriod = data.accountingPeriod
       ? new Date(data.accountingPeriod.getFullYear(), data.accountingPeriod.getMonth(), 1)
       : new Date(data.date.getFullYear(), data.date.getMonth(), 1)
