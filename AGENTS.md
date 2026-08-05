@@ -107,6 +107,7 @@ Whenever the user requests a new feature, module, or structural change, **never 
   - **Application Layer (`src/services/`)**: Use case orchestration, transaction boundaries, and business rules execution.
   - **Domain Layer (`src/models/`)**: Rich domain models. Entities must encapsulate their own business rules and state mutations as methods (e.g., `voucher.calculateTotal()`) rather than acting as anemic data structures.
   - **Infrastructure Layer (`src/repositories/`)**: All Prisma queries must be abstracted behind repositories or data-access services to decouple the application from the ORM.
+- **Frontend Modularization**: `page.tsx` files must only be used to mount the corresponding UI components. Do not place complex logic or methods directly in page files. Modularize all logic and methods into their respective entity folders/files to strictly separate responsibilities. Avoid grouping logic methods with rendering unless absolutely necessary.
 - Keep domain logic decoupled from framework-specific routing or database drivers.
 
 ## Testing Standards
