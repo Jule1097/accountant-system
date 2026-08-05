@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Roboto } from "next/font/google";
 import "./globals.css";
+import { ThemeProvider } from "src/components/theme-provider";
+import { Toaster } from "src/components/ui/toast";
+import { TooltipProvider } from "src/components/ui/tooltip";
+import { cn } from "src/lib/utils";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -10,6 +14,12 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+});
+
+const roboto = Roboto({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  weight: ["300", "400", "500", "700"],
 });
 
 export const metadata: Metadata = {
@@ -25,9 +35,27 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
+      className={cn(
+        "h-full",
+        "antialiased",
+        geistSans.variable,
+        geistMono.variable,
+        roboto.variable
+      )}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col font-sans tracking-tight selection:bg-primary selection:text-primary-foreground">
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          enableSystem={false}
+          disableTransitionOnChange
+        >
+          <TooltipProvider>
+            <Toaster>{children}</Toaster>
+          </TooltipProvider>
+        </ThemeProvider>
+      </body>
     </html>
   );
 }
