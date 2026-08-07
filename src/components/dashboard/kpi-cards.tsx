@@ -3,9 +3,10 @@
 import { use } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "src/components/ui/card";
 import { DollarSign, CreditCard, Activity } from "lucide-react";
+import { AnalyticsData } from "src/types/analytics";
 
 interface KpiCardsProps {
-  promise: Promise<{ trend?: { income: number; expenses: number }[] }> | null;
+  promise: Promise<AnalyticsData> | null;
 }
 
 export function KpiCards({ promise }: KpiCardsProps) {
@@ -14,7 +15,7 @@ export function KpiCards({ promise }: KpiCardsProps) {
 
   if (!data) return null;
 
-  const trend = data.trend || [];
+  const trend = data.trend?.ARS || [];
   
   const currentMonthIdx = trend.length - 1;
   const currentMonthData = currentMonthIdx >= 0 ? trend[currentMonthIdx] : { income: 0, expenses: 0 };
