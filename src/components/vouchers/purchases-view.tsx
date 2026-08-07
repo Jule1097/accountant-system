@@ -1,16 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense, use } from "react";
 import { VoucherTable } from "src/components/vouchers/voucher-table";
 import { VoucherModal } from "src/components/vouchers/voucher-modal";
+import { VoucherSkeleton } from "src/components/vouchers/voucher-skeleton";
+import { useVouchers } from "src/hooks/use-vouchers";
+import { Voucher } from "src/models/Voucher";
 
-const dummyPurchases = [
-  { id: "1", date: "2026-08-01", type: "Factura A", thirdPartyName: "Proveedor Central", thirdPartyCuit: "30-55555555-5", total: 4500.00 },
-  { id: "2", date: "2026-08-03", type: "Ticket", thirdPartyName: "Librería", thirdPartyCuit: "20-44444444-4", total: 150.75 },
-];
+function PurchasesTableContainer({ promise, onAdd }: { promise: Promise<Voucher[]> | null; onAdd: () => void }) {
+  if (!promise) return null;
+  const vouchers = use(promise);
+  return <VoucherTable data={vouchers} type="purchases" onAdd={onAdd} />;
+}
 
 export function PurchasesView() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const { promise } = useVouchers("purchase");
 
   return (
     <div className="flex-1 space-y-6">
@@ -23,11 +28,9 @@ export function PurchasesView() {
         </div>
       </div>
 
-      <VoucherTable
-        data={dummyPurchases}
-        type="purchases"
-        onAdd={() => setIsModalOpen(true)}
-      />
+      <Suspense fallback={<VoucherSkeleton />}>
+        <PurchasesTableContainer promise={promise} onAdd={() => setIsModalOpen(true)} />
+      </Suspense>
 
       <VoucherModal
         isOpen={isModalOpen}

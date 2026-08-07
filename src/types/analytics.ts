@@ -18,3 +18,55 @@ export interface ComparisonPeriodData {
   margin: number
   status: 'up' | 'down' | 'stable'
 }
+
+export interface PerceptionEntry {
+  concept: string
+  province: string
+  total: number
+}
+
+export interface TopPartyEntry {
+  name: string
+  cuit: string
+  total: number
+}
+
+export interface CurrencyValue {
+  ARS: number
+  USD: number
+}
+
+export interface PeriodMetrics {
+  netSales: CurrencyValue
+  netPurchases: CurrencyValue
+  salesCreditNotes: CurrencyValue
+  purchasesCreditNotes: CurrencyValue
+  vatDebit: CurrencyValue
+  vatCredit: CurrencyValue
+  vatNetBalance: CurrencyValue
+  retentions: PerceptionEntry[]
+  perceptions: PerceptionEntry[]
+  topClients: TopPartyEntry[]
+  topSuppliers: TopPartyEntry[]
+}
+
+export interface TrendEntry {
+  month: string
+  income: number
+  expenses: number
+}
+
+export interface AnalyticsData {
+  monthly: PeriodMetrics
+  semiannual: PeriodMetrics
+  annual: PeriodMetrics
+  trend: {
+    ARS: TrendEntry[]
+    USD: TrendEntry[]
+  }
+}
+
+export interface UseAnalyticsResult {
+  promise: Promise<AnalyticsData> | null
+}
+

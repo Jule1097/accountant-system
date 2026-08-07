@@ -1,7 +1,7 @@
 import { VoucherService } from '../services/voucher.service'
 import { VoucherRepository } from '../repositories/voucher.repository'
 import { Voucher } from '../models/Voucher'
-import { Prisma } from '../generated/prisma/client'
+import { Decimal } from 'decimal.js'
 
 // Mock the repository
 jest.mock('../repositories/voucher.repository')
@@ -9,7 +9,7 @@ jest.mock('../repositories/voucher.repository')
 describe('VoucherService', () => {
   let service: VoucherService
   let repositoryMock: jest.Mocked<VoucherRepository>
-  
+
   const validUUID = '123e4567-e89b-12d3-a456-426614174000'
   const company1 = 'company-1-uuid'
 
@@ -17,9 +17,9 @@ describe('VoucherService', () => {
     jest.clearAllMocks()
     repositoryMock = new VoucherRepository() as jest.Mocked<VoucherRepository>
     service = new VoucherService()
-    
-    // Inject the mock repository
-    ;(service as unknown as { repository: VoucherRepository }).repository = repositoryMock
+
+      // Inject the mock repository
+      ; (service as unknown as { repository: VoucherRepository }).repository = repositoryMock
   })
 
   describe('createVoucher', () => {
@@ -51,9 +51,9 @@ describe('VoucherService', () => {
 
       expect(repositoryMock.findDuplicate).toHaveBeenCalled()
       expect(repositoryMock.create).toHaveBeenCalled()
-      
+
       // Net amount should be 121 - 10 = 111
-      expect(result.netAmount).toEqual(new Prisma.Decimal(111))
+      expect(result.netAmount).toEqual(new Decimal(111))
       expect(result.status).toBe('pending')
     })
 
@@ -103,14 +103,13 @@ describe('VoucherService', () => {
         retentions: []
       }
 
-      // Mock that it found a duplicate
       repositoryMock.findDuplicate.mockResolvedValue(new Voucher(data))
 
       await expect(service.createVoucher(data)).rejects.toThrow('Voucher is a duplicate of an existing record')
       expect(repositoryMock.create).not.toHaveBeenCalled()
     })
   })
-  
+
   describe('Data Isolation (Company ID)', () => {
     it('getAllVouchers should only fetch records for the specified company', async () => {
       repositoryMock.findAll.mockResolvedValue([])

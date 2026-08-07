@@ -8,13 +8,13 @@ const redis = new Redis({
 })
 
 export async function proxy(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
-  })
+  let supabaseResponse = NextResponse.next()
 
   const { pathname } = request.nextUrl
+  if (pathname.startsWith('/api/vouchers/parse')) {
+    const headersObj = typeof request.headers.entries === 'function' ? Object.fromEntries(request.headers.entries()) : request.headers;
+    console.log('[Proxy Request]', request.method, pathname, 'Headers:', headersObj);
+  }
 
   const origin = request.headers.get('origin')
   const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000']
@@ -24,26 +24,16 @@ export async function proxy(request: NextRequest) {
   }
   supabaseResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
   supabaseResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-company-id')
+  
+  const reqContentType = request.headers.get('content-type')
+  if (reqContentType) {
+    supabaseResponse.headers.set('content-type', reqContentType)
+  } else {
+    supabaseResponse.headers.delete('content-type')
+  }
 
   if (request.method === 'OPTIONS') {
     return new NextResponse(null, { headers: supabaseResponse.headers, status: 204 })
-  }
-
-  if (!pathname.startsWith('/api/')) {
-    return supabaseResponse
-  }
-  const ip = request.headers.get('x-forwarded-for') || '127.0.0.1'
-  const windowMs = 60 * 1000 // 1 minute
-  const limit = 100
-
-  const currentKey = `ratelimit:${ip}:${Math.floor(Date.now() / windowMs)}`
-  const reqCount = await redis.incr(currentKey)
-  if (reqCount === 1) {
-    await redis.expire(currentKey, 60)
-  }
-
-  if (reqCount > limit) {
-    return NextResponse.json({ error: 'Too Many Requests' }, { status: 429, headers: supabaseResponse.headers })
   }
 
   const supabase = createServerClient(
@@ -58,11 +48,7 @@ export async function proxy(request: NextRequest) {
           cookiesToSet.forEach(({ name, value, options }) => {
             request.cookies.set(name, value)
           })
-          supabaseResponse = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          })
+          supabaseResponse = NextResponse.next()
           cookiesToSet.forEach(({ name, value, options }) => {
             supabaseResponse.cookies.set(name, value, options)
           })
@@ -72,40 +58,67 @@ export async function proxy(request: NextRequest) {
   )
 
   const { data: { user }, error: authError } = await supabase.auth.getUser()
-  if (authError || !user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: supabaseResponse.headers })
-  }
 
-  let activeCompanyId = request.headers.get('x-company-id')
+  const isApiRoute = pathname.startsWith('/api/')
+  const isLoginRoute = pathname === '/login'
 
-  if (activeCompanyId) {
-    const { data: userCompany, error } = await supabase
-      .from('user_company')
-      .select('companyId')
-      .eq('userId', user.id)
-      .eq('companyId', activeCompanyId)
-      .single()
+  if (isApiRoute) {
+    const ip = request.headers.get('x-forwarded-for') || '127.0.0.1'
+    const windowMs = 60 * 1000
+    const limit = 100
+    const currentKey = `ratelimit:${ip}:${Math.floor(Date.now() / windowMs)}`
+    const reqCount = await redis.incr(currentKey)
+    if (reqCount === 1) {
+      await redis.expire(currentKey, 60)
+    }
 
-    if (error || !userCompany) {
-      return NextResponse.json({ error: 'Forbidden: User does not belong to this company' }, { status: 403, headers: supabaseResponse.headers })
+    if (reqCount > limit) {
+      return NextResponse.json({ error: 'Too Many Requests' }, { status: 429, headers: supabaseResponse.headers })
+    }
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: supabaseResponse.headers })
+    }
+
+    const isExempt = pathname === '/api/companies' || pathname.startsWith('/api/auth')
+    if (isExempt) {
+      return supabaseResponse
+    }
+
+    let activeCompanyId = request.headers.get('x-company-id')
+
+    if (activeCompanyId) {
+      const { data: userCompany, error } = await supabase
+        .from('user_company')
+        .select('companyId')
+        .eq('userId', user.id)
+        .eq('companyId', activeCompanyId)
+        .single()
+
+      if (error || !userCompany) {
+        return NextResponse.json({ error: 'Forbidden: User does not belong to this company' }, { status: 403, headers: supabaseResponse.headers })
+      }
+    } else {
+      const { data: userCompanies, error } = await supabase
+        .from('user_company')
+        .select('companyId')
+        .eq('userId', user.id)
+
+      if (!error && userCompanies && userCompanies.length === 1) {
+        activeCompanyId = userCompanies[0].companyId
+        request.headers.set('x-company-id', activeCompanyId as string)
+        supabaseResponse = NextResponse.next({
+          request,
+        })
+        supabaseResponse.headers.set('x-company-id', activeCompanyId as string)
+      } else {
+        return NextResponse.json({ error: 'Bad Request: x-company-id header is missing and could not be inferred' }, { status: 400, headers: supabaseResponse.headers })
+      }
     }
   } else {
-    const { data: userCompanies, error } = await supabase
-      .from('user_company')
-      .select('companyId')
-      .eq('userId', user.id)
-
-    if (!error && userCompanies && userCompanies.length === 1) {
-      activeCompanyId = userCompanies[0].companyId
-      request.headers.set('x-company-id', activeCompanyId as string)
-      supabaseResponse = NextResponse.next({
-        request: {
-          headers: request.headers,
-        },
-      })
-      supabaseResponse.headers.set('x-company-id', activeCompanyId as string) // Also set on response
-    } else {
-      return NextResponse.json({ error: 'Bad Request: x-company-id header is missing and could not be inferred' }, { status: 400, headers: supabaseResponse.headers })
+    if (!user && !isLoginRoute) {
+      const redirectUrl = new URL('/login', request.url)
+      return NextResponse.redirect(redirectUrl)
     }
   }
 

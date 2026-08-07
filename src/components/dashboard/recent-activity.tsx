@@ -1,43 +1,59 @@
 "use client";
 
-import { useState } from "react";
+import { useState, use } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "src/components/ui/card";
 import { cn } from "src/lib/utils";
+import { Voucher } from "src/models/Voucher";
 
-const weeklySales = [
-  { week: "Semana 1", amount: 12400 },
-  { week: "Semana 2", amount: 18900 },
-  { week: "Semana 3", amount: 14200 },
-  { week: "Semana 4", amount: 22100 },
-  { week: "Semana 5", amount: 16800 },
-];
+interface RecentActivityProps {
+  promise: Promise<Voucher[]> | null;
+}
 
-const recentPurchases = [
-  { id: "1", date: "2026-08-03", type: "Factura A", provider: "Proveedor Central", total: 4500.00 },
-  { id: "2", date: "2026-08-01", type: "Ticket", provider: "Librería", total: 150.75 },
-  { id: "3", date: "2026-07-28", type: "Factura B", provider: "Servicios Públicos", total: 1200.00 },
-];
-
-export function RecentActivity() {
+export function RecentActivity({ promise }: RecentActivityProps) {
+  if (!promise) return null;
+  const vouchers = use(promise);
+  
   const [hoveredBar, setHoveredBar] = useState<number | null>(null);
+
+  const sales = vouchers.filter((v: Voucher) => v.type === 'sale').sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  
+  const weeklySales = [
+    { week: "Semana 1", amount: 0 },
+    { week: "Semana 2", amount: 0 },
+    { week: "Semana 3", amount: 0 },
+    { week: "Semana 4", amount: 0 },
+    { week: "Semana 5", amount: 0 },
+  ];
+  
+  const now = new Date();
+  const days35Ago = new Date(now.getTime() - 35 * 24 * 60 * 60 * 1000);
+  
+  sales.forEach(s => {
+    const d = new Date(s.date);
+    if (d >= days35Ago) {
+      const diffTime = now.getTime() - d.getTime();
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); 
+      const weekIndex = 4 - Math.floor(diffDays / 7);
+      if (weekIndex >= 0 && weekIndex < 5) {
+        weeklySales[weekIndex].amount += Number(s.totalAmount);
+      }
+    }
+  });
+
+  const recentPurchases = vouchers
+    .filter((v: Voucher) => v.type === 'purchase')
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, 3);
 
   const width = 450;
   const height = 180;
   const paddingX = 40;
   const paddingY = 25;
-  const maxVal = 25000;
+  const maxVal = Math.max(...weeklySales.map(s => s.amount)) * 1.2 || 25000;
 
-  const getX = (idx: number) => {
-    return paddingX + idx * 75;
-  };
-
-  const getBarHeight = (val: number) => {
-    return (val / maxVal) * (height - 2 * paddingY);
-  };
-
-  const getY = (val: number) => {
-    return height - paddingY - getBarHeight(val);
-  };
+  const getX = (idx: number) => paddingX + idx * 75;
+  const getBarHeight = (val: number) => (val / maxVal) * (height - 2 * paddingY);
+  const getY = (val: number) => height - paddingY - getBarHeight(val);
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
@@ -67,7 +83,7 @@ export function RecentActivity() {
               />
 
               <text x={paddingX - 8} y={paddingY + 3} textAnchor="end" className="fill-muted-foreground text-[9px]">
-                $25k
+                ${maxVal > 1000 ? (maxVal/1000).toFixed(0) + 'k' : maxVal.toFixed(0)}
               </text>
               <text x={paddingX - 8} y={height - paddingY + 3} textAnchor="end" className="fill-muted-foreground text-[9px]">
                 $0
@@ -108,7 +124,7 @@ export function RecentActivity() {
                   top: `${getY(weeklySales[hoveredBar].amount) - 15}px`,
                 }}
               >
-                <div className="font-bold">${weeklySales[hoveredBar].amount.toLocaleString("es-AR")}</div>
+                <div className="font-bold">${weeklySales[hoveredBar].amount.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
               </div>
             )}
           </div>
@@ -124,19 +140,23 @@ export function RecentActivity() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {recentPurchases.map((item) => (
-              <div key={item.id} className="flex items-center justify-between border-b pb-3.5 last:border-0 last:pb-0">
-                <div className="space-y-1">
-                  <div className="text-2xs font-bold leading-none">{item.provider}</div>
-                  <div className="text-[10px] text-muted-foreground">
-                    {item.date} • {item.type}
+            {recentPurchases.length === 0 ? (
+              <p className="text-2xs text-muted-foreground">No hay compras registradas recientemente.</p>
+            ) : (
+              recentPurchases.map((item) => (
+                <div key={item.id} className="flex items-center justify-between border-b pb-3.5 last:border-0 last:pb-0">
+                  <div className="space-y-1">
+                    <div className="text-2xs font-bold leading-none">{item.supplier?.name}</div>
+                    <div className="text-[10px] text-muted-foreground">
+                      {new Date(item.date).toLocaleDateString("es-AR")} • {item.voucherType?.name || "Factura"}
+                    </div>
+                  </div>
+                  <div className="text-2xs font-bold text-rose-500">
+                    -${Number(item.totalAmount).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
                 </div>
-                <div className="text-2xs font-bold text-rose-500">
-                  -${item.total.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </CardContent>
       </Card>

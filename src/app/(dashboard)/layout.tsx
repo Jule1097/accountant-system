@@ -1,6 +1,7 @@
 import { SidebarProvider, SidebarTrigger } from "src/components/ui/sidebar";
 import { AppSidebar } from "src/components/layout/app-sidebar";
 import { ThemeToggle } from "src/components/layout/theme-toggle";
+import { CompanySelectorModal } from "src/components/layout/company-selector-modal";
 
 export default function DashboardLayout({
   children,
@@ -9,6 +10,7 @@ export default function DashboardLayout({
 }>) {
   return (
     <SidebarProvider>
+      <CompanySelectorModal />
       <div className="flex min-h-screen w-full">
         <AppSidebar />
         <div className="flex w-full flex-col">
