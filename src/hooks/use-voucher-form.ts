@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useToastManager } from "src/components/ui/toast";
@@ -63,14 +63,17 @@ export function useVoucherForm({ isOpen, onOpenChange, type }: UseVoucherFormPro
     },
   });
 
-  const { setValue, watch, reset, control } = form;
+  const { setValue, reset, control } = form;
 
   const { fields, append, remove } = useFieldArray({
     control,
     name: "retentions",
   });
 
-  const selectedThirdPartyId = watch("thirdPartyId");
+  const selectedThirdPartyId = useWatch({
+    control,
+    name: "thirdPartyId",
+  });
 
   useEffect(() => {
     if (isOpen) {
