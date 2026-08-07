@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "src/components/ui/card
 import { DollarSign, CreditCard, Activity } from "lucide-react";
 
 interface KpiCardsProps {
-  promise: Promise<any> | null;
+  promise: Promise<{ trend?: { income: number; expenses: number }[] }> | null;
 }
 
 export function KpiCards({ promise }: KpiCardsProps) {

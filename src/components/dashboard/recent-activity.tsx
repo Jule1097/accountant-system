@@ -10,10 +10,10 @@ interface RecentActivityProps {
 }
 
 export function RecentActivity({ promise }: RecentActivityProps) {
+  const [hoveredBar, setHoveredBar] = useState<number | null>(null);
+
   if (!promise) return null;
   const vouchers = use(promise);
-  
-  const [hoveredBar, setHoveredBar] = useState<number | null>(null);
 
   const sales = vouchers.filter((v: Voucher) => v.type === 'sale').sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   

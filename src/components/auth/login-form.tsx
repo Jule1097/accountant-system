@@ -36,7 +36,7 @@ export function LoginForm() {
     try {
       await login(values.email, values.password);
       router.push("/dashboard");
-    } catch (error: unknown) {
+    } catch {
       setErrorMsg("Credenciales inválidas. Por favor verifique e intente nuevamente.");
     } finally {
       setIsSubmitting(false);

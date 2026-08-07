@@ -6,7 +6,6 @@ import {
   CreditCard,
   TrendingUp,
   Target,
-  ArrowUpRight,
   ArrowDownRight,
   Percent,
 } from "lucide-react";

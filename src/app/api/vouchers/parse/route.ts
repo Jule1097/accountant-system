@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
       catalogRepository.getRetentionConcepts(),
     ])
 
-    const resolvedVatDetails = (extractedData.vatDetails || []).map((item: any) => {
+    const resolvedVatDetails = (extractedData.vatDetails || []).map((item: { vatRateName?: string; subtotal?: number; vatAmount?: number }) => {
       const matched = vatRates.find(
         (vr) => vr.name.toLowerCase() === item.vatRateName?.toLowerCase()
       )
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    const resolvedRetentions = (extractedData.retentions || []).map((ret: any) => {
+    const resolvedRetentions = (extractedData.retentions || []).map((ret: { conceptName?: string; amount?: number; province?: string }) => {
       const matched = retentionConcepts.find(
         (rc) => rc.name.toLowerCase() === ret.conceptName?.toLowerCase()
       )

@@ -44,7 +44,7 @@ describe('Parser Route Handler', () => {
   it('should reject requests without active company header with 400', async () => {
     const request = {
       headers: {
-        get: (name: string) => null
+        get: () => null
       }
     } as unknown as NextRequest
 
@@ -57,10 +57,10 @@ describe('Parser Route Handler', () => {
   it('should reject requests without file with 400', async () => {
     const request = {
       headers: {
-        get: (name: string) => companyId
+        get: () => companyId
       },
       formData: async () => ({
-        get: (name: string) => null
+        get: () => null
       })
     } as unknown as NextRequest
 
@@ -80,10 +80,10 @@ describe('Parser Route Handler', () => {
 
     const request = {
       headers: {
-        get: (name: string) => companyId
+        get: () => companyId
       },
       formData: async () => ({
-        get: (name: string) => largeFile
+        get: () => largeFile
       })
     } as unknown as NextRequest
 
@@ -120,10 +120,10 @@ describe('Parser Route Handler', () => {
 
     const request = {
       headers: {
-        get: (name: string) => companyId
+        get: () => companyId
       },
       formData: async () => ({
-        get: (name: string) => mockFile
+        get: () => mockFile
       })
     } as unknown as NextRequest
 
@@ -165,10 +165,10 @@ describe('Parser Route Handler', () => {
 
     const request = {
       headers: {
-        get: (name: string) => companyId
+        get: () => companyId
       },
       formData: async () => ({
-        get: (name: string) => mockFile
+        get: () => mockFile
       })
     } as unknown as NextRequest
 
@@ -205,10 +205,10 @@ describe('Parser Route Handler', () => {
 
     const request = {
       headers: {
-        get: (name: string) => companyId
+        get: () => companyId
       },
       formData: async () => ({
-        get: (name: string) => mockFile
+        get: () => mockFile
       })
     } as unknown as NextRequest
 
@@ -256,10 +256,10 @@ describe('Parser Route Handler', () => {
 
     const request = {
       headers: {
-        get: (name: string) => companyId
+        get: () => companyId
       },
       formData: async () => ({
-        get: (name: string) => mockFile
+        get: () => mockFile
       })
     } as unknown as NextRequest
 

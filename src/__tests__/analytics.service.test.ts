@@ -13,7 +13,7 @@ describe('AnalyticsService', () => {
     jest.clearAllMocks()
     repositoryMock = new VoucherRepository() as jest.Mocked<VoucherRepository>
     service = new AnalyticsService()
-    ;(service as any).repository = repositoryMock
+    service['repository'] = repositoryMock
   })
 
   it('should compute correct aggregated metrics by rolling period and currency', async () => {
@@ -64,7 +64,7 @@ describe('AnalyticsService', () => {
       }
     ]
 
-    repositoryMock.findForAnalytics.mockResolvedValue(mockVouchers as any)
+    repositoryMock.findForAnalytics.mockResolvedValue(mockVouchers as never)
 
     const result = await service.getAnalytics(companyId)
 
