@@ -1,44 +1,89 @@
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import { GoogleGenAI } from '@google/genai'
 
 const apiKey = process.env.GEMINI_API_KEY || ''
-const genAI = new GoogleGenerativeAI(apiKey)
+const ai = new GoogleGenAI({ apiKey })
 
-export async function parseInvoiceImage(base64Image: string, mimeType: string) {
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
+export async function parseInvoiceImage(base64Image: string, mimeType: string, activeCompanyCuit?: string) {
+  const prompt = activeCompanyCuit
+    ? `Extract the accounting information from the invoice document. The active company's CUIT is ${activeCompanyCuit}. Do NOT use this CUIT as the thirdPartyCuit. The thirdPartyCuit must represent the OTHER party on the invoice (client if we sold, supplier if we purchased).`
+    : 'Extract the accounting information from the invoice document.'
 
-  const prompt = `
-    Please extract the following accounting information from this invoice image.
-    Return the result as a valid JSON object with the following fields. If a field cannot be found, omit it or set it to null.
-    - "posNumber": string (Point of sale number, e.g. "00002")
-    - "number": string (Invoice number, e.g. "00000123")
-    - "date": string (Format: YYYY-MM-DD)
-    - "currency": string ("$" or "USD")
-    - "subtotal": number
-    - "vatAmount": number
-    - "totalAmount": number
-    - "cuit": string (The CUIT of the supplier or client on the invoice, formatted as XX-XXXXXXXX-X)
-    - "supplierName": string (The name or business name of the supplier)
-    - "retentions": array of objects [{"description": string, "amount": number}] (Any retentions or percepciones indicated on the invoice)
-
-    Only output the raw JSON object, without markdown formatting.
-  `
-
-  const result = await model.generateContent([
-    prompt,
-    {
-      inlineData: {
-        data: base64Image,
-        mimeType
+  const response = await ai.models.generateContent({
+    model: 'gemini-3.1-flash-lite',
+    contents: [
+      {
+        inlineData: {
+          mimeType,
+          data: base64Image
+        }
+      },
+      prompt
+    ],
+    config: {
+      responseMimeType: 'application/json',
+      responseSchema: {
+        type: 'object',
+        properties: {
+          posNumber: { type: 'string' },
+          number: { type: 'string' },
+          date: { type: 'string' },
+          currency: { type: 'string' },
+          subtotal: { type: 'number' },
+          vatAmount: { type: 'number' },
+          totalAmount: { type: 'number' },
+          thirdPartyCuit: { type: 'string' },
+          supplierName: { type: 'string' },
+          voucherType: { type: 'string' },
+          voucherLetter: { type: 'string' },
+          vatDetails: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                vatRateName: { type: 'string' },
+                subtotal: { type: 'number' },
+                vatAmount: { type: 'number' }
+              },
+              required: ['vatRateName', 'subtotal', 'vatAmount']
+            }
+          },
+          retentions: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                conceptName: { type: 'string' },
+                amount: { type: 'number' },
+                province: { type: 'string' }
+              },
+              required: ['conceptName', 'amount']
+            }
+          }
+        },
+        required: [
+          'posNumber',
+          'number',
+          'date',
+          'currency',
+          'subtotal',
+          'vatAmount',
+          'totalAmount',
+          'thirdPartyCuit',
+          'supplierName',
+          'voucherType',
+          'voucherLetter'
+        ]
       }
     }
-  ])
+  })
 
-  const response = await result.response
-  const text = response.text()
+  const text = response.text
+  if (!text) {
+    throw new Error('Empty response from Gemini')
+  }
 
   try {
-    const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim()
-    return JSON.parse(jsonStr)
+    return JSON.parse(text)
   } catch (error: unknown) {
     const err = error as Error
     console.error('Failed to parse Gemini response as JSON:', err)

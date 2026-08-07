@@ -15,6 +15,12 @@ export class SupplierRepository {
         })
     }
 
+    async findByCuitAndCompany(companyId: string, cuit: string) {
+        return prisma.supplier.findFirst({
+            where: { cuit, companyId },
+        })
+    }
+
     async findAll(companyId: string) {
         return prisma.supplier.findMany({
             where: { companyId },

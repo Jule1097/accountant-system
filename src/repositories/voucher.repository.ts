@@ -9,6 +9,10 @@ export class VoucherRepository {
       include: {
         retentions: true,
         vatDetails: true,
+        voucherType: true,
+        voucherLetter: true,
+        client: true,
+        supplier: true,
       },
     })
 
@@ -50,6 +54,10 @@ export class VoucherRepository {
       include: {
         retentions: true,
         vatDetails: true,
+        voucherType: true,
+        voucherLetter: true,
+        client: true,
+        supplier: true,
       },
       orderBy: { date: 'desc' },
     })
@@ -167,6 +175,32 @@ export class VoucherRepository {
   async delete(companyId: string, id: string): Promise<void> {
     await prisma.voucher.delete({
       where: { id, companyId }
+    })
+  }
+
+  async findForAnalytics(companyId: string, startDate: Date) {
+    return prisma.voucher.findMany({
+      where: {
+        companyId,
+        date: {
+          gte: startDate,
+        },
+      },
+      include: {
+        retentions: {
+          include: {
+            retentionConcept: true,
+          },
+        },
+        vatDetails: {
+          include: {
+            vatRate: true,
+          },
+        },
+        client: true,
+        supplier: true,
+      },
+      orderBy: { date: 'desc' },
     })
   }
 }

@@ -3,12 +3,12 @@
 - This file is ALWAYS your entry point. Read it and re-read it periodically.
 - Never modify this file unless the user explicitly asks for it. You can re-read it periodically to refresh your memory.
 - Use Spanish labels in the UI when displaying enum values. Keep enum identifiers unchanged in code, API contracts, persistence, tests, and technical documentation.
+- NEVER ADD COMMENTS ON CODE, its not neccessary. The name methods should explain by itself.
+
 - **Spec-Driven Development (SpecDD):** For any new feature, module, or structural change, you must strictly follow the SpecDD workflow using the **OpenSpec** framework. Minor bug fixes or small refactors can bypass this formal workflow.
 
 ## Next.js: ALWAYS read docs before coding
 Before any Next.js work, find and read the relevant doc in `node_modules/next/dist/docs/`. Your training data is outdated — the docs are the source of truth.
-
-NEVER ADD COMMENTS ON CODE, its not neccessary. The name methods should explain by itself.
 
 ## Spec-Driven Development (SpecDD) Workflow (OpenSpec)
 Whenever the user requests a new feature, module, or structural change, **never start coding immediately**. Follow the OpenSpec workflow:
@@ -60,7 +60,8 @@ Whenever the user requests a new feature, module, or structural change, **never 
 - Avoid type assertions. A type assertion is allowed only after validation, narrowing, or when adapting a third-party API with an inaccurate type.
 - Use discriminated unions for workflow states, async states, and approval states when they make invalid states impossible to represent.
 - Whenever creating types or interfaces, they MUST be modularized into a folder named `types` inside `src` (e.g., `src/types/`). Do not define them inline within models, services, or controllers.
-
+- Whenever creating zod schemas they must be in a file named `<prefix>schemas.ts` inside `src/lib/schemas/`. example: `src/lib/schemas/voucher-schemas.ts`. 
+  
 
 ## Security Baseline & Business Constraints
 - Treat all client input as untrusted.
@@ -108,9 +109,14 @@ Whenever the user requests a new feature, module, or structural change, **never 
   - **Domain Layer (`src/models/`)**: Rich domain models. Entities must encapsulate their own business rules and state mutations as methods (e.g., `voucher.calculateTotal()`) rather than acting as anemic data structures.
   - **Infrastructure Layer (`src/repositories/`)**: All Prisma queries must be abstracted behind repositories or data-access services to decouple the application from the ORM.
 - **Frontend Modularization**: `page.tsx` files must only be used to mount the corresponding UI components. Do not place complex logic or methods directly in page files. Modularize all logic and methods into their respective entity folders/files to strictly separate responsibilities. Avoid grouping logic methods with rendering unless absolutely necessary.
+- **Component Size Constraints**: Avoid deeply nested components and extremely long UI components (e.g., complex Modals or Forms). Break down complex UIs into smaller, single-responsibility sub-components that consume modular custom hooks.
+- **Strict Route Handler Boundaries**: Route handlers (`src/app/api/...`) must never implement business logic directly. Any complex computation or business rule enforcement should be placed in the service layer. When necessary, create or extend Models in `src/models` to encapsulate these rules, using the existing classes as a base.
 - Keep domain logic decoupled from framework-specific routing or database drivers.
+- **Nested IF Expressions**: Do not nest IF expressions on any methods. If there is needed of nested IF expressions, then make module/function for each IF. This rule applies to both backend and frontend code.
+- **Promise Derivation in Hooks**: Custom React hooks representing queries or async fetches should derive the promise during render using `useMemo` based on dependencies (e.g. `activeCompanyId`), instead of invoking `setState` from inside a `useEffect` loop. This avoids render cascading and synchronization violations.
 
 ## Testing Standards
+
 - Every new feature or backend endpoint must include automated tests using Jest.
 - Minimum test requirements per feature:
   - Unit tests for validation schemas (Zod) and core business logic.
