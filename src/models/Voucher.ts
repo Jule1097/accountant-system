@@ -1,4 +1,4 @@
-import { Prisma } from 'src/generated/prisma/client'
+import { Decimal } from 'decimal.js'
 import { VoucherRetention, VoucherVatDetail } from 'src/types/voucher'
 
 export class Voucher {
@@ -14,21 +14,26 @@ export class Voucher {
   date: Date
   accountingPeriod: Date
   currency: string
-  exchangeRate: Prisma.Decimal | number
-  subtotal: Prisma.Decimal | number
-  vatAmount: Prisma.Decimal | number
-  totalAmount: Prisma.Decimal | number
-  netAmount: Prisma.Decimal | number
+  exchangeRate: Decimal | number
+  subtotal: Decimal | number
+  vatAmount: Decimal | number
+  totalAmount: Decimal | number
+  netAmount: Decimal | number
   concept?: string | null
   paymentMethod: string
   status: 'pending' | 'partial' | 'paid'
   paymentDate?: Date | null
-  paidAmount: Prisma.Decimal | number
+  paidAmount: Decimal | number
   comments?: string | null
   createdByUserId: string
 
   retentions: VoucherRetention[]
   vatDetails: VoucherVatDetail[]
+
+  voucherType?: { name: string }
+  voucherLetter?: { letter: string }
+  client?: { name: string; cuit: string } | null
+  supplier?: { name: string; cuit: string } | null
 
   constructor(data: unknown) {
     const d = data as Record<string, unknown>
@@ -44,28 +49,33 @@ export class Voucher {
     this.date = d.date instanceof Date ? d.date : new Date(d.date as string | number)
     this.accountingPeriod = d.accountingPeriod instanceof Date ? d.accountingPeriod : new Date(d.accountingPeriod as string | number)
     this.currency = d.currency as string
-    this.exchangeRate = d.exchangeRate as Prisma.Decimal | number
-    this.subtotal = d.subtotal as Prisma.Decimal | number
-    this.vatAmount = d.vatAmount as Prisma.Decimal | number
-    this.totalAmount = d.totalAmount as Prisma.Decimal | number
+    this.exchangeRate = d.exchangeRate as Decimal | number
+    this.subtotal = d.subtotal as Decimal | number
+    this.vatAmount = d.vatAmount as Decimal | number
+    this.totalAmount = d.totalAmount as Decimal | number
     this.concept = d.concept as string | null | undefined
     this.paymentMethod = d.paymentMethod as string
     this.paymentDate = d.paymentDate ? (d.paymentDate instanceof Date ? d.paymentDate : new Date(d.paymentDate as string | number)) : null
-    this.paidAmount = (d.paidAmount as Prisma.Decimal | number) || 0
+    this.paidAmount = (d.paidAmount as Decimal | number) || 0
     this.comments = d.comments as string | null | undefined
     this.createdByUserId = d.createdByUserId as string
     this.retentions = (d.retentions as VoucherRetention[]) || []
     this.vatDetails = (d.vatDetails as VoucherVatDetail[]) || []
 
-    this.netAmount = d.netAmount !== undefined ? (d.netAmount as Prisma.Decimal | number) : this.calculateNetAmount()
+    this.voucherType = d.voucherType as { name: string } | undefined
+    this.voucherLetter = d.voucherLetter as { letter: string } | undefined
+    this.client = d.client as { name: string; cuit: string } | null | undefined
+    this.supplier = d.supplier as { name: string; cuit: string } | null | undefined
+
+    this.netAmount = d.netAmount !== undefined ? (d.netAmount as Decimal | number) : this.calculateNetAmount()
     this.status = (d.status as 'pending' | 'partial' | 'paid') || this.deriveStatus()
   }
 
-  calculateNetAmount(): Prisma.Decimal {
-    const total = new Prisma.Decimal(this.totalAmount.toString())
+  calculateNetAmount(): Decimal {
+    const total = new Decimal(this.totalAmount.toString())
     const retentionSum = this.retentions.reduce(
-      (sum, r) => sum.plus(new Prisma.Decimal(r.amount.toString())),
-      new Prisma.Decimal(0)
+      (sum, r) => sum.plus(new Decimal(r.amount.toString())),
+      new Decimal(0)
     )
 
     const net = total.minus(retentionSum)
@@ -74,8 +84,8 @@ export class Voucher {
   }
 
   deriveStatus(): 'pending' | 'partial' | 'paid' {
-    const net = new Prisma.Decimal(this.netAmount.toString())
-    const paid = new Prisma.Decimal(this.paidAmount.toString())
+    const net = new Decimal(this.netAmount.toString())
+    const paid = new Decimal(this.paidAmount.toString())
 
     if (paid.gte(net) && net.gt(0)) {
       this.status = 'paid'

@@ -17,10 +17,14 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from "src/components/ui/dropdown-menu";
-import { LayoutDashboard, ShoppingCart, Store, LineChart, User2, ChevronUp } from "lucide-react";
+import { LayoutDashboard, ShoppingCart, Store, LineChart, User2, ChevronUp, Building } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useAuth } from "src/hooks/use-auth";
+import { useCompany } from "src/contexts/company-context";
 
 const items = [
   {
@@ -48,16 +52,22 @@ const items = [
 export function AppSidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const { user, logout } = useAuth();
+  const { companies, activeCompany, activeCompanyId, setActiveCompanyId } = useCompany();
 
-  const handleLogout = () => {
-    router.push("/login");
+  const handleLogout = async (): Promise<void> => {
+    try {
+      await logout();
+      router.push("/login");
+    } catch (error) {
+      console.error("Error logging out:", error);
+    }
   };
 
   return (
     <Sidebar collapsible="offcanvas">
       <SidebarHeader>
         <div className="flex h-12 items-center justify-center font-bold text-xl">
-          TEEM
         </div>
       </SidebarHeader>
       <SidebarContent>
@@ -88,9 +98,17 @@ export function AppSidebar() {
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={
-                  <SidebarMenuButton>
-                    <User2 /> Usuario actual
-                    <ChevronUp className="ml-auto" />
+                  <SidebarMenuButton className="h-12 py-2">
+                    <User2 className="h-5 w-5" />
+                    <div className="flex flex-col items-start text-left leading-normal">
+                      <span className="text-2xs font-medium truncate max-w-[120px]">
+                        {user?.email || "Usuario"}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">
+                        {activeCompany?.name || "Sin empresa"}
+                      </span>
+                    </div>
+                    <ChevronUp className="ml-auto h-4 w-4" />
                   </SidebarMenuButton>
                 }
               />
@@ -98,6 +116,23 @@ export function AppSidebar() {
                 side="top"
                 className="w-[--radix-popper-anchor-width]"
               >
+                {companies.length > 1 && (
+                  <>
+                    <DropdownMenuLabel>Empresas</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {companies.map((company) => (
+                      <DropdownMenuItem
+                        key={company.id}
+                        onClick={() => setActiveCompanyId(company.id)}
+                        className={activeCompanyId === company.id ? "font-bold bg-accent" : ""}
+                      >
+                        <Building className="mr-2 h-4 w-4" />
+                        <span className="truncate">{company.name}</span>
+                      </DropdownMenuItem>
+                    ))}
+                    <DropdownMenuSeparator />
+                  </>
+                )}
                 <DropdownMenuItem onClick={handleLogout}>
                   <span>Cerrar sesión</span>
                 </DropdownMenuItem>

@@ -13,8 +13,8 @@ async function main() {
 
   // 1. Demo Companies
   const companies = [
-    { name: 'TEEM', cuit: '30-11111111-9' },
-    { name: 'GRIB', cuit: '30-22222222-9' },
+    { name: 'TEEM', cuit: '30-71761812-9' },
+    { name: 'GRIB', cuit: '30-71761409-3' },
   ]
   for (const c of companies) {
     await prisma.company.upsert({

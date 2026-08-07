@@ -12,6 +12,11 @@ export class ClientRepository {
             where: { cuit },
         })
     }
+    async findByCuitAndCompany(companyId: string, cuit: string) {
+        return prisma.client.findFirst({
+            where: { cuit, companyId },
+        })
+    }
     async findAll(companyId: string) {
         return prisma.client.findMany({
             where: { companyId },
