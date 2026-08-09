@@ -13,7 +13,7 @@ describe('AnalyticsService', () => {
     jest.clearAllMocks()
     repositoryMock = new VoucherRepository() as jest.Mocked<VoucherRepository>
     service = new AnalyticsService()
-    service['repository'] = repositoryMock
+    ;(service as unknown as { repository: VoucherRepository }).repository = repositoryMock
   })
 
   it('should compute correct aggregated metrics by rolling period and currency', async () => {
@@ -23,61 +23,82 @@ describe('AnalyticsService', () => {
         companyId,
         type: 'sale',
         subtotal: 1000,
+        vatAmount: 210,
+        nonTaxableAmount: 0,
+        exemptAmount: 0,
+        otherTaxesAmount: 0,
         totalAmount: 1210,
         currency: '$',
         date: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000),
         retentions: [
-          { amount: 100, retentionConcept: { name: 'Retención de Ganancias Sufrida' }, province: 'CABA' }
+          {
+            amount: 100,
+            retentionConcept: { name: 'Retención de Ganancias Sufrida' },
+            taxJurisdiction: { id: 'jur-caba', name: 'CABA' },
+          },
         ],
-        vatDetails: [
-          { vatAmount: 210 }
-        ],
+        perceptions: [],
+        vatDetails: [{ vatAmount: 210 }],
         client: { name: 'Client A', cuit: '20-11111111-2' },
         voucherType: { name: 'Factura' },
-        clientId: 'client-1'
+        clientId: 'client-1',
       },
       {
         companyId,
         type: 'purchase',
         subtotal: 500,
-        totalAmount: 500,
+        vatAmount: 105,
+        nonTaxableAmount: 40,
+        exemptAmount: 10,
+        otherTaxesAmount: 5,
+        totalAmount: 675,
         currency: 'USD',
         date: new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000),
         retentions: [],
-        vatDetails: [],
+        perceptions: [
+          {
+            amount: 15,
+            perceptionConcept: { name: 'Percepción de Ingresos Brutos' },
+            taxJurisdiction: { id: 'jur-caba', name: 'CABA' },
+          },
+        ],
+        vatDetails: [{ vatAmount: 105 }],
         supplier: { name: 'Supplier A', cuit: '30-22222222-3' },
         voucherType: { name: 'Factura' },
-        supplierId: 'supplier-1'
+        supplierId: 'supplier-1',
       },
       {
         companyId,
         type: 'sale',
         subtotal: 200,
+        vatAmount: 42,
+        nonTaxableAmount: 0,
+        exemptAmount: 0,
+        otherTaxesAmount: 0,
         totalAmount: 242,
         currency: '$',
         date: new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000),
         retentions: [],
-        vatDetails: [
-          { vatAmount: 42 }
-        ],
-        voucherType: { name: 'Nota de Crédito' }
-      }
+        perceptions: [],
+        vatDetails: [{ vatAmount: 42 }],
+        voucherType: { name: 'Nota de Crédito' },
+      },
     ]
 
     repositoryMock.findForAnalytics.mockResolvedValue(mockVouchers as never)
 
     const result = await service.getAnalytics(companyId)
 
-    const monthly = result.monthly
-    expect(monthly.netSales.ARS).toBe(900)
-    expect(monthly.salesCreditNotes.ARS).toBe(242)
-    expect(monthly.vatDebit.ARS).toBe(168)
-    expect(monthly.topClients[0].name).toBe('Client A')
-    expect(monthly.topClients[0].total).toBe(900)
+    expect(result.monthly.netSales.ARS).toBe(700)
+    expect(result.monthly.salesCreditNotes.ARS).toBe(242)
+    expect(result.monthly.vatDebit.ARS).toBe(168)
+    expect(result.monthly.topClients[0].name).toBe('Client A')
+    expect(result.monthly.topClients[0].total).toBe(1000)
 
-    const semiannual = result.semiannual
-    expect(semiannual.netPurchases.USD).toBe(500)
-    expect(semiannual.topSuppliers[0].name).toBe('Supplier A')
+    expect(result.semiannual.netPurchases.USD).toBe(555)
+    expect(result.semiannual.perceptions[0].total).toBe(15)
+    expect(result.semiannual.perceptions[0].currency).toBe('USD')
+    expect(result.semiannual.topSuppliers[0].name).toBe('Supplier A')
 
     expect(repositoryMock.findForAnalytics).toHaveBeenCalledWith(companyId, expect.any(Date))
   })

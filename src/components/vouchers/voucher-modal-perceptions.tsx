@@ -3,50 +3,50 @@ import { Button } from "src/components/ui/button";
 import { Input } from "src/components/ui/input";
 import { VoucherFormValues } from "src/hooks/use-voucher-form";
 
-interface VoucherModalRetentionsProps {
+interface VoucherModalPerceptionsProps {
   form: UseFormReturn<VoucherFormValues>;
-  fields: UseFieldArrayReturn<VoucherFormValues, "retentions">["fields"];
-  append: UseFieldArrayReturn<VoucherFormValues, "retentions">["append"];
-  remove: UseFieldArrayReturn<VoucherFormValues, "retentions">["remove"];
+  fields: UseFieldArrayReturn<VoucherFormValues, "perceptions">["fields"];
+  append: UseFieldArrayReturn<VoucherFormValues, "perceptions">["append"];
+  remove: UseFieldArrayReturn<VoucherFormValues, "perceptions">["remove"];
   catalogs: {
-    retentionConcepts: { id: string; name: string; type: string }[];
+    perceptionConcepts: { id: string; name: string }[];
     taxJurisdictions: { id: string; name: string }[];
   };
 }
 
-export function VoucherModalRetentions({
+export function VoucherModalPerceptions({
   form,
   fields,
   append,
   remove,
   catalogs,
-}: VoucherModalRetentionsProps) {
+}: VoucherModalPerceptionsProps) {
   const { register, watch } = form;
 
   return (
     <div className="grid gap-2 border-t pt-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-          Retenciones
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Percepciones
         </h3>
         <Button
           type="button"
           variant="outline"
           size="sm"
           className="h-7 px-2 text-[10px]"
-          onClick={() => append({ retentionConceptId: "", taxJurisdictionId: "", amount: 0 })}
+          onClick={() => append({ perceptionConceptId: "", taxJurisdictionId: "", amount: 0 })}
         >
-          + Agregar Retención
+          + Agregar Percepción
         </Button>
       </div>
 
       {fields.length === 0 ? (
-        <p className="text-xs italic text-muted-foreground">No hay retenciones cargadas.</p>
+        <p className="text-xs italic text-muted-foreground">No hay percepciones cargadas.</p>
       ) : (
         <div className="space-y-2">
           {fields.map((field, index) => {
-            const conceptId = watch(`retentions.${index}.retentionConceptId`);
-            const selectedConcept = catalogs.retentionConcepts.find((concept) => concept.id === conceptId);
+            const conceptId = watch(`perceptions.${index}.perceptionConceptId`);
+            const selectedConcept = catalogs.perceptionConcepts.find((concept) => concept.id === conceptId);
             const showJurisdiction = selectedConcept?.name.toLowerCase().includes("ingresos brutos");
 
             return (
@@ -55,16 +55,14 @@ export function VoucherModalRetentions({
                   <label className="text-[9px] font-medium uppercase text-muted-foreground">Concepto</label>
                   <select
                     className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-                    {...register(`retentions.${index}.retentionConceptId` as const)}
+                    {...register(`perceptions.${index}.perceptionConceptId` as const)}
                   >
                     <option value="">Seleccionar</option>
-                    {catalogs.retentionConcepts
-                      .filter((concept) => concept.type === "sale")
-                      .map((concept) => (
-                        <option key={concept.id} value={concept.id}>
-                          {concept.name}
-                        </option>
-                      ))}
+                    {catalogs.perceptionConcepts.map((concept) => (
+                      <option key={concept.id} value={concept.id}>
+                        {concept.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -73,7 +71,7 @@ export function VoucherModalRetentions({
                     <label className="text-[9px] font-medium uppercase text-muted-foreground">Jurisdicción</label>
                     <select
                       className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-                      {...register(`retentions.${index}.taxJurisdictionId` as const)}
+                      {...register(`perceptions.${index}.taxJurisdictionId` as const)}
                     >
                       <option value="">Seleccionar</option>
                       {catalogs.taxJurisdictions.map((jurisdiction) => (
@@ -94,7 +92,7 @@ export function VoucherModalRetentions({
                     step="0.01"
                     placeholder="0.00"
                     className="h-8 px-2 py-1 text-xs"
-                    {...register(`retentions.${index}.amount` as const, { valueAsNumber: true })}
+                    {...register(`perceptions.${index}.amount` as const, { valueAsNumber: true })}
                   />
                 </div>
 

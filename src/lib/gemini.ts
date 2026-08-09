@@ -5,8 +5,8 @@ const ai = new GoogleGenAI({ apiKey })
 
 export async function parseInvoiceImage(base64Image: string, mimeType: string, activeCompanyCuit?: string) {
   const prompt = activeCompanyCuit
-    ? `Extract the accounting information from the invoice document. The active company's CUIT is ${activeCompanyCuit}. Do NOT use this CUIT as the thirdPartyCuit. The thirdPartyCuit must represent the OTHER party on the invoice (client if we sold, supplier if we purchased).`
-    : 'Extract the accounting information from the invoice document.'
+    ? `Extract the accounting information from the invoice document. The active company's CUIT is ${activeCompanyCuit}. Do not use this CUIT as the thirdPartyCuit. The thirdPartyCuit must represent the other party on the invoice. Keep Credit Note amounts as positive values even if the source document shows them as negative. Separate sales retentions from purchase perceptions.`
+    : 'Extract the accounting information from the invoice document. Keep Credit Note amounts as positive values even if the source document shows them as negative. Separate sales retentions from purchase perceptions.'
 
   const response = await ai.models.generateContent({
     model: 'gemini-3.1-flash-lite',
@@ -14,10 +14,10 @@ export async function parseInvoiceImage(base64Image: string, mimeType: string, a
       {
         inlineData: {
           mimeType,
-          data: base64Image
-        }
+          data: base64Image,
+        },
       },
-      prompt
+      prompt,
     ],
     config: {
       responseMimeType: 'application/json',
@@ -30,7 +30,16 @@ export async function parseInvoiceImage(base64Image: string, mimeType: string, a
           currency: { type: 'string' },
           subtotal: { type: 'number' },
           vatAmount: { type: 'number' },
+          nonTaxableAmount: { type: 'number' },
+          exemptAmount: { type: 'number' },
+          otherTaxesAmount: { type: 'number' },
           totalAmount: { type: 'number' },
+          concept: { type: 'string' },
+          paymentMethod: { type: 'string' },
+          status: { type: 'string' },
+          paymentDate: { type: 'string' },
+          paidAmount: { type: 'number' },
+          comments: { type: 'string' },
           thirdPartyCuit: { type: 'string' },
           supplierName: { type: 'string' },
           voucherType: { type: 'string' },
@@ -42,10 +51,10 @@ export async function parseInvoiceImage(base64Image: string, mimeType: string, a
               properties: {
                 vatRateName: { type: 'string' },
                 subtotal: { type: 'number' },
-                vatAmount: { type: 'number' }
+                vatAmount: { type: 'number' },
               },
-              required: ['vatRateName', 'subtotal', 'vatAmount']
-            }
+              required: ['vatRateName', 'subtotal', 'vatAmount'],
+            },
           },
           retentions: {
             type: 'array',
@@ -54,11 +63,23 @@ export async function parseInvoiceImage(base64Image: string, mimeType: string, a
               properties: {
                 conceptName: { type: 'string' },
                 amount: { type: 'number' },
-                province: { type: 'string' }
+                province: { type: 'string' },
               },
-              required: ['conceptName', 'amount']
-            }
-          }
+              required: ['conceptName', 'amount'],
+            },
+          },
+          perceptions: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                conceptName: { type: 'string' },
+                amount: { type: 'number' },
+                province: { type: 'string' },
+              },
+              required: ['conceptName', 'amount'],
+            },
+          },
         },
         required: [
           'posNumber',
@@ -71,13 +92,14 @@ export async function parseInvoiceImage(base64Image: string, mimeType: string, a
           'thirdPartyCuit',
           'supplierName',
           'voucherType',
-          'voucherLetter'
-        ]
-      }
-    }
+          'voucherLetter',
+        ],
+      },
+    },
   })
 
   const text = response.text
+
   if (!text) {
     throw new Error('Empty response from Gemini')
   }
@@ -85,8 +107,7 @@ export async function parseInvoiceImage(base64Image: string, mimeType: string, a
   try {
     return JSON.parse(text)
   } catch (error: unknown) {
-    const err = error as Error
-    console.error('Failed to parse Gemini response as JSON:', err)
+    console.error('Failed to parse Gemini response as JSON:', error)
     throw new Error('Failed to parse invoice')
   }
 }

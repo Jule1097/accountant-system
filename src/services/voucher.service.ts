@@ -19,7 +19,6 @@ export class VoucherService {
 
   async createVoucher(data: unknown): Promise<Voucher> {
     const voucher = new Voucher(data)
-
     voucher.recalculate()
 
     const duplicate = await this.repository.findDuplicate(voucher)
@@ -36,7 +35,7 @@ export class VoucherService {
       throw new Error('Voucher not found')
     }
 
-    const updatedData = { ...existing, ...(data as Voucher ?? {}) }
+    const updatedData = { ...existing, ...((data as Voucher) ?? {}) }
     updatedData.id = id
 
     const updatedVoucher = new Voucher(updatedData)

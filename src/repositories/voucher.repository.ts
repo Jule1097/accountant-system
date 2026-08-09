@@ -4,11 +4,26 @@ import { Voucher } from 'src/models/Voucher'
 
 export class VoucherRepository {
   async findById(companyId: string, id: string): Promise<Voucher | null> {
-    const raw = await prisma.voucher.findUnique({
+    const rawVoucher = await prisma.voucher.findUnique({
       where: { id, companyId },
       include: {
-        retentions: true,
-        vatDetails: true,
+        retentions: {
+          include: {
+            retentionConcept: true,
+            taxJurisdiction: true,
+          },
+        },
+        perceptions: {
+          include: {
+            perceptionConcept: true,
+            taxJurisdiction: true,
+          },
+        },
+        vatDetails: {
+          include: {
+            vatRate: true,
+          },
+        },
         voucherType: true,
         voucherLetter: true,
         client: true,
@@ -16,8 +31,11 @@ export class VoucherRepository {
       },
     })
 
-    if (!raw) return null
-    return new Voucher(raw)
+    if (!rawVoucher) {
+      return null
+    }
+
+    return new Voucher(rawVoucher)
   }
 
   async findDuplicate(voucher: Voucher): Promise<Voucher | null> {
@@ -36,24 +54,57 @@ export class VoucherRepository {
       whereClause.supplierId = voucher.supplierId
     }
 
-    const raw = await prisma.voucher.findFirst({
+    const rawVoucher = await prisma.voucher.findFirst({
       where: whereClause,
       include: {
-        retentions: true,
-        vatDetails: true,
+        retentions: {
+          include: {
+            retentionConcept: true,
+            taxJurisdiction: true,
+          },
+        },
+        perceptions: {
+          include: {
+            perceptionConcept: true,
+            taxJurisdiction: true,
+          },
+        },
+        vatDetails: {
+          include: {
+            vatRate: true,
+          },
+        },
       },
     })
 
-    if (!raw) return null
-    return new Voucher(raw)
+    if (!rawVoucher) {
+      return null
+    }
+
+    return new Voucher(rawVoucher)
   }
 
   async findAll(companyId: string, filters: Record<string, unknown> = {}): Promise<Voucher[]> {
-    const raw = await prisma.voucher.findMany({
+    const rawVouchers = await prisma.voucher.findMany({
       where: { companyId, ...filters },
       include: {
-        retentions: true,
-        vatDetails: true,
+        retentions: {
+          include: {
+            retentionConcept: true,
+            taxJurisdiction: true,
+          },
+        },
+        perceptions: {
+          include: {
+            perceptionConcept: true,
+            taxJurisdiction: true,
+          },
+        },
+        vatDetails: {
+          include: {
+            vatRate: true,
+          },
+        },
         voucherType: true,
         voucherLetter: true,
         client: true,
@@ -62,7 +113,7 @@ export class VoucherRepository {
       orderBy: { date: 'desc' },
     })
 
-    return raw.map(r => new Voucher(r))
+    return rawVouchers.map((voucher) => new Voucher(voucher))
   }
 
   async create(voucher: Voucher): Promise<Voucher> {
@@ -81,6 +132,9 @@ export class VoucherRepository {
       exchangeRate: voucher.exchangeRate,
       subtotal: voucher.subtotal,
       vatAmount: voucher.vatAmount,
+      nonTaxableAmount: voucher.nonTaxableAmount,
+      exemptAmount: voucher.exemptAmount,
+      otherTaxesAmount: voucher.otherTaxesAmount,
       totalAmount: voucher.totalAmount,
       netAmount: voucher.netAmount,
       concept: voucher.concept,
@@ -91,34 +145,58 @@ export class VoucherRepository {
       comments: voucher.comments,
       createdByUserId: voucher.createdByUserId,
       retentions: {
-        create: voucher.retentions.map(r => ({
-          retentionConceptId: r.retentionConceptId,
-          amount: r.amount,
-          province: r.province,
-        }))
+        create: voucher.retentions.map((retention) => ({
+          retentionConceptId: retention.retentionConceptId,
+          taxJurisdictionId: retention.taxJurisdictionId,
+          amount: retention.amount,
+        })),
+      },
+      perceptions: {
+        create: voucher.perceptions.map((perception) => ({
+          perceptionConceptId: perception.perceptionConceptId,
+          taxJurisdictionId: perception.taxJurisdictionId,
+          amount: perception.amount,
+        })),
       },
       vatDetails: {
-        create: voucher.vatDetails.map(v => ({
-          vatRateId: v.vatRateId,
-          subtotal: v.subtotal,
-          vatAmount: v.vatAmount,
-        }))
-      }
+        create: voucher.vatDetails.map((detail) => ({
+          vatRateId: detail.vatRateId,
+          subtotal: detail.subtotal,
+          vatAmount: detail.vatAmount,
+        })),
+      },
     }
 
-    const created = await prisma.voucher.create({
+    const createdVoucher = await prisma.voucher.create({
       data,
       include: {
-        retentions: true,
-        vatDetails: true,
-      }
+        retentions: {
+          include: {
+            retentionConcept: true,
+            taxJurisdiction: true,
+          },
+        },
+        perceptions: {
+          include: {
+            perceptionConcept: true,
+            taxJurisdiction: true,
+          },
+        },
+        vatDetails: {
+          include: {
+            vatRate: true,
+          },
+        },
+      },
     })
 
-    return new Voucher(created)
+    return new Voucher(createdVoucher)
   }
 
   async update(voucher: Voucher): Promise<Voucher> {
-    if (!voucher.id) throw new Error('Voucher ID is required for update')
+    if (!voucher.id) {
+      throw new Error('Voucher ID is required for update')
+    }
 
     const data: Prisma.VoucherUncheckedUpdateInput = {
       type: voucher.type,
@@ -134,6 +212,9 @@ export class VoucherRepository {
       exchangeRate: voucher.exchangeRate,
       subtotal: voucher.subtotal,
       vatAmount: voucher.vatAmount,
+      nonTaxableAmount: voucher.nonTaxableAmount,
+      exemptAmount: voucher.exemptAmount,
+      otherTaxesAmount: voucher.otherTaxesAmount,
       totalAmount: voucher.totalAmount,
       netAmount: voucher.netAmount,
       concept: voucher.concept,
@@ -144,37 +225,60 @@ export class VoucherRepository {
       comments: voucher.comments,
       retentions: {
         deleteMany: {},
-        create: voucher.retentions.map(r => ({
-          retentionConceptId: r.retentionConceptId,
-          amount: r.amount,
-          province: r.province,
-        }))
+        create: voucher.retentions.map((retention) => ({
+          retentionConceptId: retention.retentionConceptId,
+          taxJurisdictionId: retention.taxJurisdictionId,
+          amount: retention.amount,
+        })),
+      },
+      perceptions: {
+        deleteMany: {},
+        create: voucher.perceptions.map((perception) => ({
+          perceptionConceptId: perception.perceptionConceptId,
+          taxJurisdictionId: perception.taxJurisdictionId,
+          amount: perception.amount,
+        })),
       },
       vatDetails: {
         deleteMany: {},
-        create: voucher.vatDetails.map(v => ({
-          vatRateId: v.vatRateId,
-          subtotal: v.subtotal,
-          vatAmount: v.vatAmount,
-        }))
-      }
+        create: voucher.vatDetails.map((detail) => ({
+          vatRateId: detail.vatRateId,
+          subtotal: detail.subtotal,
+          vatAmount: detail.vatAmount,
+        })),
+      },
     }
 
-    const updated = await prisma.voucher.update({
+    const updatedVoucher = await prisma.voucher.update({
       where: { id: voucher.id, companyId: voucher.companyId },
       data,
       include: {
-        retentions: true,
-        vatDetails: true,
-      }
+        retentions: {
+          include: {
+            retentionConcept: true,
+            taxJurisdiction: true,
+          },
+        },
+        perceptions: {
+          include: {
+            perceptionConcept: true,
+            taxJurisdiction: true,
+          },
+        },
+        vatDetails: {
+          include: {
+            vatRate: true,
+          },
+        },
+      },
     })
 
-    return new Voucher(updated)
+    return new Voucher(updatedVoucher)
   }
 
   async delete(companyId: string, id: string): Promise<void> {
     await prisma.voucher.delete({
-      where: { id, companyId }
+      where: { id, companyId },
     })
   }
 
@@ -190,6 +294,13 @@ export class VoucherRepository {
         retentions: {
           include: {
             retentionConcept: true,
+            taxJurisdiction: true,
+          },
+        },
+        perceptions: {
+          include: {
+            perceptionConcept: true,
+            taxJurisdiction: true,
           },
         },
         vatDetails: {
@@ -197,6 +308,7 @@ export class VoucherRepository {
             vatRate: true,
           },
         },
+        voucherType: true,
         client: true,
         supplier: true,
       },

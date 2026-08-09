@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { AnalyticsData, TrendEntry, PerceptionEntry } from "src/types/analytics";
+import { AnalyticsData, TrendEntry, TaxBreakdownEntry } from "src/types/analytics";
 
 export function useAnalyticsChart(data: AnalyticsData, currency: "ARS" | "USD", period: "6_months" | "year") {
   return useMemo(() => {
@@ -43,8 +43,8 @@ export function useAnalyticsChart(data: AnalyticsData, currency: "ARS" | "USD", 
 
     const netPurchasesVal = monthly.netPurchases[currency] || 0;
     const vatVal = monthly.vatCredit[currency] || 0;
-    const perceptionsList = monthly.perceptions || [];
-    const perceptionsTotal = perceptionsList.reduce((sum: number, p: PerceptionEntry) => sum + p.total, 0);
+    const perceptionsList = (monthly.perceptions || []).filter((perception: TaxBreakdownEntry) => perception.currency === currency);
+    const perceptionsTotal = perceptionsList.reduce((sum: number, p: TaxBreakdownEntry) => sum + p.total, 0);
 
     const totalMonthlyExpenses = netPurchasesVal + vatVal + perceptionsTotal;
 
@@ -67,7 +67,7 @@ export function useAnalyticsChart(data: AnalyticsData, currency: "ARS" | "USD", 
       });
     }
 
-    perceptionsList.forEach((p: PerceptionEntry, idx: number) => {
+    perceptionsList.forEach((p: TaxBreakdownEntry, idx: number) => {
       categoriesList.push({
         category: p.concept,
         amount: p.total,
