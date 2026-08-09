@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ClientService } from 'src/services/client.service'
-import { z } from 'zod'
-
-const clientSchema = z.object({
-  name: z.string().min(1, 'El nombre es obligatorio'),
-  cuit: z.string().min(1, 'El CUIT es obligatorio'),
-})
+import { clientSchema } from 'src/lib/schemas/voucher-schemas'
 
 export async function GET(request: NextRequest) {
   try {
@@ -25,7 +20,7 @@ export async function POST(request: NextRequest) {
     const companyId = request.headers.get('x-company-id')!
     const body = await request.json()
 
-    const parsed = clientSchema.safeParse(body)
+    const parsed = clientSchema.safeParse({ ...body, companyId })
     if (!parsed.success) {
       return NextResponse.json({ error: 'Datos inválidos', details: parsed.error.format() }, { status: 400 })
     }

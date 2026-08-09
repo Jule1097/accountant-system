@@ -52,4 +52,5 @@ CLAUDE.md
 # Supabase
 supabase/.temp/
 csv
-
+scripts
+.vscode

@@ -19,9 +19,10 @@ export interface ComparisonPeriodData {
   status: 'up' | 'down' | 'stable'
 }
 
-export interface PerceptionEntry {
+export interface TaxBreakdownEntry {
   concept: string
   province: string
+  currency: 'ARS' | 'USD'
   total: number
 }
 
@@ -44,8 +45,8 @@ export interface PeriodMetrics {
   vatDebit: CurrencyValue
   vatCredit: CurrencyValue
   vatNetBalance: CurrencyValue
-  retentions: PerceptionEntry[]
-  perceptions: PerceptionEntry[]
+  retentions: TaxBreakdownEntry[]
+  perceptions: TaxBreakdownEntry[]
   topClients: TopPartyEntry[]
   topSuppliers: TopPartyEntry[]
 }
@@ -69,4 +70,3 @@ export interface AnalyticsData {
 export interface UseAnalyticsResult {
   promise: Promise<AnalyticsData> | null
 }
-

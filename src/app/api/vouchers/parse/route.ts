@@ -4,10 +4,25 @@ import { ClientRepository } from 'src/repositories/client.repository'
 import { SupplierRepository } from 'src/repositories/supplier.repository'
 import { CompanyRepository } from 'src/repositories/company.repository'
 import { CatalogRepository } from 'src/repositories/catalog.repository'
+import { compareCuit, normalizeCuit } from 'src/lib/cuit'
+import { resolveTaxJurisdictionName } from 'src/lib/tax-jurisdictions'
+
+interface ParsedTaxItem {
+  conceptName?: string
+  amount?: number
+  province?: string
+}
+
+interface ParsedVatDetail {
+  vatRateName?: string
+  subtotal?: number
+  vatAmount?: number
+}
 
 export async function POST(request: NextRequest) {
   try {
     const companyId = request.headers.get('x-company-id')
+
     if (!companyId) {
       return NextResponse.json({ error: 'Falta la empresa activa' }, { status: 400 })
     }
@@ -24,8 +39,10 @@ export async function POST(request: NextRequest) {
     }
 
     let mimeType = file.type
+
     if (!mimeType) {
       const name = file.name.toLowerCase()
+
       if (name.endsWith('.pdf')) {
         mimeType = 'application/pdf'
       } else if (name.endsWith('.png')) {
@@ -38,103 +55,96 @@ export async function POST(request: NextRequest) {
     }
 
     const arrayBuffer = await file.arrayBuffer()
-    const buffer = Buffer.from(arrayBuffer)
-    const base64File = buffer.toString('base64')
-
-    // Get active company CUIT
+    const base64File = Buffer.from(arrayBuffer).toString('base64')
     const companyRepository = new CompanyRepository()
     const company = await companyRepository.findById(companyId)
     const activeCompanyCuit = company?.cuit
-
     const extractedData = await parseInvoiceImage(base64File, mimeType, activeCompanyCuit)
 
-    let dateVal = extractedData.date || null
-    if (dateVal) {
-      const d = new Date(dateVal)
-      if (isNaN(d.getTime())) {
-        dateVal = null
+    let dateValue = extractedData.date || null
+
+    if (dateValue) {
+      const parsedDate = new Date(dateValue)
+
+      if (isNaN(parsedDate.getTime())) {
+        dateValue = null
       } else {
-        dateVal = d.toISOString().split('T')[0]
+        dateValue = parsedDate.toISOString().split('T')[0]
       }
     }
 
-    let thirdPartyCuit = extractedData.thirdPartyCuit || null
+    let thirdPartyCuit = extractedData.thirdPartyCuit ? normalizeCuit(extractedData.thirdPartyCuit) : null
     let supplierName = extractedData.supplierName || null
 
-    if (thirdPartyCuit && activeCompanyCuit) {
-      const cleanExtracted = thirdPartyCuit.trim().replace(/-/g, '')
-      const cleanActive = activeCompanyCuit.trim().replace(/-/g, '')
-      if (cleanExtracted === cleanActive) {
-        thirdPartyCuit = null
-        supplierName = null
-      }
+    if (thirdPartyCuit && activeCompanyCuit && compareCuit(thirdPartyCuit, activeCompanyCuit)) {
+      thirdPartyCuit = null
+      supplierName = null
     }
 
-    // Resolve vatRates and retentionConcepts ids
     const catalogRepository = new CatalogRepository()
-    const [vatRates, retentionConcepts] = await Promise.all([
+      const [vatRates, retentionConcepts, perceptionConcepts, taxJurisdictions] = await Promise.all([
       catalogRepository.getVatRates(),
       catalogRepository.getRetentionConcepts(),
+      catalogRepository.getPerceptionConcepts(),
+      catalogRepository.getTaxJurisdictions(),
     ])
 
-    const resolvedVatDetails = (extractedData.vatDetails || []).map((item: { vatRateName?: string; subtotal?: number; vatAmount?: number }) => {
-      const matched = vatRates.find(
-        (vr) => vr.name.toLowerCase() === item.vatRateName?.toLowerCase()
-      )
+    const resolvedVatDetails = (extractedData.vatDetails || []).map((detail: ParsedVatDetail) => {
+      const matchedVatRate = vatRates.find((vatRate) => vatRate.name.toLowerCase() === detail.vatRateName?.toLowerCase())
+
       return {
-        vatRateId: matched ? matched.id : null,
-        vatRateName: item.vatRateName || null,
-        subtotal: item.subtotal !== undefined && item.subtotal !== null ? item.subtotal : null,
-        vatAmount: item.vatAmount !== undefined && item.vatAmount !== null ? item.vatAmount : null,
+        vatRateId: matchedVatRate ? matchedVatRate.id : null,
+        vatRateName: detail.vatRateName || null,
+        subtotal: detail.subtotal ?? null,
+        vatAmount: detail.vatAmount ?? null,
       }
     })
 
-    const resolvedRetentions = (extractedData.retentions || []).map((ret: { conceptName?: string; amount?: number; province?: string }) => {
-      const matched = retentionConcepts.find(
-        (rc) => rc.name.toLowerCase() === ret.conceptName?.toLowerCase()
+    const resolvedRetentions = (extractedData.retentions || []).map((retention: ParsedTaxItem) => {
+      const matchedRetentionConcept = retentionConcepts.find(
+        (concept) => concept.name.toLowerCase() === retention.conceptName?.toLowerCase()
       )
+      const jurisdictionName = resolveTaxJurisdictionName(retention.province)
+      const matchedTaxJurisdiction = jurisdictionName
+        ? taxJurisdictions.find((jurisdiction) => jurisdiction.name === jurisdictionName)
+        : null
+
       return {
-        retentionConceptId: matched ? matched.id : null,
-        conceptName: ret.conceptName || null,
-        amount: ret.amount !== undefined && ret.amount !== null ? ret.amount : null,
-        province: ret.province || null,
+        retentionConceptId: matchedRetentionConcept ? matchedRetentionConcept.id : null,
+        taxJurisdictionId: matchedTaxJurisdiction ? matchedTaxJurisdiction.id : null,
+        conceptName: retention.conceptName || null,
+        amount: retention.amount ?? null,
+        taxJurisdictionName: matchedTaxJurisdiction ? matchedTaxJurisdiction.name : jurisdictionName,
       }
     })
 
-    const normalizedData = {
-      posNumber: extractedData.posNumber || null,
-      number: extractedData.number || null,
-      date: dateVal,
-      currency: extractedData.currency || null,
-      subtotal: extractedData.subtotal || null,
-      vatAmount: extractedData.vatAmount || null,
-      totalAmount: extractedData.totalAmount || null,
-      thirdPartyCuit,
-      supplierName,
-      voucherType: extractedData.voucherType || null,
-      voucherLetter: extractedData.voucherLetter || null,
-      vatDetails: resolvedVatDetails,
-      retentions: resolvedRetentions,
-    }
+    const resolvedPerceptions = (extractedData.perceptions || []).map((perception: ParsedTaxItem) => {
+      const matchedPerceptionConcept = perceptionConcepts.find(
+        (concept) => concept.name.toLowerCase() === perception.conceptName?.toLowerCase()
+      )
+      const jurisdictionName = resolveTaxJurisdictionName(perception.province)
+      const matchedTaxJurisdiction = jurisdictionName
+        ? taxJurisdictions.find((jurisdiction) => jurisdiction.name === jurisdictionName)
+        : null
+
+      return {
+        perceptionConceptId: matchedPerceptionConcept ? matchedPerceptionConcept.id : null,
+        taxJurisdictionId: matchedTaxJurisdiction ? matchedTaxJurisdiction.id : null,
+        conceptName: perception.conceptName || null,
+        amount: perception.amount ?? null,
+        taxJurisdictionName: matchedTaxJurisdiction ? matchedTaxJurisdiction.name : jurisdictionName,
+      }
+    })
 
     let contactId: string | null = null
 
-    if (normalizedData.thirdPartyCuit) {
-      const originalCuit = normalizedData.thirdPartyCuit.trim()
-      const cleanCuit = originalCuit.replace(/-/g, '')
-
+    if (thirdPartyCuit) {
       const clientRepository = new ClientRepository()
       const supplierRepository = new SupplierRepository()
-
-      let client = await clientRepository.findByCuitAndCompany(companyId, originalCuit)
-      if (!client && originalCuit !== cleanCuit) {
-        client = await clientRepository.findByCuitAndCompany(companyId, cleanCuit)
-      }
-
-      let supplier = await supplierRepository.findByCuitAndCompany(companyId, originalCuit)
-      if (!supplier && originalCuit !== cleanCuit) {
-        supplier = await supplierRepository.findByCuitAndCompany(companyId, cleanCuit)
-      }
+      const [client, supplier] = await Promise.all([
+        clientRepository.findByCuitAndCompany(companyId, thirdPartyCuit),
+        supplierRepository.findByCuitAndCompany(companyId, thirdPartyCuit),
+      ])
 
       if (client) {
         contactId = client.id
@@ -144,7 +154,29 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({
-      ...normalizedData,
+      posNumber: extractedData.posNumber || null,
+      number: extractedData.number || null,
+      date: dateValue,
+      currency: extractedData.currency || null,
+      subtotal: extractedData.subtotal ?? null,
+      vatAmount: extractedData.vatAmount ?? null,
+      nonTaxableAmount: extractedData.nonTaxableAmount ?? null,
+      exemptAmount: extractedData.exemptAmount ?? null,
+      otherTaxesAmount: extractedData.otherTaxesAmount ?? null,
+      totalAmount: extractedData.totalAmount ?? null,
+      concept: extractedData.concept || null,
+      paymentMethod: extractedData.paymentMethod || null,
+      status: extractedData.status || 'pending',
+      paymentDate: extractedData.paymentDate || null,
+      paidAmount: extractedData.paidAmount ?? 0,
+      comments: extractedData.comments || null,
+      thirdPartyCuit,
+      supplierName,
+      voucherType: extractedData.voucherType || null,
+      voucherLetter: extractedData.voucherLetter || null,
+      vatDetails: resolvedVatDetails,
+      retentions: resolvedRetentions,
+      perceptions: resolvedPerceptions,
       contactId,
       thirdPartyId: contactId,
     })

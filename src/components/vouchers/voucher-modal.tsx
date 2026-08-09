@@ -12,19 +12,25 @@ import { useVoucherForm } from "src/hooks/use-voucher-form";
 import { VoucherModalDropzone } from "./voucher-modal-dropzone";
 import { VoucherModalCoreFields } from "./voucher-modal-core-fields";
 import { VoucherModalRetentions } from "./voucher-modal-retentions";
+import { VoucherModalPerceptions } from "./voucher-modal-perceptions";
+import { Voucher } from "src/models/Voucher";
 
 interface VoucherModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   type: "sales" | "purchases";
+  initialVoucher?: Voucher | null;
 }
 
-export function VoucherModal({ isOpen, onOpenChange, type }: VoucherModalProps) {
+export function VoucherModal({ isOpen, onOpenChange, type, initialVoucher }: VoucherModalProps) {
   const {
     form,
-    fields,
-    append,
-    remove,
+    retentionFields,
+    appendRetention,
+    removeRetention,
+    perceptionFields,
+    appendPerception,
+    removePerception,
     isProcessing,
     catalogs,
     thirdParties,
@@ -36,31 +42,36 @@ export function VoucherModal({ isOpen, onOpenChange, type }: VoucherModalProps) 
     onSubmit,
     handlePosBlur,
     handleNumberBlur,
-  } = useVoucherForm({ isOpen, onOpenChange, type });
+  } = useVoucherForm({ isOpen, onOpenChange, type, initialVoucher });
 
   const { handleSubmit, formState: { isValid } } = form;
+  const isEditing = Boolean(initialVoucher);
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[720px]">
         <DialogHeader>
           <DialogTitle>
-            Agregar Comprobante de {type === "sales" ? "Venta" : "Compra"}
+            {isEditing ? "Detalle del Comprobante" : `Agregar Comprobante de ${type === "sales" ? "Venta" : "Compra"}`}
           </DialogTitle>
           <DialogDescription>
-            Sube el comprobante (PDF/JPG) para procesarlo con IA o completa los datos manualmente.
+            {isEditing
+              ? "Revisa el comprobante y ajusta la información en la interfaz. Los cambios aún no se guardan en la base."
+              : "Sube el comprobante (PDF/JPG) para procesarlo con IA o completa los datos manualmente."}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 py-2">
-          <VoucherModalDropzone
-            isProcessing={isProcessing}
-            fileInputRef={fileInputRef}
-            onFileChange={onFileChange}
-            handleDrop={handleDrop}
-            handleDragOver={handleDragOver}
-            onDropzoneClick={onDropzoneClick}
-          />
+          {!isEditing && (
+            <VoucherModalDropzone
+              isProcessing={isProcessing}
+              fileInputRef={fileInputRef}
+              onFileChange={onFileChange}
+              handleDrop={handleDrop}
+              handleDragOver={handleDragOver}
+              onDropzoneClick={onDropzoneClick}
+            />
+          )}
 
           <VoucherModalCoreFields
             form={form}
@@ -72,19 +83,28 @@ export function VoucherModal({ isOpen, onOpenChange, type }: VoucherModalProps) 
             handleNumberBlur={handleNumberBlur}
           />
 
-          {type === "purchases" && (
+          {type === "sales" && (
             <VoucherModalRetentions
               form={form}
-              fields={fields}
-              append={append}
-              remove={remove}
+              fields={retentionFields}
+              append={appendRetention}
+              remove={removeRetention}
               catalogs={catalogs}
-              type={type}
             />
           )}
 
-          <Button type="submit" className="w-full mt-4" disabled={!isValid || isProcessing}>
-            Guardar Comprobante
+          {type === "purchases" && (
+            <VoucherModalPerceptions
+              form={form}
+              fields={perceptionFields}
+              append={appendPerception}
+              remove={removePerception}
+              catalogs={catalogs}
+            />
+          )}
+
+          <Button type="submit" className="mt-4 w-full" disabled={!isValid || isProcessing}>
+            {isEditing ? "Guardar edición (próximamente)" : "Guardar Comprobante"}
           </Button>
         </form>
       </DialogContent>
