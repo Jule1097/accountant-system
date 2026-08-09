@@ -13,12 +13,12 @@ export default function DashboardLayout({
       <CompanySelectorModal />
       <div className="flex min-h-screen w-full">
         <AppSidebar />
-        <div className="flex w-full flex-col">
+        <div className="flex w-full flex-col min-w-0">
           <header className="flex h-14 items-center justify-between border-b px-4 lg:h-[60px]">
             <SidebarTrigger />
             <ThemeToggle />
           </header>
-          <main className="flex-1 p-4 sm:p-6 lg:p-8 bg-muted/40">
+          <main className="flex-1 p-4 sm:p-6 lg:p-8 bg-muted/40 min-w-0">
             {children}
           </main>
         </div>
