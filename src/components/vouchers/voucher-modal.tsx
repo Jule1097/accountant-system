@@ -156,29 +156,31 @@ function VoucherModalForm({
         type={type}
         handlePosBlur={handlePosBlur}
         handleNumberBlur={handleNumberBlur}
+        taxListsNode={
+          <>
+            {type === "sales" && (
+              <VoucherModalRetentions
+                form={form}
+                fields={retentionFields}
+                append={appendRetention}
+                remove={removeRetention}
+                catalogs={options.catalogs}
+              />
+            )}
+            {type === "purchases" && (
+              <VoucherModalPerceptions
+                form={form}
+                fields={perceptionFields}
+                append={appendPerception}
+                remove={removePerception}
+                catalogs={options.catalogs}
+              />
+            )}
+          </>
+        }
       />
 
-      {type === "sales" && (
-        <VoucherModalRetentions
-          form={form}
-          fields={retentionFields}
-          append={appendRetention}
-          remove={removeRetention}
-          catalogs={options.catalogs}
-        />
-      )}
-
-      {type === "purchases" && (
-        <VoucherModalPerceptions
-          form={form}
-          fields={perceptionFields}
-          append={appendPerception}
-          remove={removePerception}
-          catalogs={options.catalogs}
-        />
-      )}
-
-      <Button type="submit" className="mt-4 w-full" disabled={!isValid || isProcessing}>
+      <Button type="submit" className="w-full h-10 !bg-[#FF5C00] hover:!bg-[#FF5C00]/90 !text-white text-sm font-medium rounded-md" disabled={!isValid || isProcessing}>
         {isEditing ? "Guardar cambios" : "Guardar Comprobante"}
       </Button>
     </form>

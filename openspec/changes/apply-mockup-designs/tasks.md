@@ -31,12 +31,12 @@
 
 ## 6. Voucher Modal Form Agrupado
 
-- [ ] 6.1 Refactor the `VoucherModal` (and related form input structures) to follow the **Agrupado** card sectioning distribution
-- [ ] 6.2 Wrap form fields inside 3 section card wrappers (background `#111113`, border `#1F1F23`, cornerRadius 8) with numbered headers styled in `#FF5C00`:
+- [x] 6.1 Refactor the `VoucherModal` (and related form input structures) to follow the **Agrupado** card sectioning distribution
+- [x] 6.2 Wrap form fields inside 3 section card wrappers (background `bg-muted/40`, border `border-border`, cornerRadius `lg`) with numbered headers styled in `#FF5C00`:
   - 1. *Identificación y Fechas* (Cliente / Proveedor, Fecha)
   - 2. *Numeración y Clasificación* (Punto de Venta, Número, Tipo)
   - 3. *Importes y Totales* (Monto Total, Monto Pagado)
-- [ ] 6.3 Style the Save / Submit button with the primary brand orange `#FF5C00` at the bottom of the modal
+- [x] 6.3 Style the Save / Submit button with the primary brand orange `#FF5C00` at the bottom of the modal
 
 ## 7. Login Form Brand Accent Styling
 
@@ -44,5 +44,5 @@
 
 ## 8. Verification and Automated Tests
 
-- [ ] 8.1 Run Jest tests and update any test files to ensure the layout/styling changes don't break validations or workflows
-- [ ] 8.2 Execute local server build check via `pnpm build` to verify no TypeScript compilation errors
+- [x] 8.1 Run Jest tests and update any test files to ensure the layout/styling changes don't break validations or workflows
+- [x] 8.2 Execute local server build check via `pnpm build` to verify no TypeScript compilation errors
