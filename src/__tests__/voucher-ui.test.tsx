@@ -1,7 +1,7 @@
 /** @jest-environment jsdom */
 
 import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { VoucherManagementView } from 'src/components/vouchers/voucher-management-view'
 import { VoucherModalPerceptions } from 'src/components/vouchers/voucher-modal-perceptions'
@@ -126,13 +126,19 @@ jest.mock('src/components/vouchers/voucher-detail-modal', () => ({
     promise: Promise<Voucher> | null
     onLoadError: (error: unknown) => void
   }) => {
+    const [, forceUpdate] = useState(0)
+
     useEffect(() => {
       if (!promise) {
         return
       }
 
-      void promise.catch(onLoadError)
-    }, [onLoadError, promise])
+      promise
+        .then(() => {
+          forceUpdate((x: number) => x + 1)
+        })
+        .catch(onLoadError)
+    }, [forceUpdate, onLoadError, promise])
 
     if (!voucherId) {
       return null
@@ -518,9 +524,14 @@ describe('Voucher UI', () => {
   it('opens the edit modal from voucherId and hydrates the selected voucher when the request finishes', async () => {
     const voucher = createVoucher({ id: 'voucher-detail-id' })
 
+    let resolvePromise!: (value: Voucher) => void
+    const voucherPromise = new Promise<Voucher>((resolve) => {
+      resolvePromise = resolve
+    }) as Promise<Voucher> & { status?: 'fulfilled'; value?: Voucher }
+
     searchParamsState.value = 'voucherId=voucher-detail-id'
     useVouchersMock.mockReturnValue({ promise: createFulfilledPromise([voucher]) })
-    useVoucherByIdMock.mockReturnValue({ promise: createFulfilledPromise(voucher) })
+    useVoucherByIdMock.mockReturnValue({ promise: voucherPromise })
 
     render(
       <VoucherManagementView
@@ -531,6 +542,12 @@ describe('Voucher UI', () => {
     )
 
     expect(screen.getByTestId('edit-modal')).toHaveTextContent('open|loading|none')
+
+    await act(async () => {
+      voucherPromise.status = 'fulfilled'
+      voucherPromise.value = voucher
+      resolvePromise(voucher)
+    })
 
     await waitFor(() => {
       expect(screen.getByTestId('edit-modal')).toHaveTextContent('open|idle|voucher-detail-id')

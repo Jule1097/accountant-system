@@ -136,8 +136,12 @@ export function useVoucherForm({
       return;
     }
 
+    if (getValues("thirdPartyCuit") === matchedThirdParty.cuit) {
+      return;
+    }
+
     setValue("thirdPartyCuit", matchedThirdParty.cuit, { shouldValidate: true });
-  }, [selectedThirdPartyId, setValue, thirdParties]);
+  }, [getValues, selectedThirdPartyId, setValue, thirdParties]);
 
   useEffect(() => {
     if (!user?.id) {
@@ -301,7 +305,9 @@ export function useVoucherForm({
         description: resolveVoucherSuccessMessage(mode, type),
       });
 
-      onOpenChange(false);
+      if (mode !== "edit") {
+        onOpenChange(false);
+      }
       onSuccess?.(savedVoucher, mode);
     } catch (error: unknown) {
       toastManager.add({

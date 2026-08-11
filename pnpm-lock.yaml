@@ -35,6 +35,9 @@ importers:
       '@upstash/redis':
         specifier: ^1.38.1
         version: 1.38.1
+      accountant-system:
+        specifier: 'link:'
+        version: 'link:'
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
