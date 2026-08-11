@@ -24,10 +24,10 @@
 
 ## 5. Analytics View & SVG Charts
 
-- [ ] 5.1 Update `src/components/analytics/analytics-view.tsx` to render 4 metric cards: Facturación, Egresos, Margen Neto, and Punto de Equilibrio
-- [ ] 5.2 Redesign the trend chart to a double bar layout comparing Income (`#10B981` green) and Expenses (`#EF4444` red) side-by-side using responsive SVG rendering
-- [ ] 5.3 Implement the Donut Chart for "Distribución de Egresos" utilizing calculated SVG `<circle>` strokes (radius 50, center 60,60, circumference 314.16), center overlay, and category legend
-- [ ] 5.4 Implement "Comparación Mensual" grid table and top client/supplier concentration lists side-by-side at the bottom
+- [x] 5.1 Update `src/components/analytics/analytics-view.tsx` to render 3 metric cards exactly matching the Pen file: Facturación, Egresos, and Margen Neto (removed Punto de Equilibrio as per feedback).
+- [x] 5.2 Redesign the trend chart to a double bar layout comparing Income (`#10B981` green) and Expenses (`#EF4444` red) using responsive grid columns instead of SVG paths.
+- [x] 5.3 Implement the Donut Chart for "Distribución de Egresos" utilizing SVG `<circle>` strokes, center overlay, and category legend.
+- [x] 5.4 Implement "Comparación Mensual" grid table directly beside the Donut Chart and removed the unused top client/supplier lists as per the Pen file.
 
 ## 6. Voucher Modal Form Agrupado
 

@@ -16,8 +16,8 @@ export default function DashboardPage() {
     <div className="flex-1 space-y-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-4xl font-mono font-normal tracking-tight text-foreground">Dashboard</h2>
-          <p className="text-sm text-muted-foreground mt-1">
+          <h2 className="text-[38px] font-mono font-normal tracking-[-1px] text-foreground leading-none">Dashboard</h2>
+          <p className="text-sm text-muted-foreground mt-2">
             Resumen general del estado financiero de tu empresa.
           </p>
         </div>

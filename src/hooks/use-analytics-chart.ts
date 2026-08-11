@@ -48,7 +48,7 @@ export function useAnalyticsChart(data: AnalyticsData, currency: "ARS" | "USD", 
 
     const totalMonthlyExpenses = netPurchasesVal + vatVal + perceptionsTotal;
 
-    const colors = ["#10b981", "#3b82f6", "#f59e0b", "#6366f1", "#ec4899", "#8b5cf6"];
+    const colors = ["#FF5C00", "#FF8A4C", "#6B6B70", "#ADADB0", "#3F3F46", "#18181B"];
     const categoriesList = [];
 
     if (netPurchasesVal > 0) {

@@ -21,8 +21,8 @@ export function SalesKpiCards({ promise }: { promise: Promise<Voucher[]> | null 
   const total = thisMonthVouchers.reduce((acc: number, v: Voucher) => acc + Number(v.totalAmount), 0);
 
   const clientTotals = thisMonthVouchers.reduce((acc: Record<string, number>, v: Voucher) => {
-    if (v.supplier?.name) {
-      acc[v.supplier.name] = (acc[v.supplier.name] || 0) + Number(v.totalAmount);
+    if (v.client?.name) {
+      acc[v.client.name] = (acc[v.client.name] || 0) + Number(v.totalAmount);
     }
     return acc;
   }, {} as Record<string, number>);
