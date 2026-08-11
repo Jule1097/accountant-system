@@ -54,7 +54,7 @@ export function VoucherModalPerceptions({
                 <div className="col-span-5 grid gap-1">
                   <label className="text-[9px] font-medium uppercase text-muted-foreground">Concepto</label>
                   <select
-                    className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                    className="w-full rounded-md border border-input bg-card px-2 py-1 text-xs focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                     {...register(`perceptions.${index}.perceptionConceptId` as const)}
                   >
                     <option value="">Seleccionar</option>
@@ -70,7 +70,7 @@ export function VoucherModalPerceptions({
                   <div className="col-span-3 grid gap-1">
                     <label className="text-[9px] font-medium uppercase text-muted-foreground">Jurisdicción</label>
                     <select
-                      className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                      className="w-full rounded-md border border-input bg-card px-2 py-1 text-xs focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                       {...register(`perceptions.${index}.taxJurisdictionId` as const)}
                     >
                       <option value="">Seleccionar</option>
@@ -91,7 +91,7 @@ export function VoucherModalPerceptions({
                     type="number"
                     step="0.01"
                     placeholder="0.00"
-                    className="h-8 px-2 py-1 text-xs"
+                    className="h-8 px-2 py-1 text-xs bg-card"
                     {...register(`perceptions.${index}.amount` as const, { valueAsNumber: true })}
                   />
                 </div>

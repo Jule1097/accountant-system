@@ -39,7 +39,7 @@ export function VoucherModalCoreFields({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3 p-4 bg-[#111113] border border-[#1F1F23] rounded-lg">
+      <div className="flex flex-col gap-3 p-4 bg-muted/40 border border-border rounded-lg">
         <div className="text-xs font-semibold text-[#FF5C00]">1. Identificación y Fechas</div>
         <div className="grid grid-cols-2 gap-3">
           <div className={fieldContainerClass}>
@@ -102,7 +102,7 @@ export function VoucherModalCoreFields({
           </div>
         </div>
       </div>
-      <div className="flex flex-col gap-3 p-4 bg-[#111113] border border-[#1F1F23] rounded-lg">
+      <div className="flex flex-col gap-3 p-4 bg-muted/40 border border-border rounded-lg">
         <div className="text-xs font-semibold text-[#FF5C00]">2. Numeración y Clasificación</div>
         <div className="grid grid-cols-2 gap-3">
           <div className={fieldContainerClass}>
@@ -153,7 +153,7 @@ export function VoucherModalCoreFields({
           </div>
         </div>
       </div>
-      <div className="flex flex-col gap-3 p-4 bg-[#111113] border border-[#1F1F23] rounded-lg">
+      <div className="flex flex-col gap-3 p-4 bg-muted/40 border border-border rounded-lg">
         <div className="text-xs font-semibold text-[#FF5C00]">3. Importes y Totales</div>
         <div className="grid grid-cols-2 gap-3">
           <div className={fieldContainerClass}>
