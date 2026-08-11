@@ -91,47 +91,47 @@ export function VoucherTable({ data, type, onAdd, onSelectVoucher, onDeleteVouch
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="relative w-80">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#6B6B70]" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Buscar por nombre, CUIT o comprobante..."
-              className="pl-9 bg-[#141417] border-[#2A2A2E] text-[#FFFFFF] placeholder:text-[#4A4A4E] focus-visible:ring-[#FF5C00]"
+              className="pl-9 bg-card border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-[#FF5C00]"
               value={searchTerm}
               onChange={handleSearchChange}
             />
           </div>
           {searchTerm && (
-            <Button variant="ghost" onClick={() => setSearchTerm("")} className="px-2 lg:px-3 text-[#6B6B70] hover:text-[#FFFFFF] hover:bg-[#1A1A1D]">
+            <Button variant="ghost" onClick={() => setSearchTerm("")} className="px-2 lg:px-3 text-muted-foreground hover:text-foreground hover:bg-secondary">
               Borrar filtros
               <X className="ml-2 h-4 w-4" />
             </Button>
           )}
         </div>
-        <Button onClick={onAdd} className="bg-[#FF5C00] hover:bg-[#FF8A4C] text-[#FFFFFF]">Agregar {type === "sales" ? "Venta" : "Compra"}</Button>
+        <Button onClick={onAdd} className="bg-[#FF5C00] hover:bg-[#FF8A4C] text-primary-foreground">Agregar {type === "sales" ? "Venta" : "Compra"}</Button>
       </div>
 
-      <div className="rounded-[12px] overflow-hidden bg-[#111113] border border-[#1F1F23]">
-        <Table className="text-[13px] text-[#FFFFFF]">
-          <TableHeader className="bg-[#141417]">
-            <TableRow className="border-b-[#1F1F23] hover:bg-transparent">
-              <TableHead className="text-[#6B6B70] font-semibold tracking-[0.5px] text-[11px]">Fecha</TableHead>
-              <TableHead className="text-[#6B6B70] font-semibold tracking-[0.5px] text-[11px]">Letra</TableHead>
-              <TableHead className="text-[#6B6B70] font-semibold tracking-[0.5px] text-[11px]">Comprobante</TableHead>
-              <TableHead className="text-[#6B6B70] font-semibold tracking-[0.5px] text-[11px]">{type === "sales" ? "Cliente" : "Proveedor"}</TableHead>
-              <TableHead className="text-[#6B6B70] font-semibold tracking-[0.5px] text-[11px]">CUIT</TableHead>
-              <TableHead className="text-[#6B6B70] font-semibold tracking-[0.5px] text-[11px]">Concepto</TableHead>
-              <TableHead className="text-[#6B6B70] font-semibold tracking-[0.5px] text-[11px]">Medio Pago</TableHead>
-              <TableHead className="text-[#6B6B70] font-semibold tracking-[0.5px] text-[11px]">Estado</TableHead>
-              <TableHead className="text-[#6B6B70] font-semibold tracking-[0.5px] text-[11px]">F. Pago</TableHead>
-              <TableHead className="text-[#6B6B70] font-semibold tracking-[0.5px] text-[11px]">{type === "sales" ? "Retenciones" : "Percepciones"}</TableHead>
-              <TableHead className="text-right text-[#6B6B70] font-semibold tracking-[0.5px] text-[11px]">Total</TableHead>
-              <TableHead className="text-right text-[#6B6B70] font-semibold tracking-[0.5px] text-[11px]">Pagado</TableHead>
+      <div className="rounded-[12px] overflow-hidden bg-muted/40 border border-border">
+        <Table className="text-[13px] text-foreground">
+          <TableHeader className="bg-card">
+            <TableRow className="border-b-border hover:bg-transparent">
+              <TableHead className="text-muted-foreground font-semibold tracking-[0.5px] text-[11px]">Fecha</TableHead>
+              <TableHead className="text-muted-foreground font-semibold tracking-[0.5px] text-[11px]">Letra</TableHead>
+              <TableHead className="text-muted-foreground font-semibold tracking-[0.5px] text-[11px]">Comprobante</TableHead>
+              <TableHead className="text-muted-foreground font-semibold tracking-[0.5px] text-[11px]">{type === "sales" ? "Cliente" : "Proveedor"}</TableHead>
+              <TableHead className="text-muted-foreground font-semibold tracking-[0.5px] text-[11px]">CUIT</TableHead>
+              <TableHead className="text-muted-foreground font-semibold tracking-[0.5px] text-[11px]">Concepto</TableHead>
+              <TableHead className="text-muted-foreground font-semibold tracking-[0.5px] text-[11px]">Medio Pago</TableHead>
+              <TableHead className="text-muted-foreground font-semibold tracking-[0.5px] text-[11px]">Estado</TableHead>
+              <TableHead className="text-muted-foreground font-semibold tracking-[0.5px] text-[11px]">F. Pago</TableHead>
+              <TableHead className="text-muted-foreground font-semibold tracking-[0.5px] text-[11px]">{type === "sales" ? "Retenciones" : "Percepciones"}</TableHead>
+              <TableHead className="text-right text-muted-foreground font-semibold tracking-[0.5px] text-[11px]">Total</TableHead>
+              <TableHead className="text-right text-muted-foreground font-semibold tracking-[0.5px] text-[11px]">Pagado</TableHead>
               <TableHead className="w-[50px]" />
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredData.length === 0 ? (
-              <TableRow className="border-b-[#1F1F23] bg-[#141417]">
-                <TableCell colSpan={14} className="h-24 text-center text-[#6B6B70]">
+              <TableRow className="border-b-border bg-card">
+                <TableCell colSpan={14} className="h-24 text-center text-muted-foreground">
                   No se encontraron comprobantes.
                 </TableCell>
               </TableRow>
@@ -142,8 +142,8 @@ export function VoucherTable({ data, type, onAdd, onSelectVoucher, onDeleteVouch
                 const taxTotal = getTaxTotal(item, type);
 
                 return (
-                  <TableRow key={item.id} className="bg-[#141417] border-b-[#1F1F23] hover:bg-[#1A1A1D] transition-colors">
-                    <TableCell className="text-[#6B6B70]">{getFormattedDate(item.date)}</TableCell>
+                  <TableRow key={item.id} className="bg-card border-b-border hover:bg-secondary transition-colors">
+                    <TableCell className="text-muted-foreground">{getFormattedDate(item.date)}</TableCell>
                     <TableCell>{item.voucherLetter?.letter || "—"}</TableCell>
                     <TableCell>
                       <button
@@ -154,21 +154,21 @@ export function VoucherTable({ data, type, onAdd, onSelectVoucher, onDeleteVouch
                         {item.posNumber}-{item.number}
                       </button>
                     </TableCell>
-                    <TableCell className="font-medium text-[#FFFFFF]">{name || "—"}</TableCell>
-                    <TableCell className="text-[#6B6B70]">{cuit || "—"}</TableCell>
-                    <TableCell className="text-[#ADADB0]">{item.concept || "—"}</TableCell>
-                    <TableCell className="text-[#ADADB0]">{item.paymentMethod || "—"}</TableCell>
+                    <TableCell className="font-medium text-foreground">{name || "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">{cuit || "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">{item.concept || "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">{item.paymentMethod || "—"}</TableCell>
                     <TableCell>{getStatusBadge(item.status)}</TableCell>
-                    <TableCell className="text-[#6B6B70]">{getFormattedDate(item.paymentDate)}</TableCell>
-                    <TableCell className="text-[#ADADB0]">{taxTotal > 0 ? getFormattedAmount(item.currency, taxTotal) : "—"}</TableCell>
-                    <TableCell className="text-right font-['DM_Mono',system-ui,sans-serif] text-[#ADADB0]">{getFormattedAmount(item.currency, Number(item.totalAmount || 0))}</TableCell>
-                    <TableCell className="text-right font-['DM_Mono',system-ui,sans-serif] text-[#ADADB0]">{getFormattedAmount(item.currency, Number(item.paidAmount || 0))}</TableCell>
+                    <TableCell className="text-muted-foreground">{getFormattedDate(item.paymentDate)}</TableCell>
+                    <TableCell className="text-muted-foreground">{taxTotal > 0 ? getFormattedAmount(item.currency, taxTotal) : "—"}</TableCell>
+                    <TableCell className="text-right font-mono text-muted-foreground">{getFormattedAmount(item.currency, Number(item.totalAmount || 0))}</TableCell>
+                    <TableCell className="text-right font-mono text-muted-foreground">{getFormattedAmount(item.currency, Number(item.paidAmount || 0))}</TableCell>
                     <TableCell>
                       <Button
                         type="button"
                         variant="ghost"
                         size="icon-sm"
-                        className="text-[#6B6B70] hover:bg-red-500/10 hover:text-red-500"
+                        className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                         onClick={() => onDeleteVoucher(item)}
                       >
                         <Trash2 className="h-4 w-4" />
