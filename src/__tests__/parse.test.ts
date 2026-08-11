@@ -89,7 +89,7 @@ describe('Parser Route Handler', () => {
     expect((await response.json()).error).toBe('El archivo excede el límite de 2MB')
   })
 
-  it('should parse document and find contact in clients', async () => {
+  it('should parse document and find the related third party in clients', async () => {
     ;(parseInvoiceImage as jest.Mock).mockResolvedValue({
       posNumber: '00002',
       number: '00000123',
@@ -99,7 +99,7 @@ describe('Parser Route Handler', () => {
       vatAmount: 21,
       totalAmount: 121,
       thirdPartyCuit: '30222222229',
-      supplierName: 'Test Client',
+      thirdPartyName: 'Test Client',
       voucherType: 'Factura',
       voucherLetter: 'A',
     })
@@ -109,19 +109,39 @@ describe('Parser Route Handler', () => {
 
     const request = {
       headers: { get: () => companyId },
-      formData: async () => ({ get: () => mockFile }),
+      formData: async () => ({
+        get: (key: string) => {
+          if (key === 'file') {
+            return mockFile
+          }
+
+          if (key === 'voucherKind') {
+            return 'sale'
+          }
+
+          return null
+        },
+      }),
     } as unknown as NextRequest
 
     const response = await POST(request)
     const body = await response.json()
 
     expect(response.status).toBe(200)
+    expect(parseInvoiceImage).toHaveBeenCalledWith(
+      expect.any(String),
+      'application/pdf',
+      expect.objectContaining({
+        activeCompanyCuit: '30-11111111-9',
+        voucherKind: 'sale',
+      })
+    )
     expect(body.thirdPartyCuit).toBe('30-22222222-9')
-    expect(body.contactId).toBe('client-uuid-123')
+    expect(body.thirdPartyName).toBe('Test Client')
     expect(body.thirdPartyId).toBe('client-uuid-123')
   })
 
-  it('should nullify contact fields when CUIT matches the active company CUIT', async () => {
+  it('should nullify shared third party fields when CUIT matches the active company CUIT', async () => {
     ;(parseInvoiceImage as jest.Mock).mockResolvedValue({
       posNumber: '00002',
       number: '00000123',
@@ -131,7 +151,7 @@ describe('Parser Route Handler', () => {
       vatAmount: 21,
       totalAmount: 121,
       thirdPartyCuit: '30-11111111-9',
-      supplierName: 'TEEM',
+      thirdPartyName: 'TEEM',
       voucherType: 'Factura',
       voucherLetter: 'A',
     })
@@ -149,8 +169,8 @@ describe('Parser Route Handler', () => {
 
     expect(response.status).toBe(200)
     expect(body.thirdPartyCuit).toBeNull()
-    expect(body.supplierName).toBeNull()
-    expect(body.contactId).toBeNull()
+    expect(body.thirdPartyName).toBeNull()
+    expect(body.thirdPartyId).toBeNull()
   })
 
   it('should resolve vatDetails, retentions, and perceptions using database catalog lookups', async () => {
@@ -166,7 +186,7 @@ describe('Parser Route Handler', () => {
       otherTaxesAmount: 7,
       totalAmount: 146,
       thirdPartyCuit: '30-22222222-9',
-      supplierName: 'Supplier ABC',
+      thirdPartyName: 'Supplier ABC',
       voucherType: 'Factura',
       voucherLetter: 'A',
       vatDetails: [
@@ -226,5 +246,34 @@ describe('Parser Route Handler', () => {
         taxJurisdictionName: 'Buenos Aires',
       },
     ])
+  })
+
+  it('should keep conservative null and empty-array fallback values when extraction is incomplete', async () => {
+    ;(parseInvoiceImage as jest.Mock).mockResolvedValue({
+      posNumber: '00002',
+      number: '00000123',
+      voucherType: 'Factura',
+      voucherLetter: 'B',
+    })
+
+    ClientRepository.prototype.findByCuitAndCompany = jest.fn().mockResolvedValue(null)
+    SupplierRepository.prototype.findByCuitAndCompany = jest.fn().mockResolvedValue(null)
+
+    const request = {
+      headers: { get: () => companyId },
+      formData: async () => ({ get: () => mockFile }),
+    } as unknown as NextRequest
+
+    const response = await POST(request)
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.date).toBeNull()
+    expect(body.thirdPartyCuit).toBeNull()
+    expect(body.thirdPartyName).toBeNull()
+    expect(body.thirdPartyId).toBeNull()
+    expect(body.vatDetails).toEqual([])
+    expect(body.retentions).toEqual([])
+    expect(body.perceptions).toEqual([])
   })
 })

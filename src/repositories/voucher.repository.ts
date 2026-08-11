@@ -2,33 +2,35 @@ import prisma from 'src/lib/prisma'
 import { Prisma } from 'src/generated/prisma/client'
 import { Voucher } from 'src/models/Voucher'
 
+const voucherInclude = {
+  retentions: {
+    include: {
+      retentionConcept: true,
+      taxJurisdiction: true,
+    },
+  },
+  perceptions: {
+    include: {
+      perceptionConcept: true,
+      taxJurisdiction: true,
+    },
+  },
+  vatDetails: {
+    include: {
+      vatRate: true,
+    },
+  },
+  voucherType: true,
+  voucherLetter: true,
+  client: true,
+  supplier: true,
+} satisfies Prisma.VoucherInclude
+
 export class VoucherRepository {
   async findById(companyId: string, id: string): Promise<Voucher | null> {
     const rawVoucher = await prisma.voucher.findUnique({
       where: { id, companyId },
-      include: {
-        retentions: {
-          include: {
-            retentionConcept: true,
-            taxJurisdiction: true,
-          },
-        },
-        perceptions: {
-          include: {
-            perceptionConcept: true,
-            taxJurisdiction: true,
-          },
-        },
-        vatDetails: {
-          include: {
-            vatRate: true,
-          },
-        },
-        voucherType: true,
-        voucherLetter: true,
-        client: true,
-        supplier: true,
-      },
+      include: voucherInclude,
     })
 
     if (!rawVoucher) {
@@ -56,25 +58,7 @@ export class VoucherRepository {
 
     const rawVoucher = await prisma.voucher.findFirst({
       where: whereClause,
-      include: {
-        retentions: {
-          include: {
-            retentionConcept: true,
-            taxJurisdiction: true,
-          },
-        },
-        perceptions: {
-          include: {
-            perceptionConcept: true,
-            taxJurisdiction: true,
-          },
-        },
-        vatDetails: {
-          include: {
-            vatRate: true,
-          },
-        },
-      },
+      include: voucherInclude,
     })
 
     if (!rawVoucher) {
@@ -87,29 +71,7 @@ export class VoucherRepository {
   async findAll(companyId: string, filters: Record<string, unknown> = {}): Promise<Voucher[]> {
     const rawVouchers = await prisma.voucher.findMany({
       where: { companyId, ...filters },
-      include: {
-        retentions: {
-          include: {
-            retentionConcept: true,
-            taxJurisdiction: true,
-          },
-        },
-        perceptions: {
-          include: {
-            perceptionConcept: true,
-            taxJurisdiction: true,
-          },
-        },
-        vatDetails: {
-          include: {
-            vatRate: true,
-          },
-        },
-        voucherType: true,
-        voucherLetter: true,
-        client: true,
-        supplier: true,
-      },
+      include: voucherInclude,
       orderBy: { date: 'desc' },
     })
 
@@ -169,25 +131,7 @@ export class VoucherRepository {
 
     const createdVoucher = await prisma.voucher.create({
       data,
-      include: {
-        retentions: {
-          include: {
-            retentionConcept: true,
-            taxJurisdiction: true,
-          },
-        },
-        perceptions: {
-          include: {
-            perceptionConcept: true,
-            taxJurisdiction: true,
-          },
-        },
-        vatDetails: {
-          include: {
-            vatRate: true,
-          },
-        },
-      },
+      include: voucherInclude,
     })
 
     return new Voucher(createdVoucher)
@@ -252,25 +196,7 @@ export class VoucherRepository {
     const updatedVoucher = await prisma.voucher.update({
       where: { id: voucher.id, companyId: voucher.companyId },
       data,
-      include: {
-        retentions: {
-          include: {
-            retentionConcept: true,
-            taxJurisdiction: true,
-          },
-        },
-        perceptions: {
-          include: {
-            perceptionConcept: true,
-            taxJurisdiction: true,
-          },
-        },
-        vatDetails: {
-          include: {
-            vatRate: true,
-          },
-        },
-      },
+      include: voucherInclude,
     })
 
     return new Voucher(updatedVoucher)
@@ -291,26 +217,7 @@ export class VoucherRepository {
         },
       },
       include: {
-        retentions: {
-          include: {
-            retentionConcept: true,
-            taxJurisdiction: true,
-          },
-        },
-        perceptions: {
-          include: {
-            perceptionConcept: true,
-            taxJurisdiction: true,
-          },
-        },
-        vatDetails: {
-          include: {
-            vatRate: true,
-          },
-        },
-        voucherType: true,
-        client: true,
-        supplier: true,
+        ...voucherInclude,
       },
       orderBy: { date: 'desc' },
     })

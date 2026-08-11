@@ -11,10 +11,6 @@ export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next()
 
   const { pathname } = request.nextUrl
-  if (pathname.startsWith('/api/vouchers/parse')) {
-    const headersObj = typeof request.headers.entries === 'function' ? Object.fromEntries(request.headers.entries()) : request.headers;
-    console.log('[Proxy Request]', request.method, pathname, 'Headers:', headersObj);
-  }
 
   const origin = request.headers.get('origin')
   const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000']
@@ -24,7 +20,7 @@ export async function proxy(request: NextRequest) {
   }
   supabaseResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
   supabaseResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-company-id')
-  
+
   const reqContentType = request.headers.get('content-type')
   if (reqContentType) {
     supabaseResponse.headers.set('content-type', reqContentType)
