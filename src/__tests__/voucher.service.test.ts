@@ -140,4 +140,13 @@ describe('VoucherService', () => {
       expect(repositoryMock.findAll).toHaveBeenCalledWith(companyId, undefined)
     })
   })
+
+  describe('deleteVoucher', () => {
+    it('should reject when the voucher does not exist', async () => {
+      repositoryMock.findById.mockResolvedValue(null)
+
+      await expect(service.deleteVoucher(companyId, validUuid)).rejects.toThrow('Voucher not found')
+      expect(repositoryMock.delete).not.toHaveBeenCalled()
+    })
+  })
 })

@@ -45,6 +45,10 @@ export interface VoucherFilterParams {
   [key: string]: unknown
 }
 
+export type VoucherScreenType = 'sales' | 'purchases'
+
+export type VoucherModalMode = 'create' | 'edit'
+
 export interface UseVouchersResult {
   promise: Promise<Voucher[]> | null
 }

@@ -10,24 +10,16 @@ import {
 } from "src/components/ui/table";
 import { Button } from "src/components/ui/button";
 import { Input } from "src/components/ui/input";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "src/components/ui/dropdown-menu";
-import { MoreHorizontal, Search, X } from "lucide-react";
-import { useState } from "react";
+import { Search, Trash2, X } from "lucide-react";
+import { ChangeEvent, useState } from "react";
 import { Voucher } from "src/models/Voucher";
-import { useToastManager } from "src/components/ui/toast";
 
 interface VoucherTableProps {
   data: Voucher[];
   type: "sales" | "purchases";
   onAdd: () => void;
   onSelectVoucher: (voucher: Voucher) => void;
+  onDeleteVoucher: (voucher: Voucher) => void;
 }
 
 function getStatusBadge(status: string) {
@@ -77,9 +69,11 @@ function getTaxTotal(voucher: Voucher, type: "sales" | "purchases") {
   return list.reduce((sum, item) => sum + Number(item.amount || 0), 0);
 }
 
-export function VoucherTable({ data, type, onAdd, onSelectVoucher }: VoucherTableProps) {
+export function VoucherTable({ data, type, onAdd, onSelectVoucher, onDeleteVoucher }: VoucherTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
-  const toastManager = useToastManager();
+  const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(event.target.value);
+  };
 
   const filteredData = data.filter((item) => {
     const name = type === "sales" ? item.client?.name : item.supplier?.name;
@@ -92,14 +86,6 @@ export function VoucherTable({ data, type, onAdd, onSelectVoucher }: VoucherTabl
     );
   });
 
-  const handleActionClick = (actionName: string) => {
-    toastManager.add({
-      type: "info",
-      title: "Acción no disponible",
-      description: `La acción de ${actionName} no está disponible en esta etapa.`,
-    });
-  };
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -110,7 +96,7 @@ export function VoucherTable({ data, type, onAdd, onSelectVoucher }: VoucherTabl
               placeholder="Buscar por nombre, CUIT o comprobante..."
               className="pl-9 bg-[#141417] border-[#2A2A2E] text-[#FFFFFF] placeholder:text-[#4A4A4E] focus-visible:ring-[#FF5C00]"
               value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
+              onChange={handleSearchChange}
             />
           </div>
           {searchTerm && (
@@ -178,25 +164,16 @@ export function VoucherTable({ data, type, onAdd, onSelectVoucher }: VoucherTabl
                     <TableCell className="text-right font-['DM_Mono',system-ui,sans-serif] text-[#ADADB0]">{getFormattedAmount(item.currency, Number(item.totalAmount || 0))}</TableCell>
                     <TableCell className="text-right font-['DM_Mono',system-ui,sans-serif] text-[#ADADB0]">{getFormattedAmount(item.currency, Number(item.paidAmount || 0))}</TableCell>
                     <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger
-                          render={
-                            <Button variant="ghost" className="h-8 w-8 p-0 text-[#6B6B70] hover:text-[#FFFFFF] hover:bg-[#1A1A1D]">
-                              <span className="sr-only">Abrir menú</span>
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          }
-                        />
-                        <DropdownMenuContent align="end" className="bg-[#1A1A1D] border-[#2A2A2E] text-[#FFFFFF]">
-                          <DropdownMenuLabel className="text-[#6B6B70]">Acciones</DropdownMenuLabel>
-                          <DropdownMenuSeparator className="bg-[#2A2A2E]" />
-                          <DropdownMenuItem onClick={() => onSelectVoucher(item)} className="focus:bg-[#2A2A2E] focus:text-[#FFFFFF]">Ver detalle</DropdownMenuItem>
-                          <DropdownMenuSeparator className="bg-[#2A2A2E]" />
-                          <DropdownMenuItem className="text-red-500 focus:bg-red-500/10 focus:text-red-500" onClick={() => handleActionClick("eliminar")}>
-                            Eliminar
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        className="text-[#6B6B70] hover:bg-red-500/10 hover:text-red-500"
+                        onClick={() => onDeleteVoucher(item)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        <span className="sr-only">Eliminar comprobante</span>
+                      </Button>
                     </TableCell>
                   </TableRow>
                 );

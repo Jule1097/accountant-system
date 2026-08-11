@@ -1,51 +1,78 @@
 "use client";
 
+import { Suspense, use } from "react";
+import { LoaderCircle } from "lucide-react";
+import { Button } from "src/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from "src/components/ui/dialog";
-import { Button } from "src/components/ui/button";
-import { useVoucherForm } from "src/hooks/use-voucher-form";
-import { VoucherModalDropzone } from "./voucher-modal-dropzone";
-import { VoucherModalCoreFields } from "./voucher-modal-core-fields";
-import { VoucherModalRetentions } from "./voucher-modal-retentions";
-import { VoucherModalPerceptions } from "./voucher-modal-perceptions";
+import { VoucherModalCoreFields } from "src/components/vouchers/voucher-modal-core-fields";
+import { VoucherModalDropzone } from "src/components/vouchers/voucher-modal-dropzone";
+import { VoucherModalPerceptions } from "src/components/vouchers/voucher-modal-perceptions";
+import { VoucherModalRetentions } from "src/components/vouchers/voucher-modal-retentions";
+import { UseVoucherFormProps, useVoucherForm } from "src/hooks/use-voucher-form";
+import { VoucherFormOptionsData, useVoucherFormOptions } from "src/hooks/use-voucher-form-options";
 import { Voucher } from "src/models/Voucher";
+import { VoucherModalMode, VoucherScreenType } from "src/types/voucher";
 
 interface VoucherModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  type: "sales" | "purchases";
+  type: VoucherScreenType;
+  mode: VoucherModalMode;
   initialVoucher?: Voucher | null;
+  isLoadingDetail?: boolean;
+  onSuccess?: (voucher: Voucher, mode: VoucherModalMode) => void;
 }
 
-export function VoucherModal({ isOpen, onOpenChange, type, initialVoucher }: VoucherModalProps) {
-  const {
-    form,
-    retentionFields,
-    appendRetention,
-    removeRetention,
-    perceptionFields,
-    appendPerception,
-    removePerception,
-    isProcessing,
-    catalogs,
-    thirdParties,
-    fileInputRef,
-    handleDrop,
-    handleDragOver,
-    onDropzoneClick,
-    onFileChange,
-    onSubmit,
-    handlePosBlur,
-    handleNumberBlur,
-  } = useVoucherForm({ isOpen, onOpenChange, type, initialVoucher });
+export interface VoucherModalReadyProps extends VoucherModalProps {
+  options: VoucherFormOptionsData;
+}
 
-  const { handleSubmit, formState: { isValid } } = form;
-  const isEditing = Boolean(initialVoucher);
+interface VoucherModalFormProps extends Omit<UseVoucherFormProps, "catalogs" | "thirdParties"> {
+  options: VoucherFormOptionsData;
+}
+
+interface VoucherModalAsyncFormProps extends VoucherModalProps {
+  optionsPromise: Promise<VoucherFormOptionsData> | null;
+}
+
+function VoucherModalLoadingState({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="flex min-h-[320px] flex-col items-center justify-center gap-3 py-6 text-center">
+      <LoaderCircle className="h-8 w-8 animate-spin text-[#FF5C00]" />
+      <div className="space-y-1">
+        <p className="font-medium text-foreground">{title}</p>
+        <p className="text-xs text-muted-foreground">{description}</p>
+      </div>
+    </div>
+  );
+}
+
+function VoucherModalShell({
+  isOpen,
+  onOpenChange,
+  type,
+  mode,
+  children,
+}: {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  type: VoucherScreenType;
+  mode: VoucherModalMode;
+  children: React.ReactNode;
+}) {
+  const isEditing = mode === "edit";
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -56,58 +83,210 @@ export function VoucherModal({ isOpen, onOpenChange, type, initialVoucher }: Vou
           </DialogTitle>
           <DialogDescription>
             {isEditing
-              ? "Revisa el comprobante y ajusta la información en la interfaz. Los cambios aún no se guardan en la base."
+              ? "Revisa el comprobante y ajusta la información cargada desde la base."
               : "Sube el comprobante (PDF/JPG) para procesarlo con IA o completa los datos manualmente."}
           </DialogDescription>
         </DialogHeader>
-
-        <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 py-2">
-          {!isEditing && (
-            <VoucherModalDropzone
-              isProcessing={isProcessing}
-              fileInputRef={fileInputRef}
-              onFileChange={onFileChange}
-              handleDrop={handleDrop}
-              handleDragOver={handleDragOver}
-              onDropzoneClick={onDropzoneClick}
-            />
-          )}
-
-          <VoucherModalCoreFields
-            form={form}
-            isProcessing={isProcessing}
-            catalogs={catalogs}
-            thirdParties={thirdParties}
-            type={type}
-            handlePosBlur={handlePosBlur}
-            handleNumberBlur={handleNumberBlur}
-          />
-
-          {type === "sales" && (
-            <VoucherModalRetentions
-              form={form}
-              fields={retentionFields}
-              append={appendRetention}
-              remove={removeRetention}
-              catalogs={catalogs}
-            />
-          )}
-
-          {type === "purchases" && (
-            <VoucherModalPerceptions
-              form={form}
-              fields={perceptionFields}
-              append={appendPerception}
-              remove={removePerception}
-              catalogs={catalogs}
-            />
-          )}
-
-          <Button type="submit" className="mt-4 w-full" disabled={!isValid || isProcessing}>
-            {isEditing ? "Guardar edición (próximamente)" : "Guardar Comprobante"}
-          </Button>
-        </form>
+        {children}
       </DialogContent>
     </Dialog>
+  );
+}
+
+function VoucherModalForm({
+  isOpen,
+  onOpenChange,
+  type,
+  mode,
+  initialVoucher,
+  onSuccess,
+  options,
+}: VoucherModalFormProps) {
+  const {
+    form,
+    retentionFields,
+    appendRetention,
+    removeRetention,
+    perceptionFields,
+    appendPerception,
+    removePerception,
+    isProcessing,
+    fileInputRef,
+    handleDrop,
+    handleDragOver,
+    onDropzoneClick,
+    onFileChange,
+    onSubmit,
+    handlePosBlur,
+    handleNumberBlur,
+  } = useVoucherForm({
+    isOpen,
+    onOpenChange,
+    type,
+    mode,
+    catalogs: options.catalogs,
+    thirdParties: options.thirdParties,
+    initialVoucher,
+    onSuccess,
+  });
+  const {
+    handleSubmit,
+    formState: { isValid },
+  } = form;
+  const isEditing = mode === "edit";
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 py-2">
+      {!isEditing && (
+        <VoucherModalDropzone
+          isProcessing={isProcessing}
+          fileInputRef={fileInputRef}
+          onFileChange={onFileChange}
+          handleDrop={handleDrop}
+          handleDragOver={handleDragOver}
+          onDropzoneClick={onDropzoneClick}
+        />
+      )}
+
+      <VoucherModalCoreFields
+        form={form}
+        isProcessing={isProcessing}
+        catalogs={options.catalogs}
+        thirdParties={options.thirdParties}
+        type={type}
+        handlePosBlur={handlePosBlur}
+        handleNumberBlur={handleNumberBlur}
+      />
+
+      {type === "sales" && (
+        <VoucherModalRetentions
+          form={form}
+          fields={retentionFields}
+          append={appendRetention}
+          remove={removeRetention}
+          catalogs={options.catalogs}
+        />
+      )}
+
+      {type === "purchases" && (
+        <VoucherModalPerceptions
+          form={form}
+          fields={perceptionFields}
+          append={appendPerception}
+          remove={removePerception}
+          catalogs={options.catalogs}
+        />
+      )}
+
+      <Button type="submit" className="mt-4 w-full" disabled={!isValid || isProcessing}>
+        {isEditing ? "Guardar cambios" : "Guardar Comprobante"}
+      </Button>
+    </form>
+  );
+}
+
+function VoucherModalAsyncForm({ optionsPromise, ...props }: VoucherModalAsyncFormProps) {
+  if (!optionsPromise) {
+    return null;
+  }
+
+  const options = use(optionsPromise);
+
+  return <VoucherModalForm {...props} options={options} />;
+}
+
+export function VoucherModalReady({
+  isOpen,
+  onOpenChange,
+  type,
+  mode,
+  initialVoucher,
+  isLoadingDetail = false,
+  onSuccess,
+  options,
+}: VoucherModalReadyProps) {
+  return (
+    <VoucherModalShell isOpen={isOpen} onOpenChange={onOpenChange} type={type} mode={mode}>
+      {isLoadingDetail ? (
+        <VoucherModalLoadingState
+          title="Cargando comprobante"
+          description="Estamos trayendo la información para editarla."
+        />
+      ) : (
+        <VoucherModalForm
+          isOpen={isOpen}
+          onOpenChange={onOpenChange}
+          type={type}
+          mode={mode}
+          initialVoucher={initialVoucher}
+          onSuccess={onSuccess}
+          options={options}
+        />
+      )}
+    </VoucherModalShell>
+  );
+}
+
+export function VoucherModal({
+  isOpen,
+  onOpenChange,
+  type,
+  mode,
+  initialVoucher,
+  isLoadingDetail = false,
+  onSuccess,
+}: VoucherModalProps) {
+  const { promise: optionsPromise } = useVoucherFormOptions({ isOpen, type });
+
+  return (
+    <VoucherModalShell isOpen={isOpen} onOpenChange={onOpenChange} type={type} mode={mode}>
+      {isLoadingDetail ? (
+        <VoucherModalLoadingState
+          title="Cargando comprobante"
+          description="Estamos trayendo la información para editarla."
+        />
+      ) : (
+        <Suspense
+          fallback={
+            <VoucherModalLoadingState
+              title="Cargando formulario"
+              description="Estamos preparando las opciones del comprobante."
+            />
+          }
+        >
+          <VoucherModalAsyncForm
+            optionsPromise={optionsPromise}
+            isOpen={isOpen}
+            onOpenChange={onOpenChange}
+            type={type}
+            mode={mode}
+            initialVoucher={initialVoucher}
+            onSuccess={onSuccess}
+          />
+        </Suspense>
+      )}
+    </VoucherModalShell>
+  );
+}
+
+export function VoucherModalLoading({
+  isOpen,
+  onOpenChange,
+  type,
+  mode,
+  title,
+  description,
+}: {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  type: VoucherScreenType;
+  mode: VoucherModalMode;
+  title: string;
+  description: string;
+}) {
+  return (
+    <VoucherModalShell isOpen={isOpen} onOpenChange={onOpenChange} type={type} mode={mode}>
+      <VoucherModalLoadingState title={title} description={description} />
+    </VoucherModalShell>
   );
 }
