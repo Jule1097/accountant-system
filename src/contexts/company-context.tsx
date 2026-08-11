@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, ReactNode, useMemo } from "react";
+import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { apiRequest } from "src/lib/api-client";
 import { useAuth } from "src/hooks/use-auth";
 import { CompanyType, CompanyContextType } from "src/types/company";
@@ -11,23 +11,17 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
   const { user, loading: authLoading } = useAuth();
   const [companies, setCompanies] = useState<CompanyType[]>([]);
   const [activeCompanyId, setActiveCompanyIdState] = useState<string | null>(null);
-
-  const fetchPromise = useMemo(() => {
-    if (authLoading || !user) {
-      return null;
-    }
-    return apiRequest("/api/companies")
-      .then((res) => res.json() as Promise<CompanyType[]>);
-  }, [user, authLoading]);
+  const userId = user?.id ?? null;
 
   useEffect(() => {
-    if (!fetchPromise) {
+    if (authLoading || !userId) {
       return;
     }
 
     let isMounted = true;
 
-    fetchPromise
+    apiRequest("/api/companies")
+      .then((res) => res.json() as Promise<CompanyType[]>)
       .then((data) => {
         if (!isMounted) return;
         setCompanies(data);
@@ -49,7 +43,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     return () => {
       isMounted = false;
     };
-  }, [fetchPromise]);
+  }, [authLoading, userId]);
 
 
   const setActiveCompanyId = (id: string): void => {
@@ -77,7 +71,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const isLoading = authLoading || (!!user && companies.length === 0 && !!fetchPromise);
+  const isLoading = authLoading || (!!userId && companies.length === 0);
 
   return (
     <CompanyContext.Provider

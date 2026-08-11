@@ -1,22 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { parseInvoiceImage } from 'src/lib/gemini'
-import { ClientRepository } from 'src/repositories/client.repository'
-import { SupplierRepository } from 'src/repositories/supplier.repository'
-import { CompanyRepository } from 'src/repositories/company.repository'
+import { GeminiParsedVoucher } from 'src/models/GeminiParsedVoucher'
 import { CatalogRepository } from 'src/repositories/catalog.repository'
-import { compareCuit, normalizeCuit } from 'src/lib/cuit'
-import { resolveTaxJurisdictionName } from 'src/lib/tax-jurisdictions'
+import { ClientRepository } from 'src/repositories/client.repository'
+import { CompanyRepository } from 'src/repositories/company.repository'
+import { SupplierRepository } from 'src/repositories/supplier.repository'
+import { VoucherKind } from 'src/types/gemini-parser'
 
-interface ParsedTaxItem {
-  conceptName?: string
-  amount?: number
-  province?: string
-}
+function resolveVoucherKind(value: FormDataEntryValue | null): VoucherKind | null {
+  if (value === 'sale' || value === 'purchase') {
+    return value
+  }
 
-interface ParsedVatDetail {
-  vatRateName?: string
-  subtotal?: number
-  vatAmount?: number
+  return null
 }
 
 export async function POST(request: NextRequest) {
@@ -29,6 +25,7 @@ export async function POST(request: NextRequest) {
 
     const formData = await request.formData()
     const file = formData.get('file') as File | null
+    const voucherKind = resolveVoucherKind(formData.get('voucherKind'))
 
     if (!file) {
       return NextResponse.json({ error: 'No se proveyó ningún archivo' }, { status: 400 })
@@ -59,127 +56,45 @@ export async function POST(request: NextRequest) {
     const companyRepository = new CompanyRepository()
     const company = await companyRepository.findById(companyId)
     const activeCompanyCuit = company?.cuit
-    const extractedData = await parseInvoiceImage(base64File, mimeType, activeCompanyCuit)
-
-    let dateValue = extractedData.date || null
-
-    if (dateValue) {
-      const parsedDate = new Date(dateValue)
-
-      if (isNaN(parsedDate.getTime())) {
-        dateValue = null
-      } else {
-        dateValue = parsedDate.toISOString().split('T')[0]
-      }
-    }
-
-    let thirdPartyCuit = extractedData.thirdPartyCuit ? normalizeCuit(extractedData.thirdPartyCuit) : null
-    let supplierName = extractedData.supplierName || null
-
-    if (thirdPartyCuit && activeCompanyCuit && compareCuit(thirdPartyCuit, activeCompanyCuit)) {
-      thirdPartyCuit = null
-      supplierName = null
-    }
+    const extractedData = await parseInvoiceImage(base64File, mimeType, {
+      activeCompanyCuit,
+      voucherKind,
+    })
+    const parsedVoucher = new GeminiParsedVoucher(extractedData, activeCompanyCuit)
 
     const catalogRepository = new CatalogRepository()
-      const [vatRates, retentionConcepts, perceptionConcepts, taxJurisdictions] = await Promise.all([
-      catalogRepository.getVatRates(),
-      catalogRepository.getRetentionConcepts(),
-      catalogRepository.getPerceptionConcepts(),
-      catalogRepository.getTaxJurisdictions(),
-    ])
+    const vatRates = await catalogRepository.getVatRates()
+    const retentionConcepts = await catalogRepository.getRetentionConcepts()
+    const perceptionConcepts = await catalogRepository.getPerceptionConcepts()
+    const taxJurisdictions = await catalogRepository.getTaxJurisdictions()
 
-    const resolvedVatDetails = (extractedData.vatDetails || []).map((detail: ParsedVatDetail) => {
-      const matchedVatRate = vatRates.find((vatRate) => vatRate.name.toLowerCase() === detail.vatRateName?.toLowerCase())
+    let thirdPartyId: string | null = null
+    const lookupThirdPartyCuit = parsedVoucher.getLookupThirdPartyCuit()
 
-      return {
-        vatRateId: matchedVatRate ? matchedVatRate.id : null,
-        vatRateName: detail.vatRateName || null,
-        subtotal: detail.subtotal ?? null,
-        vatAmount: detail.vatAmount ?? null,
-      }
-    })
-
-    const resolvedRetentions = (extractedData.retentions || []).map((retention: ParsedTaxItem) => {
-      const matchedRetentionConcept = retentionConcepts.find(
-        (concept) => concept.name.toLowerCase() === retention.conceptName?.toLowerCase()
-      )
-      const jurisdictionName = resolveTaxJurisdictionName(retention.province)
-      const matchedTaxJurisdiction = jurisdictionName
-        ? taxJurisdictions.find((jurisdiction) => jurisdiction.name === jurisdictionName)
-        : null
-
-      return {
-        retentionConceptId: matchedRetentionConcept ? matchedRetentionConcept.id : null,
-        taxJurisdictionId: matchedTaxJurisdiction ? matchedTaxJurisdiction.id : null,
-        conceptName: retention.conceptName || null,
-        amount: retention.amount ?? null,
-        taxJurisdictionName: matchedTaxJurisdiction ? matchedTaxJurisdiction.name : jurisdictionName,
-      }
-    })
-
-    const resolvedPerceptions = (extractedData.perceptions || []).map((perception: ParsedTaxItem) => {
-      const matchedPerceptionConcept = perceptionConcepts.find(
-        (concept) => concept.name.toLowerCase() === perception.conceptName?.toLowerCase()
-      )
-      const jurisdictionName = resolveTaxJurisdictionName(perception.province)
-      const matchedTaxJurisdiction = jurisdictionName
-        ? taxJurisdictions.find((jurisdiction) => jurisdiction.name === jurisdictionName)
-        : null
-
-      return {
-        perceptionConceptId: matchedPerceptionConcept ? matchedPerceptionConcept.id : null,
-        taxJurisdictionId: matchedTaxJurisdiction ? matchedTaxJurisdiction.id : null,
-        conceptName: perception.conceptName || null,
-        amount: perception.amount ?? null,
-        taxJurisdictionName: matchedTaxJurisdiction ? matchedTaxJurisdiction.name : jurisdictionName,
-      }
-    })
-
-    let contactId: string | null = null
-
-    if (thirdPartyCuit) {
+    if (lookupThirdPartyCuit) {
       const clientRepository = new ClientRepository()
       const supplierRepository = new SupplierRepository()
-      const [client, supplier] = await Promise.all([
-        clientRepository.findByCuitAndCompany(companyId, thirdPartyCuit),
-        supplierRepository.findByCuitAndCompany(companyId, thirdPartyCuit),
-      ])
+      const client = await clientRepository.findByCuitAndCompany(companyId, lookupThirdPartyCuit)
+      const supplier = client ? null : await supplierRepository.findByCuitAndCompany(companyId, lookupThirdPartyCuit)
 
       if (client) {
-        contactId = client.id
+        thirdPartyId = client.id
       } else if (supplier) {
-        contactId = supplier.id
+        thirdPartyId = supplier.id
       }
     }
 
-    return NextResponse.json({
-      posNumber: extractedData.posNumber || null,
-      number: extractedData.number || null,
-      date: dateValue,
-      currency: extractedData.currency || null,
-      subtotal: extractedData.subtotal ?? null,
-      vatAmount: extractedData.vatAmount ?? null,
-      nonTaxableAmount: extractedData.nonTaxableAmount ?? null,
-      exemptAmount: extractedData.exemptAmount ?? null,
-      otherTaxesAmount: extractedData.otherTaxesAmount ?? null,
-      totalAmount: extractedData.totalAmount ?? null,
-      concept: extractedData.concept || null,
-      paymentMethod: extractedData.paymentMethod || null,
-      status: extractedData.status || 'pending',
-      paymentDate: extractedData.paymentDate || null,
-      paidAmount: extractedData.paidAmount ?? 0,
-      comments: extractedData.comments || null,
-      thirdPartyCuit,
-      supplierName,
-      voucherType: extractedData.voucherType || null,
-      voucherLetter: extractedData.voucherLetter || null,
-      vatDetails: resolvedVatDetails,
-      retentions: resolvedRetentions,
-      perceptions: resolvedPerceptions,
-      contactId,
-      thirdPartyId: contactId,
-    })
+    return NextResponse.json(
+      parsedVoucher.toResponse(
+        {
+          vatRates,
+          retentionConcepts,
+          perceptionConcepts,
+          taxJurisdictions,
+        },
+        thirdPartyId
+      )
+    )
   } catch (error: unknown) {
     console.error('Error parsing document:', error)
     return NextResponse.json({ error: 'Error procesando el documento' }, { status: 500 })

@@ -1,73 +1,13 @@
 "use client";
 
-import { useState, Suspense, use } from "react";
-import { VoucherTable } from "src/components/vouchers/voucher-table";
-import { VoucherModal } from "src/components/vouchers/voucher-modal";
-import { VoucherSkeleton } from "src/components/vouchers/voucher-skeleton";
-import { PurchasesKpiCards } from "src/components/vouchers/purchases-kpi-cards";
-import { useVouchers } from "src/hooks/use-vouchers";
-import { Voucher } from "src/models/Voucher";
-
-function PurchasesTableContainer({
-  promise,
-  onAdd,
-  onSelectVoucher,
-}: {
-  promise: Promise<Voucher[]> | null;
-  onAdd: () => void;
-  onSelectVoucher: (voucher: Voucher) => void;
-}) {
-  if (!promise) return null;
-  const vouchers = use(promise);
-  return <VoucherTable data={vouchers} type="purchases" onAdd={onAdd} onSelectVoucher={onSelectVoucher} />;
-}
+import { VoucherManagementView } from "src/components/vouchers/voucher-management-view";
 
 export function PurchasesView() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedVoucher, setSelectedVoucher] = useState<Voucher | null>(null);
-  const { promise } = useVouchers("purchase");
-
-  const handleAdd = () => {
-    setSelectedVoucher(null);
-    setIsModalOpen(true);
-  };
-
-  const handleSelectVoucher = (voucher: Voucher) => {
-    setSelectedVoucher(voucher);
-    setIsModalOpen(true);
-  };
-
   return (
-    <div className="flex-1 space-y-6">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Compras</h2>
-          <p className="text-sm text-muted-foreground">
-            Gestión y registro de comprobantes de compras y gastos.
-          </p>
-        </div>
-      </div>
-
-      <Suspense fallback={
-        <div className="grid gap-4 md:grid-cols-3 mb-6">
-          <div className="h-[104px] rounded-xl bg-card animate-pulse border border-border/50" />
-          <div className="h-[104px] rounded-xl bg-card animate-pulse border border-border/50" />
-          <div className="h-[104px] rounded-xl bg-card animate-pulse border border-border/50" />
-        </div>
-      }>
-        <PurchasesKpiCards promise={promise} />
-      </Suspense>
-
-      <Suspense fallback={<VoucherSkeleton />}>
-        <PurchasesTableContainer promise={promise} onAdd={handleAdd} onSelectVoucher={handleSelectVoucher} />
-      </Suspense>
-
-      <VoucherModal
-        isOpen={isModalOpen}
-        onOpenChange={setIsModalOpen}
-        type="purchases"
-        initialVoucher={selectedVoucher}
-      />
-    </div>
+    <VoucherManagementView
+      type="purchases"
+      title="Compras"
+      description="Gestión y registro de comprobantes de compras y gastos."
+    />
   );
 }

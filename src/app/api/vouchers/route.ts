@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(vouchers)
   } catch (error) {
     console.error('Error fetching vouchers:', error)
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
   }
 }
 
@@ -43,6 +43,6 @@ export async function POST(request: NextRequest) {
     if (err.message.includes('duplicate')) {
       return NextResponse.json({ error: 'Comprobante duplicado detectado.' }, { status: 409 })
     }
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
   }
 }

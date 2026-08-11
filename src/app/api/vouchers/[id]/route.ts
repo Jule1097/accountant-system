@@ -19,7 +19,7 @@ export async function GET(
     return NextResponse.json(voucher)
   } catch (error) {
     console.error('Error fetching voucher:', error)
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
   }
 }
 
@@ -52,7 +52,7 @@ export async function PUT(
     if (err.message.includes('duplicate')) {
       return NextResponse.json({ error: 'Comprobante duplicado detectado.' }, { status: 409 })
     }
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
   }
 }
 
@@ -68,7 +68,11 @@ export async function DELETE(
     await voucherService.deleteVoucher(companyId, id)
     return new NextResponse(null, { status: 204 })
   } catch (error) {
-    console.error('Error deleting voucher:', error)
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+    const err = error as Error
+    console.error('Error deleting voucher:', err)
+    if (err.message === 'Voucher not found') {
+      return NextResponse.json({ error: 'Comprobante no encontrado.' }, { status: 404 })
+    }
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
   }
 }

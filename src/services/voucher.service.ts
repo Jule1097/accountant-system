@@ -2,6 +2,20 @@ import { VoucherRepository } from 'src/repositories/voucher.repository'
 import { Voucher } from 'src/models/Voucher'
 import { VoucherFilterParams } from 'src/types/voucher'
 
+function resolveExplicitVoucherStatus(data: unknown): Voucher['status'] | null {
+  if (!data || typeof data !== 'object') {
+    return null
+  }
+
+  const status = (data as { status?: unknown }).status
+
+  if (status === 'pending' || status === 'partial' || status === 'paid') {
+    return status
+  }
+
+  return null
+}
+
 export class VoucherService {
   private repository: VoucherRepository
 
@@ -19,7 +33,9 @@ export class VoucherService {
 
   async createVoucher(data: unknown): Promise<Voucher> {
     const voucher = new Voucher(data)
+    const explicitStatus = resolveExplicitVoucherStatus(data)
     voucher.recalculate()
+    voucher.status = explicitStatus || voucher.status
 
     const duplicate = await this.repository.findDuplicate(voucher)
     if (duplicate) {
@@ -39,7 +55,9 @@ export class VoucherService {
     updatedData.id = id
 
     const updatedVoucher = new Voucher(updatedData)
+    const explicitStatus = resolveExplicitVoucherStatus(data)
     updatedVoucher.recalculate()
+    updatedVoucher.status = explicitStatus || updatedVoucher.status
 
     const duplicate = await this.repository.findDuplicate(updatedVoucher)
     if (duplicate && duplicate.id !== id) {
@@ -50,6 +68,11 @@ export class VoucherService {
   }
 
   async deleteVoucher(companyId: string, id: string): Promise<void> {
+    const existing = await this.repository.findById(companyId, id)
+    if (!existing) {
+      throw new Error('Voucher not found')
+    }
+
     return this.repository.delete(companyId, id)
   }
 }
