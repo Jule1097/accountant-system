@@ -1,80 +1,89 @@
 # Frontend Design Guidelines
 
-This document outlines the visual aesthetics, grid systems, custom SVG charting paradigms, and typography guidelines established in the application, specifically drawing from the conventions implemented in the Analytics module.
+This document outlines the visual aesthetics, theme color palette, spacing tokens, table layouts, and form modal structures established for the application.
 
-## Layout & Grid System
+---
 
-### Screen Structure
-- Page titles must be styled using `text-3xl font-bold tracking-tight`.
-- Page subtitles or descriptions must be styled using `text-sm text-muted-foreground`.
-- Inner content layouts must use consistent vertical spacing, such as `space-y-6` on the root container.
+## Color Palette & Theme Tokens
 
-### Grid Layouts
-- **KPI Metrics Grid**: Standard KPI grids utilize a responsive 4-column structure:
-  ```tsx
-  className="grid gap-4 md:grid-cols-2 lg:grid-cols-4"
-  ```
-- **Visualization Grid**: Combining charts or primary visual components uses a 3-column split where the main chart takes two columns and secondary widgets take one:
-  ```tsx
-  className="grid gap-4 lg:grid-cols-3"
-  // Main chart container uses: lg:col-span-2 relative
-  ```
+The application is built on a dark premium theme utilizing the following color references:
 
-## Color Palette & Theme Support
+### Brand & Primary Accents
+- **Brand Accent**: `#FF5C00` (Core primary interactive elements, highlights, active states, active pagination, primary buttons like "Agregar Venta/Compra").
+- **Secondary Accent**: `#1A1A1D` (Inactive button backgrounds, active sidebar item backgrounds, secondary selectors).
 
-The application utilizes design system tokens mapping cleanly between light and dark modes. Avoid hardcoding specific HEX colors on layout nodes, preferring utility classes referencing theme variables.
+### Backgrounds
+- **App Canvas**: `#0A0A0B` (Main viewport background).
+- **Cards & Containers**: `#141417` (Metrics cards, table wraps, details panels).
+- **Form Sections / Alternates**: `#111113` (Form group panels, nested table cards).
 
-### Semantic Indicators
-- **Positive (Success / Gain)**: Use emerald green.
-  - Text: `text-emerald-500`
-  - Pill badge background: `bg-emerald-500/10`
-  - SVG Stroke: `stroke-emerald-500`
-  - SVG Fill: `#10b981`
-- **Negative (Danger / Loss)**: Use rose red.
-  - Text: `text-rose-500`
-  - Pill badge background: `bg-rose-500/10`
-  - SVG Stroke: `stroke-rose-500`
-  - SVG Fill: `#f43f5e`
-- **Neutral/Informative (Notice / Progress)**: Use blue/indigo.
-  - Text: `text-blue-500` or `text-indigo-500`
-  - Pill badge background: `bg-blue-500/10` or `bg-indigo-500/10`
+### Text & Typography
+- **Primary Text**: `#FFFFFF` (Headings, active values, button labels).
+- **Muted Text**: `#ADADB0` (Descriptions, values in inputs, labels).
+- **Secondary/Disabled Text**: `#8B8B90` (Inactive menu items, placeholder elements).
+- **Helper/Border Text**: `#6B6B70` (Table column headers, secondary descriptions, pagination info).
 
-### Interactive Overlays & Cards
-- Cards must use standard background and foreground tokens: `bg-card text-card-foreground`.
-- Floating elements (tooltips, popovers) must use: `bg-popover text-popover-foreground border shadow-md`.
+### Borders & Dividers
+- **Standard Borders**: `#2A2A2E` (Inputs outline, default card outlines).
+- **Subtle Dividers**: `#1F1F23` (Table rows line separators, section dividers).
 
-## Custom SVG Charting Paradigms
+### Status & Semantic Indicators
+- **Positive (Success)**: `#10B981` / `#22C55E` (Income values, "Pagado" badge, positive metrics).
+  - Badge Background: `#22C55E18` (10% opacity)
+- **Warning (Notice)**: `#EAB308` ("Parcial" badge status).
+  - Badge Background: `#EAB30818` (10% opacity)
+- **Negative (Danger)**: `#EF4444` (Expenses values, "Pendiente" badge, top supplier amounts).
+  - Badge Background: `#EF444418` (10% opacity)
 
-To avoid bloated third-party charting libraries, interactive charts are constructed using native SVG elements combined with React state.
+---
 
-### Line & Area Trend Charts
-- **Responsive Viewports**: SVG containers should use a predefined `viewBox` (e.g., `viewBox="0 0 600 280"`) and scale responsively with `w-full h-full`.
-- **Dynamic Math scaling**: Scale coordinates programmatically by finding the maximum value across datasets.
-  ```typescript
-  const maxVal = Math.max(...data.flatMap(d => [d.income, d.expenses])) * 1.15;
-  const getX = (idx: number) => paddingX + (idx / (data.length - 1)) * (width - 2 * paddingX);
-  const getY = (val: number) => height - paddingY - (val / maxVal) * (height - 2 * paddingY);
-  ```
-- **Area Fills**: Use SVG `<defs>` to specify linear gradients with opacity transitions for rich depth effects:
-  ```xml
-  <linearGradient id="incomeGrad" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0%" stopColor="#10b981" stopOpacity="0.25" />
-    <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
-  </linearGradient>
-  ```
-- **Hover Columns**: Add hidden transparent `<rect>` elements representing hover zones for each data point to trigger state changes.
-- **Dotted Guidelines**: Render a vertical dashed line matching the active hovered index.
+## Layout, Margins & Spacing
 
-### Donut Charts
-- **Radial Segment Calculations**: Segments are constructed using `<circle>` strokes and calculated offsets.
-  - Circle radius: `50`, center: `60, 60`.
-  - Stroke circumference: `314.16` (calculated as `2 * Math.PI * r`).
-  - Active segment length: `(percentage / 100) * 314.16`.
-  - Offset calculation: `- (accumulated_previous_percentages / 100) * 314.16`.
-- **Center Overlay**: Center text contains the hovered segment value or total percentage.
+To keep the interface clean and spacious, follow these padding and margin rules:
 
-## Data Display & Tables
+- **Page Padding**: `32px` (`p-8` / `padding: 32`) on primary view containers.
+- **Card Inner Padding**: `20px` (`p-5` / `padding: 20`) for metrics cards and charts.
+- **Form Modal Padding**: `32px` on root modal dialog wrapper; `12px` inside section cards.
+- **Section Spacing**: `20px` to `24px` vertical gap between components.
+- **Grid Gaps**:
+  - `16px` (`gap-4`) for primary grid structures (KPI grids, bottom cards rows).
+  - `12px` to `14px` (`gap-3` / `gap-3.5`) for smaller nested forms/rows.
 
-- Tables must always support horizontal scrolling in smaller viewports via an `overflow-auto` wrapper.
-- Typographic scaling on tables should be small and dense to accommodate high data density: `text-2xs` (approx. `10px`).
-- Trend cells in tables use badge pills with clear status indicators representing changes relative to previous periods.
+---
+
+## Typography Guidelines
+
+- **Primary Font**: `Inter` (Sans-serif) for body text, button labels, and default UI copy.
+- **Data & Numbers Font**: `DM Mono` (or monospace font styling) for currency displays, counts, percentages, and table values to guarantee horizontal alignment.
+- **Page Titles**: `text-3xl font-bold tracking-tight` (or `fontSize: 30`, `fontWeight: "bold"`).
+- **Card Subheaders / Small Labels**: `fontSize: 11` or `12`, `fontWeight: "500"`, `letterSpacing: 0.5`.
+
+---
+
+## Table Controls & Pagination
+
+All data listings (Sales and Purchases) follow a uniform control schema:
+
+### Actions and Filters
+- **Control Bar**: Positioned above the table. Integrates a search input field (240px width, placeholder `Buscar por nombre, CUIT...`) and a secondary **Filtrar** button on the left.
+- **Header Actions**: Group action buttons (e.g. **Exportar** and **Agregar Compra/Venta**) side-by-side on the right of the table title.
+
+### Pagination Row
+- **Structure**: A single flex row at the bottom of the table containing:
+  - **Left**: Pagination info text: `Mostrando 1-20 de 240 (Pág. 1 de 12)`.
+  - **Center**: Navigation page controls (Active page highlighted with brand color `#FF5C00`, inactive page buttons, and chevron-right icons).
+  - **Right**: Page size selector dropdown button displaying `Mostrar: 20` with a chevron indicator.
+
+---
+
+## Form & Modal Layout (Agrupado)
+
+Modals containing forms (like the Voucher Modal) must organize inputs into structured, logical sections:
+
+- **Section Containers**: Inputs are grouped inside subtle card wrappers (background `#111113`, border `#1F1F23`, `cornerRadius: 8`).
+- **Numbered Headers**: Each group starts with a header styled in `#FF5C00` (e.g., `1. Identificación y Fechas`, `2. Numeración y Clasificación`).
+- **Groupings**:
+  1. *Section 1: Identificación y Fechas* (Cliente / Proveedor, Fecha).
+  2. *Section 2: Numeración y Clasificación* (Punto de Venta, Número, Tipo).
+  3. *Section 3: Importes y Totales* (Monto Total, Monto Pagado).
+- **Actions**: Submit button styled with primary brand accent color (`#FF5C00`, `cornerRadius: 6`, padding `[12, 0]`) located at the bottom of the modal.
