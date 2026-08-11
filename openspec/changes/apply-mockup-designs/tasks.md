@@ -16,11 +16,11 @@
 
 ## 4. Table Pagination & Header Actions Relocation
 
-- [ ] 4.1 Update `src/components/vouchers/voucher-table.tsx` to add Search and Filter buttons on the left above the listing table
-- [ ] 4.2 Relocate the "Exportar" button to be side-by-side with the "Agregar" button in the table header actions container (styled in brand orange `#FF5C00` for CTA)
-- [ ] 4.3 Add pagination info text `Mostrando 1-20 de 240 (Pág. 1 de 12)` at the bottom of the table
-- [ ] 4.4 Add page navigation controls (active page button in `#FF5C00`, inactive buttons, next icon) at the bottom center of the table
-- [ ] 4.5 Add a page size selector dropdown showing `Mostrar: 20` on the right side of the pagination footer
+- [x] 4.1 Update `src/components/vouchers/voucher-table.tsx` to add Search and Filter buttons on the left above the listing table
+- [x] 4.2 Relocate the "Exportar" button to be side-by-side with the "Agregar" button in the table header actions container (styled in brand orange `#FF5C00` for CTA)
+- [x] 4.3 Add pagination info text `Mostrando 1-20 de 240 (Pág. 1 de 12)` at the bottom of the table
+- [x] 4.4 Add page navigation controls (active page button in `#FF5C00`, inactive buttons, next icon) at the bottom center of the table
+- [x] 4.5 Add a page size selector dropdown showing `Mostrar: 20` on the right side of the pagination footer
 
 ## 5. Analytics View & SVG Charts
 

@@ -10,7 +10,7 @@ import {
 } from "src/components/ui/table";
 import { Button } from "src/components/ui/button";
 import { Input } from "src/components/ui/input";
-import { Search, Trash2, X } from "lucide-react";
+import { Search, Trash2, X, Filter, Download, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 import { ChangeEvent, useState } from "react";
 import { Voucher } from "src/models/Voucher";
 
@@ -88,25 +88,38 @@ export function VoucherTable({ data, type, onAdd, onSelectVoucher, onDeleteVouch
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
-          <div className="relative w-80">
+          <div className="relative w-[240px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar por nombre, CUIT o comprobante..."
-              className="pl-9 bg-card border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-[#FF5C00]"
+              placeholder="Buscar por nombre, CUIT..."
+              className="pl-9 bg-card border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-[#FF5C00] h-9 text-sm"
               value={searchTerm}
               onChange={handleSearchChange}
             />
           </div>
+          <Button variant="outline" size="sm" className="h-9 px-3 border-border bg-card text-foreground hover:bg-secondary">
+            <Filter className="mr-2 h-4 w-4 text-muted-foreground" />
+            Filtrar
+          </Button>
           {searchTerm && (
-            <Button variant="ghost" onClick={() => setSearchTerm("")} className="px-2 lg:px-3 text-muted-foreground hover:text-foreground hover:bg-secondary">
-              Borrar filtros
+            <Button variant="ghost" onClick={() => setSearchTerm("")} className="h-9 px-2 lg:px-3 text-muted-foreground hover:text-foreground hover:bg-secondary">
+              Borrar
               <X className="ml-2 h-4 w-4" />
             </Button>
           )}
         </div>
-        <Button onClick={onAdd} className="bg-[#FF5C00] hover:bg-[#FF8A4C] text-primary-foreground">Agregar {type === "sales" ? "Venta" : "Compra"}</Button>
+        
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="h-9 px-3 border-border bg-card text-foreground hover:bg-secondary">
+            <Download className="mr-2 h-4 w-4 text-muted-foreground" />
+            Exportar
+          </Button>
+          <Button size="sm" onClick={onAdd} className="h-9 bg-[#FF5C00] hover:bg-[#FF8A4C] text-primary-foreground">
+            Agregar {type === "sales" ? "Venta" : "Compra"}
+          </Button>
+        </div>
       </div>
 
       <div className="rounded-[12px] overflow-hidden bg-muted/40 border border-border">
@@ -181,6 +194,39 @@ export function VoucherTable({ data, type, onAdd, onSelectVoucher, onDeleteVouch
             )}
           </TableBody>
         </Table>
+      </div>
+
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center justify-between pt-1 pb-4">
+        <div className="text-sm text-muted-foreground">
+          Mostrando 1-{Math.min(20, filteredData.length)} de {filteredData.length} (Pág. 1 de 1)
+        </div>
+        <div className="flex items-center gap-1">
+          <Button variant="outline" size="icon" className="h-8 w-8 bg-card border-border text-muted-foreground opacity-50 cursor-not-allowed">
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="icon" className="h-8 w-8 bg-[#FF5C00] border-[#FF5C00] text-primary-foreground hover:bg-[#FF8A4C] hover:text-primary-foreground">
+            1
+          </Button>
+          <Button variant="outline" size="icon" className="h-8 w-8 bg-card border-border text-foreground hover:bg-secondary hidden sm:flex">
+            2
+          </Button>
+          <Button variant="outline" size="icon" className="h-8 w-8 bg-card border-border text-foreground hover:bg-secondary hidden sm:flex">
+            3
+          </Button>
+          <span className="mx-1 text-muted-foreground hidden sm:block">...</span>
+          <Button variant="outline" size="icon" className="h-8 w-8 bg-card border-border text-foreground hover:bg-secondary hidden sm:flex">
+            12
+          </Button>
+          <Button variant="outline" size="icon" className="h-8 w-8 bg-card border-border text-muted-foreground hover:text-foreground hover:bg-secondary">
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="h-8 px-3 border-border bg-card text-muted-foreground hover:bg-secondary">
+            Mostrar: 20
+            <ChevronDown className="ml-2 h-4 w-4" />
+          </Button>
+        </div>
       </div>
     </div>
   );
