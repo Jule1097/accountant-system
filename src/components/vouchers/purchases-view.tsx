@@ -4,6 +4,7 @@ import { useState, Suspense, use } from "react";
 import { VoucherTable } from "src/components/vouchers/voucher-table";
 import { VoucherModal } from "src/components/vouchers/voucher-modal";
 import { VoucherSkeleton } from "src/components/vouchers/voucher-skeleton";
+import { PurchasesKpiCards } from "src/components/vouchers/purchases-kpi-cards";
 import { useVouchers } from "src/hooks/use-vouchers";
 import { Voucher } from "src/models/Voucher";
 
@@ -46,6 +47,16 @@ export function PurchasesView() {
           </p>
         </div>
       </div>
+
+      <Suspense fallback={
+        <div className="grid gap-4 md:grid-cols-3 mb-6">
+          <div className="h-[104px] rounded-xl bg-card animate-pulse border border-border/50" />
+          <div className="h-[104px] rounded-xl bg-card animate-pulse border border-border/50" />
+          <div className="h-[104px] rounded-xl bg-card animate-pulse border border-border/50" />
+        </div>
+      }>
+        <PurchasesKpiCards promise={promise} />
+      </Suspense>
 
       <Suspense fallback={<VoucherSkeleton />}>
         <PurchasesTableContainer promise={promise} onAdd={handleAdd} onSelectVoucher={handleSelectVoucher} />

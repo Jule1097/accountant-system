@@ -4,36 +4,28 @@ This document outlines the visual aesthetics, theme color palette, spacing token
 
 ---
 
-## Color Palette & Theme Tokens
+## Theme & Color Tokens (Light, Dark, and System)
 
-The application is built on a dark premium theme utilizing the following color references:
+To ensure the application supports switching between **Dark**, **Light**, and **System** themes seamlessly, **never hardcode specific HEX colors** for canvas, text, cards, or border elements on layout nodes. Instead, use Tailwind's semantic utility classes which map to the active theme variables:
 
-### Brand & Primary Accents
-- **Brand Accent**: `#FF5C00` (Core primary interactive elements, highlights, active states, active pagination, primary buttons like "Agregar Venta/Compra").
-- **Secondary Accent**: `#1A1A1D` (Inactive button backgrounds, active sidebar item backgrounds, secondary selectors).
+### Semantic CSS Tokens Mapping
+| Element Type | Design Hex Reference (Dark Theme) | Tailwind Utility Class | Description |
+| :--- | :--- | :--- | :--- |
+| **App Canvas** | `#0A0A0B` | `bg-background` / `text-foreground` | Main viewport canvas and primary text. |
+| **Cards & Containers** | `#141417` | `bg-card` / `text-card-foreground` | Metrics cards, tables wrapper, list panels. |
+| **Secondary Accents** | `#1A1A1D` | `bg-secondary` / `text-secondary-foreground` | Inactive button states, active item indicators. |
+| **Borders & Dividers** | `#2A2A2E` | `border-border` / `border-input` | Outer outlines, input borders. |
+| **Muted Annotations** | `#8B8B90` / `#6B6B70` | `text-muted-foreground` | Subtitles, footnotes, inactive states, labels. |
+| **Grouped Card bg** | `#111113` | `bg-muted/40` or `bg-accent/40` | Section backgrounds for the grouped modal layout. |
 
-### Backgrounds
-- **App Canvas**: `#0A0A0B` (Main viewport background).
-- **Cards & Containers**: `#141417` (Metrics cards, table wraps, details panels).
-- **Form Sections / Alternates**: `#111113` (Form group panels, nested table cards).
-
-### Text & Typography
-- **Primary Text**: `#FFFFFF` (Headings, active values, button labels).
-- **Muted Text**: `#ADADB0` (Descriptions, values in inputs, labels).
-- **Secondary/Disabled Text**: `#8B8B90` (Inactive menu items, placeholder elements).
-- **Helper/Border Text**: `#6B6B70` (Table column headers, secondary descriptions, pagination info).
-
-### Borders & Dividers
-- **Standard Borders**: `#2A2A2E` (Inputs outline, default card outlines).
-- **Subtle Dividers**: `#1F1F23` (Table rows line separators, section dividers).
+### Brand & Interactive Accent
+- **Brand Accent**: `#FF5C00` (Core primary interactive elements, highlights, active states, active pagination, primary buttons like "Agregar"). This accent remains consistent across both Light and Dark modes. Use `bg-[#FF5C00]`, `text-[#FF5C00]`, or `border-[#FF5C00]` utility classes.
 
 ### Status & Semantic Indicators
-- **Positive (Success)**: `#10B981` / `#22C55E` (Income values, "Pagado" badge, positive metrics).
-  - Badge Background: `#22C55E18` (10% opacity)
-- **Warning (Notice)**: `#EAB308` ("Parcial" badge status).
-  - Badge Background: `#EAB30818` (10% opacity)
-- **Negative (Danger)**: `#EF4444` (Expenses values, "Pendiente" badge, top supplier amounts).
-  - Badge Background: `#EF444418` (10% opacity)
+- **Positive (Success)**: `text-emerald-500` / `bg-emerald-500/10` (Income values, "Pagado" badge, positive metrics).
+- **Warning (Notice)**: `text-amber-500` / `bg-amber-500/10` ("Parcial" badge status).
+- **Negative (Danger)**: `text-red-500` / `bg-red-500/10` (Expenses values, "Pendiente" badge, top supplier amounts).
+
 
 ---
 
