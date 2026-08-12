@@ -91,12 +91,12 @@ export function RecentActivity({ promise }: RecentActivityProps) {
         <div className="flex items-center justify-between pb-2">
           <h3 className="text-sm font-semibold text-foreground">Últimas Compras</h3>
         </div>
-        <div className="space-y-4">
+        <div className="divide-y divide-border flex flex-col">
           {recentPurchases.length === 0 ? (
-            <p className="text-xs text-muted-foreground">No hay compras registradas recientemente.</p>
+            <p className="text-xs text-muted-foreground py-4">No hay compras registradas recientemente.</p>
           ) : (
             recentPurchases.map((item) => (
-              <div key={item.id} className="flex items-center justify-between">
+              <div key={item.id} className="flex items-center justify-between py-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-accent border border-border flex items-center justify-center flex-shrink-0">
                     <span className="text-xs font-semibold text-muted-foreground">
