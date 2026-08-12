@@ -179,15 +179,6 @@ export function useVoucherForm({
     if (!isOpen) {
       return;
     }
-
-    console.info("Voucher form validation state", {
-      operation: mode === "edit" ? "update-voucher" : "create-voucher",
-      workflowState: isProcessing ? "processing" : "idle",
-      voucherId: initialVoucher?.id ?? null,
-      type,
-      isValid,
-      errors,
-    });
   }, [errors, initialVoucher?.id, isOpen, isProcessing, isValid, mode, type]);
 
   const applyParsedVoucherData = async (parsedData: VoucherParsedData): Promise<void> => {
