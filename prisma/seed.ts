@@ -2,6 +2,7 @@ import { PrismaClient } from '../src/generated/prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import pg from 'pg'
 import 'dotenv/config'
+import { getCurrentTaxJurisdictionNames } from '../src/lib/tax-jurisdictions'
 
 const connectionString = process.env.DIRECT_URL || process.env.DATABASE_URL
 const pool = new pg.Pool({ connectionString })
@@ -11,21 +12,21 @@ const prisma = new PrismaClient({ adapter })
 async function main() {
   console.log('Seeding catalogs and demo companies...')
 
-  // 1. Demo Companies
   const companies = [
-    { name: 'TEEM', cuit: '30-11111111-9' },
-    { name: 'GRIB', cuit: '30-22222222-9' },
+    { name: 'TEEM', cuit: '30-71761812-9' },
+    { name: 'GRIB', cuit: '30-71761409-3' },
   ]
-  for (const c of companies) {
+
+  for (const company of companies) {
     await prisma.company.upsert({
-      where: { name: c.name },
-      update: { cuit: c.cuit },
-      create: { name: c.name, cuit: c.cuit },
+      where: { name: company.name },
+      update: { cuit: company.cuit },
+      create: { name: company.name, cuit: company.cuit },
     })
   }
+
   console.log('Companies seeded.')
 
-  // 2. VatRates
   const vatRates = [
     { name: '21%', rate: 0.21 },
     { name: '10.5%', rate: 0.105 },
@@ -36,16 +37,17 @@ async function main() {
     { name: 'Exento', rate: 0.0 },
     { name: 'No Gravado', rate: 0.0 },
   ]
-  for (const vr of vatRates) {
+
+  for (const vatRate of vatRates) {
     await prisma.vatRate.upsert({
-      where: { name: vr.name },
-      update: { rate: vr.rate },
-      create: { name: vr.name, rate: vr.rate },
+      where: { name: vatRate.name },
+      update: { rate: vatRate.rate },
+      create: { name: vatRate.name, rate: vatRate.rate },
     })
   }
+
   console.log('VAT rates seeded.')
 
-  // 3. VoucherTypes
   const voucherTypes = [
     { name: 'Factura' },
     { name: 'Nota de Débito' },
@@ -53,16 +55,17 @@ async function main() {
     { name: 'Recibo' },
     { name: 'Factura de Crédito Electrónica MiPyME' },
   ]
-  for (const vt of voucherTypes) {
+
+  for (const voucherType of voucherTypes) {
     await prisma.voucherType.upsert({
-      where: { name: vt.name },
+      where: { name: voucherType.name },
       update: {},
-      create: { name: vt.name },
+      create: { name: voucherType.name },
     })
   }
+
   console.log('Voucher types seeded.')
 
-  // 4. VoucherLetters
   const voucherLetters = [
     { letter: 'A' },
     { letter: 'B' },
@@ -70,45 +73,65 @@ async function main() {
     { letter: 'M' },
     { letter: 'E' },
   ]
-  for (const vl of voucherLetters) {
+
+  for (const voucherLetter of voucherLetters) {
     await prisma.voucherLetter.upsert({
-      where: { letter: vl.letter },
+      where: { letter: voucherLetter.letter },
       update: {},
-      create: { letter: vl.letter },
+      create: { letter: voucherLetter.letter },
     })
   }
+
   console.log('Voucher letters seeded.')
 
-  // 5. RetentionConcepts
   const retentionConcepts = [
-    // Sales (Ventas)
     { name: 'Retención de Ganancias Sufrida', type: 'sale' },
     { name: 'Retención de IVA Sufrida', type: 'sale' },
     { name: 'Retención de Ingresos Brutos Sufrida', type: 'sale' },
     { name: 'Retención Osseg/ansal Sufrida', type: 'sale' },
-    // Purchases (Compras)
-    { name: 'Retención de Ganancias', type: 'purchase' },
-    { name: 'Retención de IVA', type: 'purchase' },
-    { name: 'Percepción de IVA', type: 'purchase' },
-    { name: 'Retención de Ingresos Brutos', type: 'purchase' },
-    { name: 'Percepción de Ingresos Brutos', type: 'purchase' },
-    { name: 'Otros Impuestos', type: 'purchase' },
   ]
-  for (const rc of retentionConcepts) {
+
+  for (const retentionConcept of retentionConcepts) {
     await prisma.retentionConcept.upsert({
-      where: { name: rc.name },
-      update: { type: rc.type },
-      create: { name: rc.name, type: rc.type },
+      where: { name: retentionConcept.name },
+      update: { type: retentionConcept.type },
+      create: { name: retentionConcept.name, type: retentionConcept.type },
     })
   }
+
   console.log('Retention concepts seeded.')
 
+  const perceptionConcepts = [
+    { name: 'Percepción de IVA' },
+    { name: 'Percepción de Ingresos Brutos' },
+    { name: 'Percepción Osseg/ansal' },
+  ]
+
+  for (const perceptionConcept of perceptionConcepts) {
+    await prisma.perceptionConcept.upsert({
+      where: { name: perceptionConcept.name },
+      update: {},
+      create: { name: perceptionConcept.name },
+    })
+  }
+
+  console.log('Perception concepts seeded.')
+
+  for (const jurisdictionName of getCurrentTaxJurisdictionNames()) {
+    await prisma.taxJurisdiction.upsert({
+      where: { name: jurisdictionName },
+      update: {},
+      create: { name: jurisdictionName },
+    })
+  }
+
+  console.log('Tax jurisdictions seeded.')
   console.log('Database seeding successfully completed!')
 }
 
 main()
-  .catch((e) => {
-    console.error('Error during database seeding:', e)
+  .catch((error) => {
+    console.error('Error during database seeding:', error)
     process.exit(1)
   })
   .finally(async () => {

@@ -47,7 +47,12 @@ skills-lock.json
 CLAUDE.md
 .agent
 .gemini
+.devin
 
 # Supabase
 supabase/.temp/
+csv
+scripts
+.vscode
 
+/design
