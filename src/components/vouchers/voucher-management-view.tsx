@@ -9,6 +9,8 @@ import { VoucherTable } from "src/components/vouchers/voucher-table";
 import { useVoucherManagement } from "src/hooks/use-voucher-management";
 import { Voucher } from "src/models/Voucher";
 import { VoucherScreenType } from "src/types/voucher";
+import { SalesKpiCards } from "src/components/vouchers/sales-kpi-cards";
+import { PurchasesKpiCards } from "src/components/vouchers/purchases-kpi-cards";
 
 interface VoucherManagementViewProps {
   type: VoucherScreenType;
@@ -72,10 +74,24 @@ export function VoucherManagementView({ type, title, description }: VoucherManag
     <div className="flex-1 space-y-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">{title}</h2>
-          <p className="text-sm text-muted-foreground">{description}</p>
+          <h2 className="text-[38px] font-mono font-normal tracking-[-1px] text-foreground leading-none">{title}</h2>
+          <p className="text-sm text-muted-foreground mt-2">{description}</p>
         </div>
       </div>
+
+      <Suspense fallback={
+        <div className="grid gap-4 md:grid-cols-3 mb-6">
+          <div className="h-[104px] rounded-xl bg-card animate-pulse border border-border/50" />
+          <div className="h-[104px] rounded-xl bg-card animate-pulse border border-border/50" />
+          <div className="h-[104px] rounded-xl bg-card animate-pulse border border-border/50" />
+        </div>
+      }>
+        {type === "sales" ? (
+          <SalesKpiCards promise={vouchersPromise} />
+        ) : (
+          <PurchasesKpiCards promise={vouchersPromise} />
+        )}
+      </Suspense>
 
       <Suspense fallback={<VoucherSkeleton />}>
         <VoucherTableContainer

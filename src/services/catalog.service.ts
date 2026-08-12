@@ -8,14 +8,12 @@ export class CatalogService {
   }
 
   async getFullCatalog() {
-    const [voucherTypes, voucherLetters, vatRates, retentionConcepts, perceptionConcepts, taxJurisdictions] = await Promise.all([
-      this.repository.getVoucherTypes(),
-      this.repository.getVoucherLetters(),
-      this.repository.getVatRates(),
-      this.repository.getRetentionConcepts(),
-      this.repository.getPerceptionConcepts(),
-      this.repository.getTaxJurisdictions(),
-    ])
+    const voucherTypes = await this.repository.getVoucherTypes()
+    const voucherLetters = await this.repository.getVoucherLetters()
+    const vatRates = await this.repository.getVatRates()
+    const retentionConcepts = await this.repository.getRetentionConcepts()
+    const perceptionConcepts = await this.repository.getPerceptionConcepts()
+    const taxJurisdictions = await this.repository.getTaxJurisdictions()
 
     return {
       voucherTypes,

@@ -44,35 +44,53 @@ export function LoginForm() {
   }
 
   return (
-    <Card className="w-full max-w-sm">
-      <CardHeader>
-        <CardTitle className="text-2xl">Iniciar Sesión</CardTitle>
-        <CardDescription>Ingresa tu email para acceder a tu cuenta.</CardDescription>
+    <Card className="w-full max-w-[384px] [--card-spacing:24px] !bg-[#141417] !border-[#2A2A2E] !ring-0 !shadow-none text-foreground">
+      <CardHeader className="gap-1.5">
+        <CardTitle className="text-2xl font-semibold text-white">Iniciar Sesión</CardTitle>
+        <CardDescription className="text-sm text-[#8B8B90]">
+          Ingresa tu email para acceder a tu cuenta.
+        </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
           {errorMsg && (
             <p className="text-sm font-medium text-destructive">{errorMsg}</p>
           )}
           <div className="flex flex-col gap-2">
-            <label htmlFor="email" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+            <label htmlFor="email" className="text-sm font-medium text-white">
               Email
             </label>
-            <Input id="email" placeholder="m@example.com" disabled={isSubmitting} {...register("email")} />
+            <Input
+              id="email"
+              placeholder="m@example.com"
+              disabled={isSubmitting}
+              className="h-10 text-sm px-3 !bg-transparent !border-[#2A2A2E] text-white placeholder:text-[#6B6B70]"
+              {...register("email")}
+            />
             {errors.email && (
               <p className="text-sm font-medium text-destructive">{errors.email.message}</p>
             )}
           </div>
           <div className="flex flex-col gap-2">
-            <label htmlFor="password" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+            <label htmlFor="password" className="text-sm font-medium text-white">
               Contraseña
             </label>
-            <Input id="password" type="password" disabled={isSubmitting} {...register("password")} />
+            <Input
+              id="password"
+              type="password"
+              disabled={isSubmitting}
+              className="h-10 text-sm px-3 !bg-transparent !border-[#2A2A2E] text-white"
+              {...register("password")}
+            />
             {errors.password && (
               <p className="text-sm font-medium text-destructive">{errors.password.message}</p>
             )}
           </div>
-          <Button type="submit" className="w-full" disabled={isSubmitting}>
+          <Button
+            type="submit"
+            className="w-full h-10 !bg-[#FF5C00] hover:!bg-[#FF5C00]/90 !text-white text-sm font-medium rounded-md"
+            disabled={isSubmitting}
+          >
             {isSubmitting ? "Ingresando..." : "Ingresar"}
           </Button>
         </form>

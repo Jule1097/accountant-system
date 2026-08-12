@@ -54,3 +54,5 @@ supabase/.temp/
 csv
 scripts
 .vscode
+
+/design
