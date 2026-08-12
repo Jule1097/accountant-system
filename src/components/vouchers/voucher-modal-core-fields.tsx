@@ -167,6 +167,11 @@ export function VoucherModalCoreFields({
             {errors.vatAmount && <p className={errorClass}>{errors.vatAmount.message}</p>}
           </div>
         </div>
+        <div className={fieldContainerClass}>
+          <label className={labelClass}>Importe Total</label>
+          <Input type="number" step="0.01" placeholder="0.00" className="bg-card h-[38px] text-[13px] px-3 font-semibold text-[#FF5C00]" disabled={isProcessing} {...register("totalAmount", { valueAsNumber: true })} />
+          {errors.totalAmount && <p className={errorClass}>{errors.totalAmount.message}</p>}
+        </div>
         <div className="grid grid-cols-3 gap-3">
           <div className={fieldContainerClass}>
             <label className={labelClass}>No Gravado</label>
@@ -183,11 +188,6 @@ export function VoucherModalCoreFields({
             <Input type="number" step="0.01" placeholder="0.00" className="bg-card h-[38px] text-[13px] px-3" disabled={isProcessing} {...register("otherTaxesAmount", { valueAsNumber: true })} />
             {errors.otherTaxesAmount && <p className={errorClass}>{errors.otherTaxesAmount.message}</p>}
           </div>
-        </div>
-        <div className={fieldContainerClass}>
-          <label className={labelClass}>Importe Total</label>
-          <Input type="number" step="0.01" placeholder="0.00" className="bg-card h-[38px] text-[13px] px-3 font-semibold text-[#FF5C00]" disabled={isProcessing} {...register("totalAmount", { valueAsNumber: true })} />
-          {errors.totalAmount && <p className={errorClass}>{errors.totalAmount.message}</p>}
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className={fieldContainerClass}>
