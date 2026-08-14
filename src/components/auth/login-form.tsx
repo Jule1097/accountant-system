@@ -44,10 +44,10 @@ export function LoginForm() {
   }
 
   return (
-    <Card className="w-full max-w-[384px] [--card-spacing:24px] !bg-[#141417] !border-[#2A2A2E] !ring-0 !shadow-none text-foreground">
+    <Card className="w-full max-w-[384px] [--card-spacing:24px] !bg-white dark:!bg-zinc-950 border border-zinc-200 dark:border-zinc-800 !ring-0 !shadow-none text-foreground">
       <CardHeader className="gap-1.5">
-        <CardTitle className="text-2xl font-semibold text-white">Iniciar Sesión</CardTitle>
-        <CardDescription className="text-sm text-[#8B8B90]">
+        <CardTitle className="text-2xl font-semibold text-zinc-900 dark:text-white">Iniciar Sesión</CardTitle>
+        <CardDescription className="text-sm text-zinc-500 dark:text-zinc-400">
           Ingresa tu email para acceder a tu cuenta.
         </CardDescription>
       </CardHeader>
@@ -57,14 +57,14 @@ export function LoginForm() {
             <p className="text-sm font-medium text-destructive">{errorMsg}</p>
           )}
           <div className="flex flex-col gap-2">
-            <label htmlFor="email" className="text-sm font-medium text-white">
+            <label htmlFor="email" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
               Email
             </label>
             <Input
               id="email"
               placeholder="m@example.com"
               disabled={isSubmitting}
-              className="h-10 text-sm px-3 !bg-transparent !border-[#2A2A2E] text-white placeholder:text-[#6B6B70]"
+              className="h-10 text-sm px-3 !bg-transparent !border-zinc-200 dark:!border-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500"
               {...register("email")}
             />
             {errors.email && (
@@ -72,14 +72,14 @@ export function LoginForm() {
             )}
           </div>
           <div className="flex flex-col gap-2">
-            <label htmlFor="password" className="text-sm font-medium text-white">
+            <label htmlFor="password" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
               Contraseña
             </label>
             <Input
               id="password"
               type="password"
               disabled={isSubmitting}
-              className="h-10 text-sm px-3 !bg-transparent !border-[#2A2A2E] text-white"
+              className="h-10 text-sm px-3 !bg-transparent !border-zinc-200 dark:!border-zinc-800 text-zinc-900 dark:text-zinc-100"
               {...register("password")}
             />
             {errors.password && (
