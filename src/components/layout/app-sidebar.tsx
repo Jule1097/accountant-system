@@ -20,7 +20,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from "src/components/ui/dropdown-menu";
-import { LayoutDashboard, ShoppingCart, Store, LineChart, User2, ChevronUp, Building } from "lucide-react";
+import { LayoutDashboard, ShoppingCart, Store, LineChart, User2, ChevronUp, Building, Scale } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "src/hooks/use-auth";
@@ -46,6 +46,11 @@ const items = [
     title: "Analíticas",
     url: "/analytics",
     icon: LineChart,
+  },
+  {
+    title: "Conciliaciones",
+    url: "/conciliations",
+    icon: Scale,
   },
 ];
 
