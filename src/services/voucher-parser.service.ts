@@ -1,0 +1,275 @@
+import { randomUUID } from "node:crypto";
+import { parseInvoiceImage, parseInvoiceMarkdown } from "src/lib/gemini";
+import {
+  getParserBatchExpirationDate,
+  getParserBatchMaxFiles,
+  isParserBatchExpired,
+} from "src/lib/helpers/parser-batch";
+import {
+  buildParserStoragePath,
+  isParserImageMimeType,
+  isParserPdfMimeType,
+  ParserAcceptedFile,
+} from "src/lib/helpers/parser-file";
+import { resolveParserPdfStrategy } from "src/lib/helpers/parser-pdf";
+import { CompanyRepository } from "src/repositories/company.repository";
+import { ParserBatchRepository } from "src/repositories/parser-batch.repository";
+import { ParserBatchAsyncResponse, ParserBatchQueueJob, ParserBatchSingleResponse, ParserVoucherType } from "src/types/parser-batch";
+import { RawGeminiParsedVoucher } from "src/types/gemini-parser";
+import { ParserQueueService } from "./parser-queue.service";
+import { ParserResponseService } from "./parser-response.service";
+import { ParserStorageService } from "./parser-storage.service";
+
+interface PreparedParserPayload {
+  strategy: "pdf-text" | "pdf-visual" | "image-visual";
+  execute: () => Promise<RawGeminiParsedVoucher>;
+}
+
+function ensureParserFileLimit(files: ParserAcceptedFile[]): void {
+  if (files.length > getParserBatchMaxFiles()) {
+    throw new Error(`Se permiten hasta ${getParserBatchMaxFiles()} archivos por carga.`);
+  }
+}
+
+function ensureParserFilesAreUnique(files: ParserAcceptedFile[]): void {
+  const hashes = new Set<string>();
+
+  for (const file of files) {
+    if (hashes.has(file.fileHash)) {
+      throw new Error(`El archivo ${file.fileName} está duplicado dentro del lote.`);
+    }
+
+    hashes.add(file.fileHash);
+  }
+}
+
+export class VoucherParserService {
+  private readonly companyRepository: CompanyRepository;
+  private readonly batchRepository: ParserBatchRepository;
+  private readonly queueService: ParserQueueService;
+  private readonly responseService: ParserResponseService;
+  private readonly storageService: ParserStorageService;
+
+  constructor() {
+    this.companyRepository = new CompanyRepository();
+    this.batchRepository = new ParserBatchRepository();
+    this.queueService = new ParserQueueService();
+    this.responseService = new ParserResponseService();
+    this.storageService = new ParserStorageService();
+  }
+
+  private async getActiveCompanyCuit(companyId: string): Promise<string | undefined> {
+    const company = await this.companyRepository.findById(companyId);
+    return company?.cuit;
+  }
+
+  private async preparePayload(
+    file: ParserAcceptedFile,
+    voucherKind: ParserVoucherType,
+    activeCompanyCuit?: string
+  ): Promise<PreparedParserPayload> {
+    if (isParserImageMimeType(file.mimeType)) {
+      return {
+        strategy: "image-visual",
+        execute: () => parseInvoiceImage(file.buffer.toString("base64"), file.mimeType, { voucherKind, activeCompanyCuit }),
+      };
+    }
+
+    if (!isParserPdfMimeType(file.mimeType)) {
+      throw new Error(`El archivo ${file.fileName} tiene un tipo no soportado.`);
+    }
+
+    const strategy = await resolveParserPdfStrategy(file.buffer);
+
+    if (strategy.strategy === "pdf-text" && strategy.markdown) {
+      return {
+        strategy: "pdf-text",
+        execute: async () => {
+          try {
+            return await parseInvoiceMarkdown(strategy.markdown as string, { voucherKind, activeCompanyCuit });
+          } catch {
+            return parseInvoiceImage(file.buffer.toString("base64"), file.mimeType, { voucherKind, activeCompanyCuit });
+          }
+        },
+      };
+    }
+
+    return {
+      strategy: "pdf-visual",
+      execute: () => parseInvoiceImage(file.buffer.toString("base64"), file.mimeType, { voucherKind, activeCompanyCuit }),
+    };
+  }
+
+  async parseSingleFile(
+    companyId: string,
+    voucherKind: ParserVoucherType,
+    file: ParserAcceptedFile
+  ): Promise<ParserBatchSingleResponse> {
+    const activeCompanyCuit = await this.getActiveCompanyCuit(companyId);
+    const payload = await this.preparePayload(file, voucherKind, activeCompanyCuit);
+    const rawResponse = await payload.execute();
+    const data = await this.responseService.buildResponse(companyId, voucherKind, rawResponse);
+
+    return {
+      mode: "single",
+      data,
+    };
+  }
+
+  async createBatch(
+    companyId: string,
+    userId: string,
+    voucherKind: ParserVoucherType,
+    files: ParserAcceptedFile[]
+  ): Promise<ParserBatchAsyncResponse> {
+    ensureParserFileLimit(files);
+    ensureParserFilesAreUnique(files);
+
+    const batchId = randomUUID();
+    const expiresAt = getParserBatchExpirationDate();
+    const items = files.map((file) => {
+      const itemId = randomUUID();
+
+      return {
+        id: itemId,
+        batchId,
+        fileName: file.fileName,
+        mimeType: file.mimeType,
+        fileSize: file.fileSize,
+        fileHash: file.fileHash,
+        storagePath: buildParserStoragePath(companyId, batchId, itemId, file.fileName),
+        expiresAt,
+        buffer: file.buffer,
+      };
+    });
+    const uploadedPaths: string[] = [];
+
+    try {
+      for (const item of items) {
+        await this.storageService.uploadFile(item.storagePath, item.buffer, item.mimeType);
+        uploadedPaths.push(item.storagePath);
+      }
+
+      const batch = await this.batchRepository.createBatchWithItems(
+        {
+          id: batchId,
+          companyId,
+          createdByUserId: userId,
+          voucherType: voucherKind,
+          totalFiles: items.length,
+          expiresAt,
+        },
+        items.map((item) => ({
+          id: item.id,
+          batchId: item.batchId,
+          fileName: item.fileName,
+          mimeType: item.mimeType,
+          fileSize: item.fileSize,
+          fileHash: item.fileHash,
+          storagePath: item.storagePath,
+          expiresAt: item.expiresAt,
+        }))
+      );
+
+      for (const item of batch.items || []) {
+        await this.queueService.enqueue({
+          batchId: batch.id,
+          itemId: item.id,
+        });
+      }
+
+      return {
+        mode: "batch",
+        batch,
+      };
+    } catch (error: unknown) {
+      for (const uploadedPath of uploadedPaths) {
+        await this.storageService.deleteFile(uploadedPath);
+      }
+
+      throw error;
+    }
+  }
+
+  async getBatch(companyId: string, batchId: string) {
+    return this.batchRepository.findBatchById(companyId, batchId);
+  }
+
+  async getItem(companyId: string, itemId: string) {
+    const item = await this.batchRepository.findItemById(itemId);
+
+    if (!item || item.batch.companyId !== companyId) {
+      return null;
+    }
+
+    return item;
+  }
+
+  async retryItem(companyId: string, itemId: string): Promise<ParserBatchQueueJob> {
+    const item = await this.batchRepository.findItemById(itemId);
+
+    if (!item || item.batch.companyId !== companyId) {
+      throw new Error("No se encontró el ítem solicitado");
+    }
+
+    const requeuedItem = await this.batchRepository.requeueItem(itemId);
+    const job = {
+      batchId: requeuedItem.batchId,
+      itemId: requeuedItem.id,
+    };
+
+    await this.queueService.enqueue(job);
+
+    return job;
+  }
+
+  async processItem(itemId: string): Promise<void> {
+    const item = await this.batchRepository.findItemById(itemId);
+
+    if (!item || item.status === "parsed" || item.status === "expired") {
+      return;
+    }
+
+    if (isParserBatchExpired(item.expiresAt)) {
+      await this.storageService.deleteFile(item.storagePath);
+      await this.batchRepository.markItemExpired(item.id);
+      return;
+    }
+
+    const buffer = await this.storageService.downloadFile(item.storagePath);
+    const file: ParserAcceptedFile = {
+      fileName: item.fileName,
+      mimeType: item.mimeType,
+      fileSize: item.fileSize,
+      fileHash: item.fileHash,
+      buffer,
+    };
+    const activeCompanyCuit = await this.getActiveCompanyCuit(item.batch.companyId);
+    const payload = await this.preparePayload(file, item.batch.voucherType, activeCompanyCuit);
+    const nextAttempt = item.currentAttempt + 1;
+
+    await this.batchRepository.markItemProcessing(item.id, nextAttempt, payload.strategy);
+
+    try {
+      const rawResponse = await payload.execute();
+      const response = await this.responseService.buildResponse(item.batch.companyId, item.batch.voucherType, rawResponse);
+      await this.batchRepository.markItemParsed(item.id, response, payload.strategy);
+    } catch (error: unknown) {
+      await this.batchRepository.markItemFailed(
+        item.id,
+        error instanceof Error ? error.message : "Unknown parser error",
+        payload.strategy,
+        { attemptNumber: nextAttempt }
+      );
+    }
+  }
+
+  async cleanupExpiredItems(limit: number): Promise<void> {
+    const items = await this.batchRepository.listExpiredItems(new Date(), limit);
+
+    for (const item of items) {
+      await this.storageService.deleteFile(item.storagePath);
+      await this.batchRepository.markItemExpired(item.id);
+    }
+  }
+}

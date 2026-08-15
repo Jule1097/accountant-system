@@ -11,6 +11,9 @@ importers:
       '@base-ui/react':
         specifier: ^1.7.0
         version: 1.7.0(@types/react@19.2.17)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@firecrawl/pdf-inspector':
+        specifier: ^1.14.2
+        version: 1.14.2
       '@google/genai':
         specifier: ^2.16.0
         version: 2.16.0(@modelcontextprotocol/sdk@1.30.0(zod@4.4.3))
@@ -669,6 +672,50 @@ packages:
   '@eslint/plugin-kit@0.4.1':
     resolution: {integrity: sha512-43/qtrDUokr7LJqoF2c3+RInu/t4zfrpYdoSDfYyhg52rwLV6TnOvdG4fXm7IkSB3wErkcmJS9iEhjVtOSEjjA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+
+  '@firecrawl/pdf-inspector-darwin-arm64@1.14.2':
+    resolution: {integrity: sha512-HXkyDRS+C+2UKm4axYOmFCp7IETXYlSLBuTMsFbQ9az9nBvEjAS55ZPvJoZYD0VFqt0bye0OmzFWLGuATC087Q==}
+    engines: {node: '>= 10'}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@firecrawl/pdf-inspector-linux-arm64-gnu@1.14.2':
+    resolution: {integrity: sha512-GpZlM2XY2w/z4VwDjFDz9pS92DAJuyNGxCbEjc9uHG3mxm0O9K5CXawWFxbLZBpZ1C8mfMQRIeYMdBIYqzlr4Q==}
+    engines: {node: '>= 10'}
+    cpu: [arm64]
+    os: [linux]
+    libc: [glibc]
+
+  '@firecrawl/pdf-inspector-linux-arm64-musl@1.14.2':
+    resolution: {integrity: sha512-qWinxJ59L4UEZe5W3/R8137nvGAjqf2rog11IeV7sqbVxYevlnzkFDplMjVdOVfZcJyvxX7Vbagz69tYRdbYVQ==}
+    engines: {node: '>= 10'}
+    cpu: [arm64]
+    os: [linux]
+    libc: [musl]
+
+  '@firecrawl/pdf-inspector-linux-x64-gnu@1.14.2':
+    resolution: {integrity: sha512-kcQbAOak9DbaN1wUywT1Id3pXQaW7p+MhbVV5Nzbn8MZGC6N1iLky3OzFTHzjaAWNNBgid56WScMg87AVjHFEg==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [linux]
+    libc: [glibc]
+
+  '@firecrawl/pdf-inspector-linux-x64-musl@1.14.2':
+    resolution: {integrity: sha512-MasigWZ9G9PirVV5r366U6daLzfz0yjXgNsIcedA4/S6UchcWTJ3E7le5jtm3L7kLVMFRtapoKxqUezwU8+7TA==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [linux]
+    libc: [musl]
+
+  '@firecrawl/pdf-inspector-win32-x64-msvc@1.14.2':
+    resolution: {integrity: sha512-SW6pTvuFmc6tLTlV93uSGkGwpaFksA9ua1Va70YCbBW7Q38pZeV4lU6rKDrglYq3XFqnkbz6M/NAIPJq943E1A==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [win32]
+
+  '@firecrawl/pdf-inspector@1.14.2':
+    resolution: {integrity: sha512-JHC5uk1vnjfzm6JdO2u7zyHoiL5Xg7R59LquAmKhwV5R+ofStlsM5tBlw4Bhl9JRyaDilUEhpaysZ+1aFeRJ+g==}
+    hasBin: true
 
   '@fission-ai/openspec@1.8.0':
     resolution: {integrity: sha512-xtKj5hI/kBgxJjIsCk1r3LnPbwqS41/xnDy8JTtz1B78S0Ydj276GBR4BxYkd6WUpspPA07T0BjcgmUBYgl3zA==}
@@ -5781,6 +5828,33 @@ snapshots:
     dependencies:
       '@eslint/core': 0.17.0
       levn: 0.4.1
+
+  '@firecrawl/pdf-inspector-darwin-arm64@1.14.2':
+    optional: true
+
+  '@firecrawl/pdf-inspector-linux-arm64-gnu@1.14.2':
+    optional: true
+
+  '@firecrawl/pdf-inspector-linux-arm64-musl@1.14.2':
+    optional: true
+
+  '@firecrawl/pdf-inspector-linux-x64-gnu@1.14.2':
+    optional: true
+
+  '@firecrawl/pdf-inspector-linux-x64-musl@1.14.2':
+    optional: true
+
+  '@firecrawl/pdf-inspector-win32-x64-msvc@1.14.2':
+    optional: true
+
+  '@firecrawl/pdf-inspector@1.14.2':
+    optionalDependencies:
+      '@firecrawl/pdf-inspector-darwin-arm64': 1.14.2
+      '@firecrawl/pdf-inspector-linux-arm64-gnu': 1.14.2
+      '@firecrawl/pdf-inspector-linux-arm64-musl': 1.14.2
+      '@firecrawl/pdf-inspector-linux-x64-gnu': 1.14.2
+      '@firecrawl/pdf-inspector-linux-x64-musl': 1.14.2
+      '@firecrawl/pdf-inspector-win32-x64-msvc': 1.14.2
 
   '@fission-ai/openspec@1.8.0(@types/node@20.19.43)':
     dependencies:
