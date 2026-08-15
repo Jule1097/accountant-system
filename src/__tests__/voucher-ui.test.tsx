@@ -1,7 +1,7 @@
 /** @jest-environment jsdom */
 
 import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { VoucherManagementView } from 'src/components/vouchers/voucher-management-view'
 import { VoucherModalPerceptions } from 'src/components/vouchers/voucher-modal-perceptions'
@@ -98,13 +98,6 @@ jest.mock('src/components/vouchers/voucher-table', () => ({
 
 const { VoucherTable: RealVoucherTable } = jest.requireActual('src/components/vouchers/voucher-table') as {
   VoucherTable: typeof import('src/components/vouchers/voucher-table').VoucherTable
-}
-
-function createFulfilledPromise<T>(value: T): Promise<T> & { status: 'fulfilled'; value: T } {
-  const promise = Promise.resolve(value) as Promise<T> & { status: 'fulfilled'; value: T }
-  promise.status = 'fulfilled'
-  promise.value = value
-  return promise
 }
 
 jest.mock('src/components/vouchers/voucher-modal', () => ({

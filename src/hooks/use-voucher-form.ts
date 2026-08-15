@@ -9,6 +9,7 @@ import { ApiRequestError, apiRequest } from "src/lib/api-client";
 import { voucherFormSchema, VoucherFormValues } from "src/lib/schemas/voucher-form-schemas";
 import { VoucherForm } from "src/models/VoucherForm";
 import { Voucher } from "src/models/Voucher";
+import { ParserBatchAsyncResponse } from "src/types/parser-batch";
 import { VoucherModalMode, VoucherScreenType } from "src/types/voucher";
 import {
   VoucherFormCatalogState,
@@ -31,6 +32,28 @@ export interface UseVoucherFormProps {
 
 async function parseResponseJson<T>(response: Response): Promise<T> {
   return response.json() as Promise<T>;
+}
+
+function resolveVoucherKind(type: VoucherScreenType): "sale" | "purchase" {
+  if (type === "sales") {
+    return "sale";
+  }
+
+  return "purchase";
+}
+
+function toFileArray(files: FileList | null): File[] {
+  if (!files?.length) {
+    return [];
+  }
+
+  return Array.from(files);
+}
+
+function isParserBatchResponse(
+  value: ParserBatchAsyncResponse | VoucherParsedData
+): value is ParserBatchAsyncResponse {
+  return "mode" in value && value.mode === "batch";
 }
 
 function resolveVoucherSuccessMessage(mode: VoucherModalMode, type: VoucherScreenType): string {
@@ -184,33 +207,41 @@ export function useVoucherForm({
   const applyParsedVoucherData = async (parsedData: VoucherParsedData): Promise<void> => {
     const patch = VoucherForm.buildParsedPatch(parsedData, getValues(), type, catalogs, thirdParties);
     reset({ ...getValues(), ...patch }, { keepDirty: true, keepTouched: true });
-    const isParsedFormValid = await trigger();
-
-    console.info("Voucher parser patch applied", {
-      operation: mode === "edit" ? "update-voucher" : "create-voucher",
-      workflowState: "parsed",
-      voucherId: initialVoucher?.id ?? null,
-      type,
-      isValid: isParsedFormValid,
-      values: getValues(),
-    });
   };
 
-  const handleFile = async (file: File): Promise<void> => {
+  const handleFiles = async (files: File[]): Promise<void> => {
+    if (!files.length) {
+      return;
+    }
+
     setIsParsing(true);
 
     try {
       const formData = new FormData();
-      formData.append("file", file);
-      formData.append("voucherKind", type === "sales" ? "sale" : "purchase");
+      const voucherKind = resolveVoucherKind(type);
+
+      for (const file of files) {
+        formData.append("files", file);
+      }
+
+      formData.append("voucherKind", voucherKind);
 
       const response = await apiRequest("/api/vouchers/parse", {
         method: "POST",
         body: formData,
       });
-      const parsedData = await parseResponseJson<VoucherParsedData>(response);
+      const parsedResponse = await parseResponseJson<ParserBatchAsyncResponse | VoucherParsedData>(response);
 
-      await applyParsedVoucherData(parsedData);
+      if (isParserBatchResponse(parsedResponse)) {
+        toastManager.add({
+          type: "success",
+          title: "Lote en procesamiento",
+          description: `Se enviaron ${parsedResponse.batch.totalFiles} archivos para procesar.`,
+        });
+        return;
+      }
+
+      await applyParsedVoucherData(parsedResponse);
 
       toastManager.add({
         type: "success",
@@ -231,12 +262,7 @@ export function useVoucherForm({
 
   const handleDrop = (event: React.DragEvent<HTMLDivElement>): void => {
     event.preventDefault();
-
-    if (!event.dataTransfer.files?.[0]) {
-      return;
-    }
-
-    void handleFile(event.dataTransfer.files[0]);
+    void handleFiles(toFileArray(event.dataTransfer.files));
   };
 
   const handleDragOver = (event: React.DragEvent<HTMLDivElement>): void => {
@@ -248,11 +274,8 @@ export function useVoucherForm({
   };
 
   const onFileChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
-    if (!event.target.files?.[0]) {
-      return;
-    }
-
-    void handleFile(event.target.files[0]);
+    void handleFiles(toFileArray(event.target.files));
+    event.target.value = "";
   };
 
   const onSubmit = async (values: VoucherFormValues): Promise<void> => {

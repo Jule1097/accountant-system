@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
+  serverExternalPackages: ["@firecrawl/pdf-inspector"],
   async redirects() {
     return [
       {

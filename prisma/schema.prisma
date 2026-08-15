@@ -17,6 +17,7 @@ model Company {
   clients   Client[]
   suppliers Supplier[]
   vouchers  Voucher[]
+  parserBatches ParserBatch[]
 
   @@map("company")
 }
@@ -28,6 +29,7 @@ model User {
   updatedAt DateTime      @updatedAt @db.Timestamptz
   companies UserCompany[]
   vouchers  Voucher[]
+  parserBatches ParserBatch[]
 
   @@map("users")
 }
@@ -201,4 +203,68 @@ model VoucherVatDetail {
   vatRate   VatRate @relation(fields: [vatRateId], references: [id])
 
   @@map("voucher_vat_detail")
+}
+
+model ParserBatch {
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId       String            @db.Uuid
+  createdByUserId String            @db.Uuid
+  voucherType     String            @db.VarChar(20)
+  status          String            @db.VarChar(30)
+  totalFiles      Int
+  expiresAt       DateTime          @db.Timestamptz
+  createdAt       DateTime          @default(now()) @db.Timestamptz
+  updatedAt       DateTime          @updatedAt @db.Timestamptz
+  company         Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdByUser   User              @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+  items           ParserBatchItem[]
+
+  @@index([companyId, status])
+  @@index([expiresAt])
+  @@map("parser_batch")
+}
+
+model ParserBatchItem {
+  id                String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  batchId           String                   @db.Uuid
+  fileName          String                   @db.VarChar(255)
+  mimeType          String                   @db.VarChar(100)
+  fileSize          Int
+  fileHash          String                   @db.VarChar(64)
+  storagePath       String                   @db.VarChar(500)
+  inputStrategy     String?                  @db.VarChar(30)
+  status            String                   @db.VarChar(30)
+  parsedPayload     Json?
+  currentError      String?                  @db.Text
+  currentAttempt    Int                      @default(0)
+  queuedAt          DateTime?                @db.Timestamptz
+  processedAt       DateTime?                @db.Timestamptz
+  expiresAt         DateTime                 @db.Timestamptz
+  createdAt         DateTime                 @default(now()) @db.Timestamptz
+  updatedAt         DateTime                 @updatedAt @db.Timestamptz
+  batch             ParserBatch              @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  attempts          ParserBatchItemAttempt[]
+
+  @@unique([batchId, fileHash], name: "parserBatchItemBatchFileHashUnique")
+  @@index([batchId, status])
+  @@index([expiresAt])
+  @@map("parser_batch_item")
+}
+
+model ParserBatchItemAttempt {
+  id            String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  itemId        String          @db.Uuid
+  attemptNumber Int
+  status        String          @db.VarChar(30)
+  inputStrategy String?         @db.VarChar(30)
+  errorMessage  String?         @db.Text
+  metadata      Json?
+  startedAt     DateTime?       @db.Timestamptz
+  completedAt   DateTime?       @db.Timestamptz
+  createdAt     DateTime        @default(now()) @db.Timestamptz
+  item          ParserBatchItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([itemId, attemptNumber], name: "parserBatchItemAttemptItemAttemptNumberUnique")
+  @@index([itemId, createdAt])
+  @@map("parser_batch_item_attempt")
 }
