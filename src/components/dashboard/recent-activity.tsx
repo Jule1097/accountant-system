@@ -1,21 +1,16 @@
 "use client";
 
-import { useState, use } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "src/components/ui/card";
-import { Voucher } from "src/models/Voucher";
+import { useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "src/components/ui/card";
+import { VoucherListResponse } from "src/types/voucher";
 
 interface RecentActivityProps {
-  promise: Promise<Voucher[]> | null;
+  sales: VoucherListResponse;
+  purchases: VoucherListResponse;
 }
 
-export function RecentActivity({ promise }: RecentActivityProps) {
+export function RecentActivity({ sales, purchases }: RecentActivityProps) {
   const [hoveredBar, setHoveredBar] = useState<number | null>(null);
-
-  if (!promise) return null;
-  const vouchers = use(promise);
-
-  const sales = vouchers.filter((v: Voucher) => v.type === 'sale').sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
   const weeklySales = [
     { week: "Semana 1", amount: 0 },
     { week: "Semana 2", amount: 0 },
@@ -23,29 +18,30 @@ export function RecentActivity({ promise }: RecentActivityProps) {
     { week: "Semana 4", amount: 0 },
     { week: "Semana 5", amount: 0 },
   ];
-
   const now = new Date();
   const days35Ago = new Date(now.getTime() - 35 * 24 * 60 * 60 * 1000);
 
-  sales.forEach(s => {
-    const d = new Date(s.date);
-    if (d >= days35Ago) {
-      const diffTime = now.getTime() - d.getTime();
+  sales.items
+    .map((item) => item.voucher)
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .forEach((voucher) => {
+      const voucherDate = new Date(voucher.date);
+
+      if (voucherDate < days35Ago) {
+        return;
+      }
+
+      const diffTime = now.getTime() - voucherDate.getTime();
       const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
       const weekIndex = 4 - Math.floor(diffDays / 7);
+
       if (weekIndex >= 0 && weekIndex < 5) {
-        weeklySales[weekIndex].amount += Number(s.totalAmount);
+        weeklySales[weekIndex].amount += Number(voucher.totalAmount);
       }
-    }
-  });
+    });
 
-  const recentPurchases = vouchers
-    .filter((v: Voucher) => v.type === 'purchase')
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, 3);
-
-  const maxVal = Math.max(...weeklySales.map(s => s.amount)) * 1.2 || 25000;
-
+  const recentPurchases = purchases.items.map((item) => item.voucher).slice(0, 3);
+  const maxVal = Math.max(...weeklySales.map((item) => item.amount)) * 1.2 || 25000;
 
   return (
     <div className="flex flex-col gap-7 w-full">
@@ -59,28 +55,27 @@ export function RecentActivity({ promise }: RecentActivityProps) {
         <CardContent className="h-[210px] flex items-end justify-between p-0 pt-6 px-6 pb-6 gap-3">
           {weeklySales.map((item, idx) => {
             const barHeightPct = maxVal > 0 ? (item.amount / maxVal) * 100 : 0;
+
             return (
               <div
                 key={idx}
                 className="flex flex-col flex-1 items-center justify-end gap-2 h-full group"
                 onMouseEnter={() => setHoveredBar(idx)}
                 onMouseLeave={() => setHoveredBar(null)}
-                style={{ position: 'relative' }}
+                style={{ position: "relative" }}
               >
-                {hoveredBar === idx && (
+                {hoveredBar === idx ? (
                   <div className="absolute -top-8 bg-popover text-popover-foreground border rounded-lg shadow-md px-3 py-1.5 text-xs pointer-events-none transition-all duration-150 z-10 whitespace-nowrap">
                     <div className="font-bold">${item.amount.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                   </div>
-                )}
+                ) : null}
                 <div className="w-full flex items-end justify-center h-full">
                   <div
                     className="w-full bg-[#FF5C00] rounded-t-[4px] transition-all duration-200 group-hover:bg-[#FF5C00]/80"
-                    style={{ height: `${barHeightPct}%`, minHeight: barHeightPct > 0 ? '4px' : '0px' }}
+                    style={{ height: `${barHeightPct}%`, minHeight: barHeightPct > 0 ? "4px" : "0px" }}
                   />
                 </div>
-                <div className="text-[11px] text-muted-foreground font-medium">
-                  Sem {idx + 1}
-                </div>
+                <div className="text-[11px] text-muted-foreground font-medium">Sem {idx + 1}</div>
               </div>
             );
           })}
@@ -105,9 +100,7 @@ export function RecentActivity({ promise }: RecentActivityProps) {
                   </div>
                   <div className="space-y-1">
                     <div className="text-sm font-medium leading-none text-foreground">{item.supplier?.name}</div>
-                    <div className="text-[11px] text-muted-foreground">
-                      {new Date(item.date).toLocaleDateString("es-AR")}
-                    </div>
+                    <div className="text-[11px] text-muted-foreground">{new Date(item.date).toLocaleDateString("es-AR")}</div>
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-1">
