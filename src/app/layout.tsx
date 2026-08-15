@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "src/components/theme-provider";
 import { Toaster } from "src/components/ui/toast";
 import { TooltipProvider } from "src/components/ui/tooltip";
+import { SwrProvider } from "src/components/providers/swr-provider";
 import { cn } from "src/lib/utils";
 
 const inter = Inter({
@@ -47,11 +48,13 @@ export default function RootLayout({
           enableSystem={false}
           disableTransitionOnChange
         >
-          <CompanyProvider>
-            <TooltipProvider>
-              <Toaster>{children}</Toaster>
-            </TooltipProvider>
-          </CompanyProvider>
+          <SwrProvider>
+            <CompanyProvider>
+              <TooltipProvider>
+                <Toaster>{children}</Toaster>
+              </TooltipProvider>
+            </CompanyProvider>
+          </SwrProvider>
         </ThemeProvider>
       </body>
     </html>
