@@ -1,6 +1,6 @@
 /** @jest-environment jsdom */
 
-import { fireEvent, render, screen, act } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { LoginForm } from "src/components/auth/login-form";
 import ConciliationsPage from "src/app/(dashboard)/conciliations/page";
 
@@ -60,33 +60,43 @@ describe("Login Theme & Conciliations UI", () => {
     expect(card).toHaveClass("dark:border-zinc-800");
   });
 
-  it("renders only sales vouchers when tab is sales", () => {
+  it("renders only sales vouchers when tab is sales", async () => {
     currentSearchParamValue = "?tab=sales";
     render(<ConciliationsPage />);
+
+    await screen.findAllByText("Acme Corp S.A.");
+
     expect(screen.getByText("Ventas")).toHaveClass("text-[#FF5C00]");
     expect(screen.getAllByText("Acme Corp S.A.").length).toBeGreaterThan(0);
     expect(screen.queryByText("Movistar Argentina")).not.toBeInTheDocument();
   });
 
-  it("renders only purchases vouchers when tab is purchases", () => {
+  it("renders only purchases vouchers when tab is purchases", async () => {
     currentSearchParamValue = "?tab=purchases";
     render(<ConciliationsPage />);
+
+    await screen.findAllByText("Movistar Argentina");
+
     expect(screen.getByText("Compras")).toHaveClass("text-[#FF5C00]");
     expect(screen.getAllByText("Movistar Argentina").length).toBeGreaterThan(0);
     expect(screen.queryByText("Acme Corp S.A.")).not.toBeInTheDocument();
   });
 
-  it("syncs tab selection with URL search parameters on click", () => {
+  it("syncs tab selection with URL search parameters on click", async () => {
     currentSearchParamValue = "?tab=sales";
     render(<ConciliationsPage />);
+    await screen.findAllByText("Acme Corp S.A.");
     const purchasesTab = screen.getByRole("button", { name: "Compras" });
     fireEvent.click(purchasesTab);
     expect(pushMock).toHaveBeenCalledWith("/conciliations?tab=purchases&page=1", { scroll: false });
   });
 
-  it("simulates review toast on clicking Revisar button", () => {
+  it("simulates review toast on clicking Revisar button", async () => {
     currentSearchParamValue = "?tab=sales";
     render(<ConciliationsPage />);
+
+    await screen.findAllByText("Acme Corp S.A.");
+
     const reviewBtn = screen.getAllByRole("button", { name: "Revisar" })[0];
     fireEvent.click(reviewBtn);
     expect(toastAddMock).toHaveBeenCalledWith(expect.objectContaining({
@@ -95,43 +105,69 @@ describe("Login Theme & Conciliations UI", () => {
     }));
   });
 
-  it("shows loading indicator and updates toast on Regenerar click", () => {
+  it("shows loading indicator and updates toast on Regenerar click", async () => {
     currentSearchParamValue = "?tab=sales";
     render(<ConciliationsPage />);
+
+    await screen.findAllByText("Acme Corp S.A.");
+
     const regenerateBtn = screen.getAllByRole("button", { name: "Regenerar" })[0];
     fireEvent.click(regenerateBtn);
     expect(screen.getByText("Regenerando...")).toBeInTheDocument();
 
-    act(() => {
+    await act(async () => {
       jest.advanceTimersByTime(2000);
     });
 
-    expect(toastAddMock).toHaveBeenCalledWith(expect.objectContaining({
-      type: "success",
-      title: "Regeneración completada",
-    }));
+    await waitFor(() => {
+      expect(toastAddMock).toHaveBeenCalledWith(expect.objectContaining({
+        type: "success",
+        title: "Regeneración completada",
+      }));
+    });
   });
 
-  it("excludes repeated/duplicate vouchers when clicking Eliminar button", () => {
+  it("excludes repeated/duplicate vouchers when clicking Eliminar button", async () => {
     currentSearchParamValue = "?tab=sales";
     render(<ConciliationsPage />);
+
+    await screen.findAllByText("Acme Corp S.A.");
     expect(screen.getAllByText("Acme Corp S.A.").length).toBe(2);
 
     const deleteBtn = screen.getAllByRole("button", { name: "Eliminar" })[0];
     fireEvent.click(deleteBtn);
 
-    expect(screen.getAllByText("Acme Corp S.A.").length).toBe(1);
+    await waitFor(() => {
+      expect(screen.getAllByText("Acme Corp S.A.").length).toBe(1);
+    });
+
     expect(toastAddMock).toHaveBeenCalledWith(expect.objectContaining({
       type: "success",
       title: "Comprobante eliminado",
     }));
   });
 
-  it("syncs page queries when navigating pagination controls", () => {
+  it("syncs page queries when navigating pagination controls", async () => {
     currentSearchParamValue = "?tab=sales&page=1";
     render(<ConciliationsPage />);
+    await screen.findAllByText("Acme Corp S.A.");
     const pageTwoBtn = screen.getByRole("button", { name: "2" });
     fireEvent.click(pageTwoBtn);
     expect(pushMock).toHaveBeenCalledWith("/conciliations?tab=sales&page=2", { scroll: false });
+  });
+
+  it("preserves batchId when syncing tab and page state", async () => {
+    currentSearchParamValue = "?batchId=batch-42&tab=sales&page=1";
+    render(<ConciliationsPage />);
+
+    await screen.findAllByText("Acme Corp S.A.");
+
+    fireEvent.click(screen.getByRole("button", { name: "Compras" }));
+    expect(pushMock).toHaveBeenCalledWith("/conciliations?batchId=batch-42&tab=purchases&page=1", { scroll: false });
+
+    pushMock.mockClear();
+
+    fireEvent.click(screen.getByRole("button", { name: "2" }));
+    expect(pushMock).toHaveBeenCalledWith("/conciliations?batchId=batch-42&tab=sales&page=2", { scroll: false });
   });
 });
