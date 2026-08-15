@@ -51,7 +51,7 @@ Whenever the user requests a new feature, module, or structural change, **never 
 
 ## Git Workflow & CI/CD
 - **Branch Creation:** Before starting any new feature, bug fix, or task, a new branch must always be created.
-  - The base branch must always be `main` (ensuring a clean production code starting point).
+  - After creating the new branch, always pull the latest changes from `staging` before starting implementation.
   - The branch name must be lowercase and strictly use the format `<prefix>/<feature-name-in-kebab-case>` (e.g., `feature/create-purchase-voucher`, `fix/resolve-voucher-bug`).
   - Allowed prefixes: `feature/`, `fix/`, `chore/`, `docs/`, `refactor/`, `test/`.
 - **Integration Workflow:**

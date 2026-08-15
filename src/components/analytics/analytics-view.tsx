@@ -1,17 +1,15 @@
 "use client";
 
-import { useState, Suspense, use } from "react";
+import { useState } from "react";
 import { AnalyticsSkeleton } from "src/components/analytics/analytics-skeleton";
 import { cn } from "src/lib/utils";
 import { useAnalytics } from "src/hooks/use-analytics";
 import { useAnalyticsChart } from "src/hooks/use-analytics-chart";
 import { AnalyticsData, TrendEntry, ComparisonPeriodData } from "src/types/analytics";
 
-function AnalyticsContainer({ promise }: { promise: Promise<AnalyticsData> }) {
+function AnalyticsContainer({ data }: { data: AnalyticsData }) {
   const [period, setPeriod] = useState<"6_months" | "year">("6_months");
   const [currency, setCurrency] = useState<"ARS" | "USD">("ARS");
-
-  const data = use(promise);
 
   const {
     activeData,
@@ -282,15 +280,11 @@ function AnalyticsContainer({ promise }: { promise: Promise<AnalyticsData> }) {
 }
 
 export function AnalyticsView() {
-  const { promise } = useAnalytics();
+  const { data, isLoading } = useAnalytics();
 
-  if (!promise) {
+  if (isLoading || !data) {
     return <AnalyticsSkeleton />;
   }
 
-  return (
-    <Suspense fallback={<AnalyticsSkeleton />}>
-      <AnalyticsContainer promise={promise} />
-    </Suspense>
-  );
+  return <AnalyticsContainer data={data} />;
 }

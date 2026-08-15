@@ -1,18 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { VoucherService } from 'src/services/voucher.service'
-import { voucherSchema } from 'src/lib/schemas/voucher-schemas'
+import { voucherListQuerySchema, voucherSchema } from 'src/lib/schemas/voucher-schemas'
 
 export async function GET(request: NextRequest) {
   try {
     const companyId = request.headers.get('x-company-id')!
-    const searchParams = request.nextUrl.searchParams
-    const filters: Record<string, unknown> = {}
+    const queryParseResult = voucherListQuerySchema.safeParse({
+      type: request.nextUrl.searchParams.get('type') || undefined,
+      page: request.nextUrl.searchParams.get('page') || undefined,
+      pageSize: request.nextUrl.searchParams.get('pageSize') || undefined,
+      search: request.nextUrl.searchParams.get('search') || undefined,
+      status: request.nextUrl.searchParams.get('status') || undefined,
+      dateFrom: request.nextUrl.searchParams.get('dateFrom') || undefined,
+      dateTo: request.nextUrl.searchParams.get('dateTo') || undefined,
+      sortBy: request.nextUrl.searchParams.get('sortBy') || undefined,
+      sortOrder: request.nextUrl.searchParams.get('sortOrder') || undefined,
+    })
 
-    const type = searchParams.get('type')
-    if (type) filters.type = type
+    if (!queryParseResult.success) {
+      return NextResponse.json({ error: 'Parámetros de búsqueda inválidos.' }, { status: 400 })
+    }
 
     const voucherService = new VoucherService()
-    const vouchers = await voucherService.getAllVouchers(companyId, filters)
+    const { page, pageSize, ...filters } = queryParseResult.data
+    const vouchers = await voucherService.getVoucherPage(companyId, page, pageSize, filters)
 
     return NextResponse.json(vouchers)
   } catch (error) {

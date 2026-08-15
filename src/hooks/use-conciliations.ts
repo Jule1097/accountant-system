@@ -1,16 +1,24 @@
-import { useState, useEffect } from "react";
-import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { useToastManager } from "src/components/ui/toast";
-import { PendingVoucher } from "src/types/conciliations";
+"use client";
 
-const mockVouchersList: PendingVoucher[] = [
+import { useEffect, useMemo, useState } from "react";
+import useSWR from "swr";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useToastManager } from "src/components/ui/toast";
+import { useCompany } from "src/contexts/company-context";
+import { readOptionalStringParam, readPositiveIntegerParam } from "src/lib/helpers/query-state";
+import { buildCompanyPathKey, revalidateCompanyScope } from "src/lib/helpers/swr";
+import { ConciliationsPageData, ConciliationsQueryState, ConciliationTab, PendingVoucher } from "src/types/conciliations";
+
+const itemsPerPage = 4;
+
+let pendingVouchersStore: PendingVoucher[] = [
   {
     uuid: "sales-1",
     id: "FC-A-0001-00000124",
     type: "sales",
     date: "2026-08-10",
     thirdParty: "Acme Corp S.A.",
-    amount: 150000.00,
+    amount: 150000,
     currency: "ARS",
     status: "Listo",
     message: "Comprobante procesado correctamente mediante OCR.",
@@ -21,7 +29,7 @@ const mockVouchersList: PendingVoucher[] = [
     type: "sales",
     date: "2026-08-09",
     thirdParty: "Juan Pérez",
-    amount: 45000.00,
+    amount: 45000,
     currency: "ARS",
     status: "Error",
     message: "Error de conexión con la API de facturación externa.",
@@ -32,7 +40,7 @@ const mockVouchersList: PendingVoucher[] = [
     type: "sales",
     date: "2026-08-10",
     thirdParty: "Acme Corp S.A.",
-    amount: 150000.00,
+    amount: 150000,
     currency: "ARS",
     status: "Duplicado",
     message: "Este comprobante ya existe en la base de datos (ID duplicado).",
@@ -43,7 +51,7 @@ const mockVouchersList: PendingVoucher[] = [
     type: "sales",
     date: "2026-08-08",
     thirdParty: "Globex Corporation",
-    amount: 2200.00,
+    amount: 2200,
     currency: "USD",
     status: "Listo",
     message: "Lectura de montos e impuestos exitosa.",
@@ -54,7 +62,7 @@ const mockVouchersList: PendingVoucher[] = [
     type: "sales",
     date: "2026-08-08",
     thirdParty: "Globex Corporation",
-    amount: 2200.00,
+    amount: 2200,
     currency: "USD",
     status: "Duplicado",
     message: "Detectado comprobante idéntico importado en el mismo lote.",
@@ -65,7 +73,7 @@ const mockVouchersList: PendingVoucher[] = [
     type: "sales",
     date: "2026-08-07",
     thirdParty: "Consumidor Final",
-    amount: 12500.00,
+    amount: 12500,
     currency: "ARS",
     status: "Error",
     message: "El CUIT del emisor no coincide con la empresa activa.",
@@ -76,7 +84,7 @@ const mockVouchersList: PendingVoucher[] = [
     type: "sales",
     date: "2026-08-06",
     thirdParty: "Tech Solutions SRL",
-    amount: 85000.00,
+    amount: 85000,
     currency: "ARS",
     status: "Listo",
     message: "OCR finalizado con alta confianza.",
@@ -87,7 +95,7 @@ const mockVouchersList: PendingVoucher[] = [
     type: "purchases",
     date: "2026-08-11",
     thirdParty: "Movistar Argentina",
-    amount: 32000.00,
+    amount: 32000,
     currency: "ARS",
     status: "Listo",
     message: "Servicio de telecomunicaciones validado.",
@@ -98,7 +106,7 @@ const mockVouchersList: PendingVoucher[] = [
     type: "purchases",
     date: "2026-08-10",
     thirdParty: "Librería San Martín",
-    amount: 4500.00,
+    amount: 4500,
     currency: "ARS",
     status: "Error",
     message: "Monto total no coincide con la suma de los conceptos y el IVA.",
@@ -109,7 +117,7 @@ const mockVouchersList: PendingVoucher[] = [
     type: "purchases",
     date: "2026-08-11",
     thirdParty: "Movistar Argentina",
-    amount: 32000.00,
+    amount: 32000,
     currency: "ARS",
     status: "Duplicado",
     message: "Posible carga duplicada del mismo abono mensual.",
@@ -120,7 +128,7 @@ const mockVouchersList: PendingVoucher[] = [
     type: "purchases",
     date: "2026-08-09",
     thirdParty: "Amazon Web Services",
-    amount: 450.00,
+    amount: 450,
     currency: "USD",
     status: "Listo",
     message: "Invoice en USD parseada correctamente.",
@@ -131,7 +139,7 @@ const mockVouchersList: PendingVoucher[] = [
     type: "purchases",
     date: "2026-08-09",
     thirdParty: "Amazon Web Services",
-    amount: 450.00,
+    amount: 450,
     currency: "USD",
     status: "Duplicado",
     message: "Factura en USD duplicada por error de importación.",
@@ -142,50 +150,100 @@ const mockVouchersList: PendingVoucher[] = [
     type: "purchases",
     date: "2026-08-08",
     thirdParty: "Papelera Oeste",
-    amount: 18900.00,
+    amount: 18900,
     currency: "ARS",
     status: "Error",
     message: "Fecha del comprobante fuera del período fiscal actual.",
-  }
+  },
 ];
+
+function readConciliationsQuery(searchParams: URLSearchParams): ConciliationsQueryState {
+  return {
+    batchId: readOptionalStringParam(searchParams, "batchId"),
+    tab: searchParams.get("tab") === "purchases" ? "purchases" : "sales",
+    page: readPositiveIntegerParam(searchParams, "page", 1),
+  };
+}
+
+function buildConciliationsQueryString(query: ConciliationsQueryState): string {
+  const params = new URLSearchParams();
+
+  if (query.batchId) {
+    params.set("batchId", query.batchId);
+  }
+
+  params.set("tab", query.tab);
+  params.set("page", query.page.toString());
+  return params.toString();
+}
+
+function buildConciliationsPath(query: ConciliationsQueryState): string {
+  return `/conciliations?${buildConciliationsQueryString(query)}`;
+}
+
+function resolveConciliationsPage(query: ConciliationsQueryState): ConciliationsPageData {
+  const filteredVouchers = pendingVouchersStore.filter((voucher) => voucher.type === query.tab);
+  const totalCount = filteredVouchers.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / itemsPerPage));
+  const currentPage = Math.min(query.page, totalPages);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+
+  return {
+    items: filteredVouchers.slice(startIndex, startIndex + itemsPerPage),
+    totalCount,
+    totalPages,
+    currentPage,
+    startIndex,
+  };
+}
 
 export function useConciliations() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const toastManager = useToastManager();
-
-  const [vouchers, setVouchers] = useState<PendingVoucher[]>(mockVouchersList);
+  const { activeCompanyId } = useCompany();
   const [loadingVouchers, setLoadingVouchers] = useState<Record<string, boolean>>({});
-
-  const activeTab = searchParams.get("tab") === "purchases" ? "purchases" : "sales";
-  const currentPage = Number(searchParams.get("page") || "1");
-
-  const filteredVouchers = vouchers.filter((v) => v.type === activeTab);
-  const totalCount = filteredVouchers.length;
-  const totalPages = Math.ceil(totalCount / 4);
-  const startIndex = (currentPage - 1) * 4;
-  const paginatedVouchers = filteredVouchers.slice(startIndex, startIndex + 4);
+  const query = useMemo(() => readConciliationsQuery(searchParams), [searchParams]);
+  const key = buildCompanyPathKey(activeCompanyId, buildConciliationsPath(query));
+  const { data, mutate } = useSWR(
+    key,
+    () => Promise.resolve(resolveConciliationsPage(query)),
+    {
+      keepPreviousData: true,
+    }
+  );
 
   useEffect(() => {
-    if (currentPage > totalPages && totalPages > 0) {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("page", totalPages.toString());
-      router.push(`${pathname}?${params.toString()}`, { scroll: false });
+    if (!data || query.page <= data.totalPages) {
+      return;
     }
-  }, [totalPages, currentPage, pathname, router, searchParams]);
 
-  const handleTabChange = (tab: "sales" | "purchases") => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("tab", tab);
-    params.set("page", "1");
-    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+    const nextQuery = {
+      ...query,
+      page: data.totalPages,
+    };
+
+    router.push(`${pathname}?${buildConciliationsQueryString(nextQuery)}`, { scroll: false });
+  }, [data, pathname, query, router]);
+
+  const syncQuery = (nextQuery: ConciliationsQueryState): void => {
+    router.push(`${pathname}?${buildConciliationsQueryString(nextQuery)}`, { scroll: false });
+  };
+
+  const handleTabChange = (tab: ConciliationTab) => {
+    syncQuery({
+      ...query,
+      tab,
+      page: 1,
+    });
   };
 
   const handlePageChange = (page: number) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("page", page.toString());
-    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+    syncQuery({
+      ...query,
+      page,
+    });
   };
 
   const handleReview = (id: string) => {
@@ -197,9 +255,11 @@ export function useConciliations() {
   };
 
   const handleRegenerate = (uuid: string, id: string) => {
-    setLoadingVouchers((prev) => ({ ...prev, [uuid]: true }));
-    setTimeout(() => {
-      setLoadingVouchers((prev) => ({ ...prev, [uuid]: false }));
+    setLoadingVouchers((currentValue) => ({ ...currentValue, [uuid]: true }));
+
+    window.setTimeout(async () => {
+      setLoadingVouchers((currentValue) => ({ ...currentValue, [uuid]: false }));
+      await mutate();
       toastManager.add({
         type: "success",
         title: "Regeneración completada",
@@ -208,8 +268,14 @@ export function useConciliations() {
     }, 2000);
   };
 
-  const handleDelete = (uuid: string) => {
-    setVouchers((prev) => prev.filter((v) => v.uuid !== uuid));
+  const handleDelete = async (uuid: string) => {
+    pendingVouchersStore = pendingVouchersStore.filter((voucher) => voucher.uuid !== uuid);
+
+    if (activeCompanyId) {
+      await revalidateCompanyScope(activeCompanyId, ["/conciliations"]);
+    }
+
+    await mutate();
     toastManager.add({
       type: "success",
       title: "Comprobante eliminado",
@@ -218,12 +284,12 @@ export function useConciliations() {
   };
 
   return {
-    activeTab,
-    currentPage,
-    totalPages,
-    totalCount,
-    startIndex,
-    paginatedVouchers,
+    activeTab: query.tab,
+    currentPage: data?.currentPage || query.page,
+    totalPages: data?.totalPages || 1,
+    totalCount: data?.totalCount || 0,
+    startIndex: data?.startIndex || 0,
+    paginatedVouchers: data?.items || [],
     loadingVouchers,
     handleTabChange,
     handlePageChange,
