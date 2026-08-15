@@ -139,3 +139,23 @@ export const voucherSchema = z
       accountingPeriod,
     }
   })
+
+export const voucherListQuerySchema = z.object({
+  type: z.enum(['sale', 'purchase']),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().refine((value) => [10, 20, 50].includes(value)).default(10),
+  search: z.string().trim().optional(),
+  status: z.enum(['pending', 'partial', 'paid']).optional(),
+  dateFrom: z.coerce.date().optional(),
+  dateTo: z.coerce.date().optional(),
+  sortBy: z.enum(['date', 'status', 'voucher']).default('date'),
+  sortOrder: z.enum(['asc', 'desc']).default('desc'),
+})
+
+export const voucherSummaryQuerySchema = voucherListQuerySchema.omit({
+  page: true,
+  pageSize: true,
+}).extend({
+  page: z.coerce.number().int().min(1).optional(),
+  pageSize: z.coerce.number().int().optional(),
+})

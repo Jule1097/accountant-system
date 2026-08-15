@@ -1,6 +1,6 @@
 import { VoucherRepository } from 'src/repositories/voucher.repository'
 import { Voucher } from 'src/models/Voucher'
-import { VoucherFilterParams } from 'src/types/voucher'
+import { VoucherFilterParams, VoucherListResponse, VoucherSummaryResponse } from 'src/types/voucher'
 
 function resolveExplicitVoucherStatus(data: unknown): Voucher['status'] | null {
   if (!data || typeof data !== 'object') {
@@ -29,6 +29,19 @@ export class VoucherService {
 
   async getAllVouchers(companyId: string, filters?: VoucherFilterParams): Promise<Voucher[]> {
     return this.repository.findAll(companyId, filters)
+  }
+
+  async getVoucherPage(
+    companyId: string,
+    page: number,
+    pageSize: number,
+    filters?: VoucherFilterParams
+  ): Promise<VoucherListResponse> {
+    return this.repository.findPage(companyId, page, pageSize, filters)
+  }
+
+  async getVoucherSummary(companyId: string, filters?: VoucherFilterParams): Promise<VoucherSummaryResponse> {
+    return this.repository.summarize(companyId, filters)
   }
 
   async createVoucher(data: unknown): Promise<Voucher> {
