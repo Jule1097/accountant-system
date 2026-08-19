@@ -15,6 +15,15 @@ export interface VoucherThirdPartyOption {
   cuit: string;
 }
 
+export interface VoucherPreviewDocument {
+  sourceUrl: string;
+  mimeType: string;
+  fileName: string;
+}
+
+export type VoucherFormDateValue = string | Date;
+export type VoucherFormNullableDateValue = string | Date | null;
+
 export interface VoucherFormPayload {
   type: "sale" | "purchase";
   voucherTypeId: string;
@@ -23,7 +32,8 @@ export interface VoucherFormPayload {
   number: string;
   clientId: string | null;
   supplierId: string | null;
-  date: string;
+  date: VoucherFormDateValue;
+  accountingPeriod?: VoucherFormDateValue;
   currency: "$" | "USD";
   exchangeRate: number;
   subtotal: number;
@@ -35,7 +45,7 @@ export interface VoucherFormPayload {
   concept?: string;
   paymentMethod: string;
   status: "pending" | "partial" | "paid";
-  paymentDate: string | null;
+  paymentDate: VoucherFormNullableDateValue;
   paidAmount: number;
   comments?: string;
   createdByUserId: string;

@@ -11,6 +11,12 @@ import {
   VoucherParsedData,
   VoucherThirdPartyOption,
 } from "src/types/voucher-form";
+import {
+  normalizeVoucherCurrency,
+  normalizeVoucherExchangeRate,
+  resolveParsedVoucherLetterId,
+  resolveParsedVoucherTypeId,
+} from "src/lib/helpers/voucher-form";
 
 const defaultFormValues: VoucherFormValues = {
   date: "",
@@ -21,6 +27,7 @@ const defaultFormValues: VoucherFormValues = {
   thirdPartyId: "",
   thirdPartyCuit: "",
   currency: "$",
+  exchangeRate: 1,
   subtotal: 0,
   vatAmount: 0,
   nonTaxableAmount: 0,
@@ -147,28 +154,6 @@ function resolveVoucherLetterById(
   return catalogs.voucherLetters.find((voucherLetter) => voucherLetter.id === voucherLetterId);
 }
 
-function resolveVoucherTypeId(
-  parsedVoucherType: string | null,
-  catalogs: VoucherFormCatalogState
-): string | undefined {
-  if (!parsedVoucherType) {
-    return undefined;
-  }
-
-  return catalogs.voucherTypes.find((voucherType) => voucherType.name.toLowerCase() === parsedVoucherType.toLowerCase())?.id;
-}
-
-function resolveVoucherLetterId(
-  parsedVoucherLetter: string | null,
-  catalogs: VoucherFormCatalogState
-): string | undefined {
-  if (!parsedVoucherLetter) {
-    return undefined;
-  }
-
-  return catalogs.voucherLetters.find((voucherLetter) => voucherLetter.letter.toUpperCase() === parsedVoucherLetter.toUpperCase())?.id;
-}
-
 function resolveThirdPartyId(
   parsedData: VoucherParsedData,
   thirdParties: VoucherThirdPartyOption[]
@@ -210,6 +195,10 @@ export class VoucherForm {
       thirdPartyId: initialVoucher.type === "sale" ? initialVoucher.clientId || "" : initialVoucher.supplierId || "",
       thirdPartyCuit: initialVoucher.type === "sale" ? initialVoucher.client?.cuit || "" : initialVoucher.supplier?.cuit || "",
       currency: initialVoucher.currency === "USD" ? "USD" : "$",
+      exchangeRate: normalizeVoucherExchangeRate(
+        initialVoucher.currency === "USD" ? "USD" : "$",
+        Number(initialVoucher.exchangeRate || 1),
+      ),
       subtotal: Number(initialVoucher.subtotal || 0),
       vatAmount: Number(initialVoucher.vatAmount || 0),
       nonTaxableAmount: Number(initialVoucher.nonTaxableAmount || 0),
@@ -272,7 +261,7 @@ export class VoucherForm {
       supplierId: voucherApiType === "purchase" ? values.thirdPartyId : null,
       date: values.date,
       currency: values.currency,
-      exchangeRate: values.currency === "USD" ? 1.0001 : 1,
+      exchangeRate: normalizeVoucherExchangeRate(values.currency, values.exchangeRate),
       subtotal: normalizedSubtotal ?? values.subtotal,
       vatAmount: values.vatAmount,
       nonTaxableAmount: values.nonTaxableAmount,
@@ -299,9 +288,10 @@ export class VoucherForm {
     catalogs: VoucherFormCatalogState,
     thirdParties: VoucherThirdPartyOption[]
   ): Partial<VoucherFormValues> {
-    const voucherTypeId = resolveVoucherTypeId(parsedData.voucherType, catalogs);
-    const voucherLetterId = resolveVoucherLetterId(parsedData.voucherLetter, catalogs);
+    const voucherTypeId = resolveParsedVoucherTypeId(parsedData.voucherType, catalogs);
+    const voucherLetterId = resolveParsedVoucherLetterId(parsedData.voucherLetter, catalogs);
     const thirdPartyId = resolveThirdPartyId(parsedData, thirdParties);
+    const parsedCurrency = normalizeVoucherCurrency(parsedData.currency);
     const nextValues = {
       ...currentValues,
       voucherLetterId: voucherLetterId || currentValues.voucherLetterId,
@@ -324,7 +314,10 @@ export class VoucherForm {
       number: parsedData.number ? parsedData.number.padStart(8, "0") : currentValues.number,
       thirdPartyId: thirdPartyId || currentValues.thirdPartyId,
       thirdPartyCuit: parsedData.thirdPartyCuit || currentValues.thirdPartyCuit,
-      currency: parsedData.currency === "USD" ? "USD" : currentValues.currency,
+      currency: parsedCurrency || currentValues.currency,
+      exchangeRate: parsedCurrency
+        ? normalizeVoucherExchangeRate(parsedCurrency, toNumber(parsedData.exchangeRate))
+        : currentValues.exchangeRate,
       subtotal: subtotal ?? toNumber(parsedData.subtotal) ?? currentValues.subtotal,
       vatAmount: toNumber(parsedData.vatAmount) ?? currentValues.vatAmount,
       nonTaxableAmount: toNumber(parsedData.nonTaxableAmount) ?? currentValues.nonTaxableAmount,

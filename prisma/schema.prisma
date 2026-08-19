@@ -18,6 +18,7 @@ model Company {
   suppliers Supplier[]
   vouchers  Voucher[]
   parserBatches ParserBatch[]
+  notifications CompanyNotification[]
 
   @@map("company")
 }
@@ -235,6 +236,7 @@ model ParserBatchItem {
   inputStrategy     String?                  @db.VarChar(30)
   status            String                   @db.VarChar(30)
   parsedPayload     Json?
+  validatedPayload  Json?
   currentError      String?                  @db.Text
   currentAttempt    Int                      @default(0)
   queuedAt          DateTime?                @db.Timestamptz
@@ -267,4 +269,20 @@ model ParserBatchItemAttempt {
   @@unique([itemId, attemptNumber], name: "parserBatchItemAttemptItemAttemptNumberUnique")
   @@index([itemId, createdAt])
   @@map("parser_batch_item_attempt")
+}
+
+model CompanyNotification {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId  String   @db.Uuid
+  category   String   @db.VarChar(50)
+  title      String   @db.VarChar(255)
+  message    String   @db.Text
+  targetPath String   @db.VarChar(500)
+  sourceId   String   @db.Uuid
+  createdAt  DateTime @default(now()) @db.Timestamptz
+  company    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, category, sourceId], name: "companyNotificationSourceUnique")
+  @@index([companyId, createdAt])
+  @@map("company_notification")
 }

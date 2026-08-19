@@ -185,6 +185,7 @@ function createBaseFormValues(): VoucherFormValues {
     thirdPartyId: '123e4567-e89b-12d3-a456-426614174002',
     thirdPartyCuit: '30-11111111-9',
     currency: '$',
+    exchangeRate: 1,
     subtotal: 100,
     vatAmount: 21,
     nonTaxableAmount: 0,
@@ -293,6 +294,7 @@ function createVoucher(overrides: Record<string, unknown> = {}) {
 function createVoucherListResponse(vouchers: Voucher[]): VoucherListResponse {
   return {
     items: vouchers.map((voucher) => ({
+      rowKey: voucher.id || `${voucher.posNumber}-${voucher.number}`,
       voucher,
       composedVoucherId: `${voucher.posNumber}-${voucher.number}`,
       partyName: voucher.client?.name || voucher.supplier?.name || null,
@@ -364,6 +366,7 @@ describe('Voucher UI', () => {
     expect(screen.getAllByText('Comprobante')[0]).toBeInTheDocument()
     expect(screen.getByText('Concepto')).toBeInTheDocument()
     expect(screen.getByText('Medio Pago')).toBeInTheDocument()
+    expect(screen.getByText('T/C')).toBeInTheDocument()
     expect(screen.getByText('Percepciones')).toBeInTheDocument()
     expect(screen.getByText(/15,00/)).toBeInTheDocument()
     expect(screen.getByRole('combobox', { name: 'Mostrar comprobantes por página' })).toHaveValue('10')

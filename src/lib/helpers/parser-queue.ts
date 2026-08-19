@@ -10,19 +10,33 @@ export function serializeParserQueueJob(job: ParserBatchQueueJob): string {
   return JSON.stringify(job);
 }
 
-export function deserializeParserQueueJob(value: string | null): ParserBatchQueueJob | null {
+function isParserQueueJob(value: unknown): value is ParserBatchQueueJob {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const candidate = value as Partial<ParserBatchQueueJob>;
+  return typeof candidate.batchId === "string" && typeof candidate.itemId === "string";
+}
+
+export function deserializeParserQueueJob(value: unknown): ParserBatchQueueJob | null {
   if (!value) {
     return null;
   }
 
-  const parsedValue = JSON.parse(value) as Partial<ParserBatchQueueJob>;
+  if (isParserQueueJob(value)) {
+    return value;
+  }
 
-  if (!parsedValue.batchId || !parsedValue.itemId) {
+  if (typeof value !== "string") {
     return null;
   }
 
-  return {
-    batchId: parsedValue.batchId,
-    itemId: parsedValue.itemId,
-  };
+  const parsedValue = JSON.parse(value) as unknown;
+
+  if (!isParserQueueJob(parsedValue)) {
+    return null;
+  }
+
+  return parsedValue;
 }

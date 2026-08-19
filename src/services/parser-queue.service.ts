@@ -13,6 +13,8 @@ export class ParserQueueService {
 
   async dequeue(): Promise<ParserBatchQueueJob | null> {
     const value = await redis.lpop<string>(getParserQueueKey());
-    return deserializeParserQueueJob(value || null);
+    const job = deserializeParserQueueJob(value || null);
+
+    return job;
   }
 }

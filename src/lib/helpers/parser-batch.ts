@@ -35,7 +35,7 @@ export function resolveParserBatchStatus(items: ParserBatchItemRecord[]): Parser
 
   const hasQueuedItems = hasItemsWithStatus(items, ["queued"]);
   const hasFailedItems = hasItemsWithStatus(items, ["failed"]);
-  const hasCompletedItems = hasItemsWithStatus(items, ["parsed", "validated", "discarded"]);
+  const hasCompletedItems = hasItemsWithStatus(items, ["parsed", "duplicate", "validated", "persisting", "persisted", "discarded"]);
 
   if (hasFailedItems && hasCompletedItems) {
     return "partial";

@@ -2,6 +2,7 @@ import {
   classifyPdfAsync,
   extractPagesMarkdownAsync,
 } from "@firecrawl/pdf-inspector";
+import { normalizeParserText } from "src/lib/helpers/parser-text";
 import { ParserInputStrategy } from "src/types/parser-batch";
 
 export interface ParserPdfStrategyResult {
@@ -11,7 +12,10 @@ export interface ParserPdfStrategyResult {
 }
 
 function buildPdfMarkdownValue(markdownPages: { markdown: string }[]): string {
-  return markdownPages.map((page) => page.markdown.trim()).filter(Boolean).join("\n\n");
+  return markdownPages
+    .map((page) => normalizeParserText(page.markdown).trim())
+    .filter(Boolean)
+    .join("\n\n");
 }
 
 export function hasParserMarkdownContent(markdown: string | null): boolean {
@@ -39,20 +43,28 @@ export async function resolveParserPdfStrategy(buffer: Buffer): Promise<ParserPd
     };
   }
 
-  const extraction = await extractPagesMarkdownAsync(buffer);
-  const markdown = buildPdfMarkdownValue(extraction.pages);
+  try {
+    const extraction = await extractPagesMarkdownAsync(buffer);
+    const markdown = buildPdfMarkdownValue(extraction.pages);
 
-  if (!hasParserMarkdownContent(markdown)) {
+    if (!hasParserMarkdownContent(markdown)) {
+      return {
+        strategy: "pdf-visual",
+        markdown: null,
+        pdfType: classification.pdfType,
+      };
+    }
+
+    return {
+      strategy: "pdf-text",
+      markdown,
+      pdfType: classification.pdfType,
+    };
+  } catch {
     return {
       strategy: "pdf-visual",
       markdown: null,
       pdfType: classification.pdfType,
     };
   }
-
-  return {
-    strategy: "pdf-text",
-    markdown,
-    pdfType: classification.pdfType,
-  };
 }
