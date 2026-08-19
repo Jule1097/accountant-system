@@ -1,54 +1,178 @@
 /** @jest-environment jsdom */
 
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { LoginForm } from "src/components/auth/login-form";
 import ConciliationsPage from "src/app/(dashboard)/conciliations/page";
 
-const toastAddMock = jest.fn();
+const replaceMock = jest.fn();
 const pushMock = jest.fn();
-let currentSearchParamValue = "";
-
-const searchParamsMock = {
-  get: (key: string) => new URLSearchParams(currentSearchParamValue).get(key),
-  toString: () => currentSearchParamValue,
-};
+const handleTabChangeMock = jest.fn();
+const handlePageChangeMock = jest.fn();
+const handleReviewMock = jest.fn();
+const handleRegenerateMock = jest.fn();
+const handlePersistMock = jest.fn();
+const handlePersistBatchMock = jest.fn();
+const handleDeleteMock = jest.fn();
+const handleDeleteSelectedMock = jest.fn();
+const handleToggleItemSelectionMock = jest.fn();
+const handleToggleAllDiscardableMock = jest.fn();
+const handleReviewModalOpenChangeMock = jest.fn();
+const handleReviewSubmitMock = jest.fn();
 
 jest.mock("next/navigation", () => ({
-  usePathname: () => "/conciliations",
-  useRouter: () => ({ push: pushMock }),
-  useSearchParams: () => searchParamsMock,
-}));
-
-jest.mock("src/components/ui/toast", () => ({
-  useToastManager: () => ({ add: toastAddMock }),
-}));
-
-jest.mock("src/hooks/use-auth", () => ({
-  useAuth: () => ({
-    user: { email: "test@example.com" },
-    logout: jest.fn(),
-    login: jest.fn(),
+  useRouter: () => ({
+    replace: replaceMock,
+    push: pushMock,
   }),
 }));
 
-jest.mock("src/contexts/company-context", () => ({
-  useCompany: () => ({
-    companies: [{ id: "1", name: "Company 1" }],
-    activeCompany: { id: "1", name: "Company 1" },
-    activeCompanyId: "1",
-    setActiveCompanyId: jest.fn(),
+jest.mock("src/hooks/use-conciliations", () => ({
+  useConciliations: () => ({
+    batchId: "batch-42",
+    activeTab: "sales",
+    currentPage: 1,
+    totalPages: 2,
+    totalCount: 5,
+    readyCount: 1,
+    validatedCount: 1,
+    persistBatchAction: {
+      batchId: "batch-42",
+      selectedValidatedCount: 1,
+      canPersist: true,
+    },
+    startIndex: 0,
+    isPageLoading: false,
+    isDeleting: false,
+    deleteDialogState: {
+      isOpen: false,
+      title: "Eliminar factura",
+      description: "Esta acción no se puede deshacer.",
+      mode: null,
+    },
+    sections: [
+      {
+        key: "ready",
+        title: "Listas para revisar",
+        totalCount: 1,
+        hasMore: false,
+        items: [
+          {
+            id: "item-ready",
+            batchId: "batch-42",
+            type: "sales",
+            documentId: "A 00001-00000075",
+            date: "2026-08-16",
+            thirdParty: "Acme Corp S.A.",
+            amount: 150000,
+            currency: "ARS",
+            status: "Lista",
+            message: "La factura está lista para revisión.",
+            canReview: true,
+            canRetry: false,
+            canDiscard: true,
+          },
+        ],
+      },
+      {
+        key: "validated",
+        title: "Validadas",
+        totalCount: 1,
+        hasMore: false,
+        items: [
+          {
+            id: "item-validated",
+            batchId: "batch-42",
+            type: "sales",
+            documentId: "A 00001-00000076",
+            date: "2026-08-16",
+            thirdParty: "Globex S.A.",
+            amount: 200000,
+            currency: "ARS",
+            status: "Validada",
+            message: "La factura fue validada y está lista para persistirse.",
+            canReview: false,
+            canRetry: false,
+            canDiscard: true,
+          },
+        ],
+      },
+      {
+        key: "duplicate",
+        title: "Duplicadas",
+        totalCount: 1,
+        hasMore: false,
+        items: [
+          {
+            id: "item-duplicate",
+            batchId: "batch-42",
+            type: "sales",
+            documentId: "A 00001-00000078",
+            date: "2026-08-14",
+            thirdParty: "Movistar Argentina",
+            amount: 32000,
+            currency: "ARS",
+            status: "Duplicada",
+            message: "La factura ya existe en la base de datos.",
+            canReview: false,
+            canRetry: false,
+            canDiscard: true,
+          },
+        ],
+      },
+      {
+        key: "error",
+        title: "Error",
+        totalCount: 1,
+        hasMore: false,
+        items: [
+          {
+            id: "item-error",
+            batchId: "batch-42",
+            type: "sales",
+            documentId: "A 00001-00000077",
+            date: "2026-08-15",
+            thirdParty: "Pérez SRL",
+            amount: 120000,
+            currency: "ARS",
+            status: "Error",
+            message: "No se pudo procesar la factura.",
+            canReview: false,
+            canRetry: true,
+            canDiscard: true,
+          },
+        ],
+      },
+    ],
+    loadingVouchers: {},
+    isReviewModalOpen: false,
+    reviewItem: undefined,
+    isReviewItemLoading: false,
+    reviewSourceUrl: null,
+    isVoucherSelected: (itemId: string) => itemId === "item-ready",
+    getSelectedCount: (itemIds: string[]) => itemIds.filter((itemId) => itemId === "item-ready").length,
+    areAllSectionItemsSelected: () => false,
+    handleTabChange: handleTabChangeMock,
+    handlePageChange: handlePageChangeMock,
+    handleToggleItemSelection: handleToggleItemSelectionMock,
+    handleToggleAllDiscardable: handleToggleAllDiscardableMock,
+    handleToggleVisibleSelection: handleToggleAllDiscardableMock,
+    handleReview: handleReviewMock,
+    handleReviewModalOpenChange: handleReviewModalOpenChangeMock,
+    handleDeleteDialogOpenChange: jest.fn(),
+    handleReviewSubmit: handleReviewSubmitMock,
+    handleRegenerate: handleRegenerateMock,
+    handlePersist: handlePersistMock,
+    handlePersistBatch: handlePersistBatchMock,
+    handleDelete: handleDeleteMock,
+    handleDeleteSelected: handleDeleteSelectedMock,
+    confirmDelete: jest.fn(),
+    confirmDeleteSelected: jest.fn(),
   }),
 }));
 
 describe("Login Theme & Conciliations UI", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    currentSearchParamValue = "";
-    jest.useFakeTimers();
-  });
-
-  afterEach(() => {
-    jest.useRealTimers();
   });
 
   it("applies light and dark responsive CSS theme classes on the Login Card", () => {
@@ -60,114 +184,72 @@ describe("Login Theme & Conciliations UI", () => {
     expect(card).toHaveClass("dark:border-zinc-800");
   });
 
-  it("renders only sales vouchers when tab is sales", async () => {
-    currentSearchParamValue = "?tab=sales";
+  it("renders sales conciliations with visible statuses and actions", async () => {
     render(<ConciliationsPage />);
 
-    await screen.findAllByText("Acme Corp S.A.");
-
-    expect(screen.getByText("Ventas")).toHaveClass("text-[#FF5C00]");
-    expect(screen.getAllByText("Acme Corp S.A.").length).toBeGreaterThan(0);
-    expect(screen.queryByText("Movistar Argentina")).not.toBeInTheDocument();
+    expect(await screen.findByText("Acme Corp S.A.")).toBeInTheDocument();
+    expect(screen.getByText("Listas para revisar")).toBeInTheDocument();
+    expect(screen.getByText("Validadas")).toBeInTheDocument();
+    expect(screen.getByText("Duplicadas")).toBeInTheDocument();
+    expect(screen.getByText("Lista")).toBeInTheDocument();
+    expect(screen.getByText("Validada")).toBeInTheDocument();
+    expect(screen.getByText("Duplicada")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Error" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Revisar factura A 00001-00000075" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Guardar factura A 00001-00000076" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Regenerar factura A 00001-00000077" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /Eliminar factura/ })).toHaveLength(4);
+    expect(screen.getByRole("button", { name: "Eliminar seleccionadas (1)" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Seleccionar facturas de Listas para revisar")).toBeInTheDocument();
   });
 
-  it("renders only purchases vouchers when tab is purchases", async () => {
-    currentSearchParamValue = "?tab=purchases";
+  it("calls tab change handler when clicking Compras", async () => {
     render(<ConciliationsPage />);
 
-    await screen.findAllByText("Movistar Argentina");
-
-    expect(screen.getByText("Compras")).toHaveClass("text-[#FF5C00]");
-    expect(screen.getAllByText("Movistar Argentina").length).toBeGreaterThan(0);
-    expect(screen.queryByText("Acme Corp S.A.")).not.toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: "Compras" }));
+    expect(handleTabChangeMock).toHaveBeenCalledWith("purchases");
   });
 
-  it("syncs tab selection with URL search parameters on click", async () => {
-    currentSearchParamValue = "?tab=sales";
+  it("calls page change handler when clicking page 2", async () => {
     render(<ConciliationsPage />);
-    await screen.findAllByText("Acme Corp S.A.");
-    const purchasesTab = screen.getByRole("button", { name: "Compras" });
-    fireEvent.click(purchasesTab);
-    expect(pushMock).toHaveBeenCalledWith("/conciliations?tab=purchases&page=1", { scroll: false });
+
+    fireEvent.click(await screen.findByRole("button", { name: "2" }));
+    expect(handlePageChangeMock).toHaveBeenCalledWith(2);
   });
 
-  it("simulates review toast on clicking Revisar button", async () => {
-    currentSearchParamValue = "?tab=sales";
+  it("calls review, persistence, retry and discard handlers", async () => {
     render(<ConciliationsPage />);
 
-    await screen.findAllByText("Acme Corp S.A.");
+    fireEvent.click(await screen.findByRole("button", { name: "Revisar factura A 00001-00000075" }));
+    fireEvent.click(screen.getByRole("button", { name: "Guardar factura A 00001-00000076" }));
+    fireEvent.click(screen.getByRole("button", { name: "Regenerar factura A 00001-00000077" }));
+    fireEvent.click(screen.getByRole("button", { name: "Eliminar factura A 00001-00000078" }));
 
-    const reviewBtn = screen.getAllByRole("button", { name: "Revisar" })[0];
-    fireEvent.click(reviewBtn);
-    expect(toastAddMock).toHaveBeenCalledWith(expect.objectContaining({
-      type: "success",
-      title: "Revisión iniciada",
-    }));
+    expect(handleReviewMock).toHaveBeenCalledWith(expect.objectContaining({ id: "item-ready" }));
+    expect(handlePersistMock).toHaveBeenCalledWith(expect.objectContaining({ id: "item-validated" }));
+    expect(handleRegenerateMock).toHaveBeenCalledWith(expect.objectContaining({ id: "item-error" }));
+    expect(handleDeleteMock).toHaveBeenCalledWith(expect.objectContaining({ id: "item-duplicate" }));
   });
 
-  it("shows loading indicator and updates toast on Regenerar click", async () => {
-    currentSearchParamValue = "?tab=sales";
+  it("calls selection handlers for visible discard controls", async () => {
     render(<ConciliationsPage />);
 
-    await screen.findAllByText("Acme Corp S.A.");
+    fireEvent.click(await screen.findByLabelText("Seleccionar facturas de Listas para revisar"));
+    fireEvent.click(screen.getByLabelText("Seleccionar factura A 00001-00000075"));
+    fireEvent.click(screen.getByRole("button", { name: "Eliminar seleccionadas (1)" }));
 
-    const regenerateBtn = screen.getAllByRole("button", { name: "Regenerar" })[0];
-    fireEvent.click(regenerateBtn);
-    expect(screen.getByText("Regenerando...")).toBeInTheDocument();
-
-    await act(async () => {
-      jest.advanceTimersByTime(2000);
-    });
-
-    await waitFor(() => {
-      expect(toastAddMock).toHaveBeenCalledWith(expect.objectContaining({
-        type: "success",
-        title: "Regeneración completada",
-      }));
-    });
+    expect(handleToggleAllDiscardableMock).toHaveBeenCalledWith(["item-ready"], true);
+    expect(handleToggleItemSelectionMock).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "item-ready" }),
+      false
+    );
+    expect(handleDeleteSelectedMock).toHaveBeenCalled();
   });
 
-  it("excludes repeated/duplicate vouchers when clicking Eliminar button", async () => {
-    currentSearchParamValue = "?tab=sales";
+  it("shows mass confirmation button for validated items and current batch", async () => {
     render(<ConciliationsPage />);
 
-    await screen.findAllByText("Acme Corp S.A.");
-    expect(screen.getAllByText("Acme Corp S.A.").length).toBe(2);
-
-    const deleteBtn = screen.getAllByRole("button", { name: "Eliminar" })[0];
-    fireEvent.click(deleteBtn);
-
-    await waitFor(() => {
-      expect(screen.getAllByText("Acme Corp S.A.").length).toBe(1);
-    });
-
-    expect(toastAddMock).toHaveBeenCalledWith(expect.objectContaining({
-      type: "success",
-      title: "Comprobante eliminado",
-    }));
-  });
-
-  it("syncs page queries when navigating pagination controls", async () => {
-    currentSearchParamValue = "?tab=sales&page=1";
-    render(<ConciliationsPage />);
-    await screen.findAllByText("Acme Corp S.A.");
-    const pageTwoBtn = screen.getByRole("button", { name: "2" });
-    fireEvent.click(pageTwoBtn);
-    expect(pushMock).toHaveBeenCalledWith("/conciliations?tab=sales&page=2", { scroll: false });
-  });
-
-  it("preserves batchId when syncing tab and page state", async () => {
-    currentSearchParamValue = "?batchId=batch-42&tab=sales&page=1";
-    render(<ConciliationsPage />);
-
-    await screen.findAllByText("Acme Corp S.A.");
-
-    fireEvent.click(screen.getByRole("button", { name: "Compras" }));
-    expect(pushMock).toHaveBeenCalledWith("/conciliations?batchId=batch-42&tab=purchases&page=1", { scroll: false });
-
-    pushMock.mockClear();
-
-    fireEvent.click(screen.getByRole("button", { name: "2" }));
-    expect(pushMock).toHaveBeenCalledWith("/conciliations?batchId=batch-42&tab=sales&page=2", { scroll: false });
+    fireEvent.click(await screen.findByRole("button", { name: "Guardar validadas (1)" }));
+    expect(handlePersistBatchMock).toHaveBeenCalled();
   });
 });

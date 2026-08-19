@@ -1,40 +1,100 @@
 "use client";
 
-import { Card } from "src/components/ui/card";
-import { Button } from "src/components/ui/button";
+import { CheckCircle } from "lucide-react";
+import { ConciliationReviewModal } from "src/components/conciliations/conciliation-review-modal";
+import { ConciliationSection } from "src/components/conciliations/conciliation-section";
+import { ConciliationsPagination } from "src/components/conciliations/conciliations-pagination";
+import { ConciliationsToolbar } from "src/components/conciliations/conciliations-toolbar";
+import { VoucherDeleteDialog } from "src/components/vouchers/voucher-delete-dialog";
 import { useConciliations } from "src/hooks/use-conciliations";
-import { ConciliationCard } from "src/components/conciliations/conciliation-card";
-import { CheckCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { ConciliationSectionData } from "src/types/conciliations";
+
+function ConciliationsLoadingState() {
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl border border-border/50 bg-card px-4 py-3">
+        <div className="h-4 w-32 rounded bg-muted/70" />
+      </div>
+      {Array.from({ length: 3 }, (_, index) => (
+        <div key={index} className="rounded-xl border border-border/50 bg-card px-4 py-4">
+          <div className="space-y-3">
+            <div className="h-4 w-40 rounded bg-muted/70" />
+            <div className="h-4 w-60 rounded bg-muted/60" />
+            <div className="h-3 w-48 rounded bg-muted/50" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ConciliationsEmptyState() {
+  return (
+    <div className="flex flex-col items-center justify-center rounded-xl border border-border/50 bg-card p-12 text-center">
+      <CheckCircle className="mb-3 h-8 w-8 text-emerald-500" />
+      <div className="text-sm font-semibold text-foreground">¡Todo al día!</div>
+      <p className="mt-1 max-w-[280px] text-xs text-muted-foreground">
+        No hay facturas pendientes de conciliación en esta lista.
+      </p>
+    </div>
+  );
+}
 
 export function ConciliationsView() {
   const {
     activeTab,
     currentPage,
     totalPages,
-    totalCount,
+    readyCount,
+    validatedCount,
+    persistBatchAction,
     startIndex,
-    paginatedVouchers,
+    isPageLoading,
+    isDeleting,
+    deleteDialogState,
+    sections,
     loadingVouchers,
+    isReviewModalOpen,
+    reviewItem,
+    isReviewItemLoading,
+    reviewSourceUrl,
     handleTabChange,
     handlePageChange,
+    handleToggleItemSelection,
+    handleToggleVisibleSelection,
     handleReview,
+    handleReviewModalOpenChange,
+    handleDeleteDialogOpenChange,
+    handleReviewSubmit,
     handleRegenerate,
+    handlePersist,
+    handlePersistBatch,
     handleDelete,
+    handleDeleteSelected,
+    confirmDelete,
+    confirmDeleteSelected,
+    isVoucherSelected,
+    getSelectedCount,
+    areAllSectionItemsSelected,
   } = useConciliations();
 
   return (
     <div className="flex-1 space-y-6">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-[38px] font-mono font-normal tracking-[-1px] text-foreground leading-none">Conciliaciones</h2>
-          <p className="text-sm text-muted-foreground mt-2">Revisión, regeneración y descarte de comprobantes pendientes de validación.</p>
-        </div>
-      </div>
+      <ConciliationsToolbar
+        canPersistBatch={persistBatchAction.canPersist}
+        persistLabel={persistBatchAction.selectedValidatedCount > 0
+          ? `Guardar validadas (${persistBatchAction.selectedValidatedCount})`
+          : `Guardar validadas (${validatedCount})`}
+        onPersistBatch={() => {
+          void handlePersistBatch();
+        }}
+      />
 
-      <div className="flex border-b border-border/40 gap-4">
+      <div className="flex w-full gap-4 border-b border-border/40">
         <button
+          type="button"
           onClick={() => handleTabChange("sales")}
-          className={`pb-2 text-sm font-medium transition-colors relative ${activeTab === "sales"
+          className={`relative pb-2 text-sm font-medium transition-colors ${activeTab === "sales"
             ? "text-[#FF5C00] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-[#FF5C00]"
             : "text-muted-foreground hover:text-foreground"
             }`}
@@ -42,8 +102,9 @@ export function ConciliationsView() {
           Ventas
         </button>
         <button
+          type="button"
           onClick={() => handleTabChange("purchases")}
-          className={`pb-2 text-sm font-medium transition-colors relative ${activeTab === "purchases"
+          className={`relative pb-2 text-sm font-medium transition-colors ${activeTab === "purchases"
             ? "text-[#FF5C00] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-[#FF5C00]"
             : "text-muted-foreground hover:text-foreground"
             }`}
@@ -53,74 +114,67 @@ export function ConciliationsView() {
       </div>
 
       <div className="space-y-4">
-        {paginatedVouchers.length === 0 ? (
-          <Card className="flex flex-col items-center justify-center p-12 text-center border border-border/50 bg-card rounded-lg">
-            <CheckCircle className="h-8 w-8 text-emerald-500 mb-3" />
-            <div className="text-sm font-semibold text-foreground">¡Todo al día!</div>
-            <p className="text-xs text-muted-foreground mt-1 max-w-[280px]">No hay comprobantes pendientes de conciliación en esta lista.</p>
-          </Card>
+        {isPageLoading ? (
+          <ConciliationsLoadingState />
+        ) : sections.length === 0 ? (
+          <ConciliationsEmptyState />
         ) : (
-          paginatedVouchers.map((voucher) => (
-            <ConciliationCard
-              key={voucher.uuid}
-              voucher={voucher}
-              isRegenerating={!!loadingVouchers[voucher.uuid]}
+          sections.map((section: ConciliationSectionData) => (
+            <ConciliationSection
+              key={section.key}
+              section={section}
+              loadingVouchers={loadingVouchers}
+              getSelectedCount={getSelectedCount}
+              areAllSectionItemsSelected={areAllSectionItemsSelected}
+              isVoucherSelected={isVoucherSelected}
+              onToggleVisibleSelection={handleToggleVisibleSelection}
+              onToggleItemSelection={handleToggleItemSelection}
               onReview={handleReview}
               onRegenerate={handleRegenerate}
+              onPersist={handlePersist}
               onDelete={handleDelete}
+              onDeleteSelected={(itemIds) => {
+                void handleDeleteSelected(itemIds);
+              }}
             />
           ))
         )}
       </div>
 
-      {totalPages > 1 && (
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center justify-between pt-4 pb-4">
-          <div className="text-sm text-muted-foreground">
-            Mostrando {startIndex + 1}-{Math.min(startIndex + 4, totalCount)} de {totalCount} (Pág. {currentPage} de {totalPages})
-          </div>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="outline"
-              size="icon"
-              disabled={currentPage === 1}
-              onClick={() => handlePageChange(currentPage - 1)}
-              className={`h-8 w-8 bg-card border-border text-muted-foreground ${currentPage === 1 ? "opacity-50 cursor-not-allowed" : "hover:bg-secondary"
-                }`}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
+      <ConciliationsPagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalCount={readyCount}
+        startIndex={startIndex}
+        onPageChange={handlePageChange}
+      />
 
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
-              const isActive = page === currentPage;
-              return (
-                <Button
-                  key={page}
-                  variant="outline"
-                  size="icon"
-                  onClick={() => handlePageChange(page)}
-                  className={`h-8 w-8 ${isActive
-                    ? "bg-[#FF5C00] border-[#FF5C00] text-primary-foreground hover:bg-[#FF8A4C] hover:text-primary-foreground"
-                    : "bg-card border-border text-foreground hover:bg-secondary"
-                    }`}
-                >
-                  {page}
-                </Button>
-              );
-            })}
+      <ConciliationReviewModal
+        isOpen={isReviewModalOpen}
+        type={activeTab}
+        item={reviewItem}
+        isLoading={isReviewItemLoading}
+        sourceUrl={reviewSourceUrl}
+        onOpenChange={handleReviewModalOpenChange}
+        onSubmit={handleReviewSubmit}
+      />
 
-            <Button
-              variant="outline"
-              size="icon"
-              disabled={currentPage === totalPages}
-              onClick={() => handlePageChange(currentPage + 1)}
-              className={`h-8 w-8 bg-card border-border text-muted-foreground ${currentPage === totalPages ? "opacity-50 cursor-not-allowed" : "hover:bg-secondary"
-                }`}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      )}
+      <VoucherDeleteDialog
+        isOpen={deleteDialogState.isOpen}
+        voucher={null}
+        isDeleting={isDeleting}
+        title={deleteDialogState.title}
+        description={deleteDialogState.description}
+        onOpenChange={handleDeleteDialogOpenChange}
+        onConfirm={() => {
+          if (deleteDialogState.mode === "bulk") {
+            void confirmDeleteSelected();
+            return;
+          }
+
+          void confirmDelete();
+        }}
+      />
     </div>
   );
 }
