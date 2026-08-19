@@ -19,6 +19,7 @@ import {
   buildVoucherPageLabel,
   getVoucherFormattedAmount,
   getVoucherFormattedDate,
+  getVoucherFormattedExchangeRate,
   getVoucherSortValue,
   getVoucherStatusBadgeClassName,
   getVoucherStatusLabel,
@@ -116,7 +117,7 @@ export function VoucherTable({
               <Input
                 value={searchValue}
                 placeholder="Buscar por nombre, CUIT..."
-                className="h-9 border-[#2A2A2E] bg-[#141417] pl-9 text-sm text-[#FFFFFF] placeholder:text-[#4A4A4E] focus-visible:ring-[#FF5C00]"
+                className="h-9 border-input bg-card pl-9 text-sm text-foreground placeholder:text-muted-foreground focus-visible:ring-[#FF5C00]"
                 onChange={(event: ChangeEvent<HTMLInputElement>) =>
                   onSearchChange(event.target.value)
                 }
@@ -127,7 +128,7 @@ export function VoucherTable({
           <div>
             <label className="mb-2 block text-sm font-medium text-foreground">Estado</label>
             <select
-              className="flex h-9 w-full rounded-md border border-[#2A2A2E] bg-[#141417] px-3 py-2 text-sm text-[#FFFFFF] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#FF5C00]"
+              className="flex h-9 w-full rounded-md border border-input bg-card px-3 py-2 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#FF5C00]"
               value={query.status || ""}
               onChange={(event: ChangeEvent<HTMLSelectElement>) =>
                 onStatusChange(event.target.value ? (event.target.value as VoucherStatus) : undefined)
@@ -146,7 +147,7 @@ export function VoucherTable({
               <Input
                 type="date"
                 defaultValue={query.dateFrom || ""}
-                className="h-9 border-[#2A2A2E] bg-[#141417] text-sm text-[#FFFFFF] focus-visible:ring-[#FF5C00]"
+                className="h-9 border-input bg-card text-sm text-foreground focus-visible:ring-[#FF5C00]"
                 onChange={(event: ChangeEvent<HTMLInputElement>) =>
                   updateDateRange(event.target.value, dateDraftRef.current.dateTo)
                 }
@@ -158,7 +159,7 @@ export function VoucherTable({
               <Input
                 type="date"
                 defaultValue={query.dateTo || ""}
-                className="h-9 border-[#2A2A2E] bg-[#141417] text-sm text-[#FFFFFF] focus-visible:ring-[#FF5C00]"
+                className="h-9 border-input bg-card text-sm text-foreground focus-visible:ring-[#FF5C00]"
                 onChange={(event: ChangeEvent<HTMLInputElement>) =>
                   updateDateRange(dateDraftRef.current.dateFrom, event.target.value)
                 }
@@ -171,7 +172,7 @@ export function VoucherTable({
           {hasActiveFilters ? (
             <Button
               variant="outline"
-              className="h-9 border-[#2A2A2E] bg-[#141417] px-3 text-[#FFFFFF] hover:bg-[#1A1A1D] hover:text-[#FFFFFF]"
+              className="h-9 border-input bg-card px-3 text-foreground hover:bg-muted hover:text-foreground"
               onClick={onClearFilters}
             >
               Borrar filtros
@@ -181,8 +182,8 @@ export function VoucherTable({
         </div>
       </div>
 
-      <div className="rounded-[12px] overflow-hidden bg-[#111113] border border-[#1F1F23]">
-        <div className="flex flex-col gap-3 border-b border-[#1F1F23] px-4 py-3 md:flex-row md:items-center md:justify-between">
+      <div className="overflow-hidden rounded-[12px] border border-border bg-card">
+        <div className="flex flex-col gap-3 border-b border-border px-4 py-3 md:flex-row md:items-center md:justify-between">
           <div className="text-sm text-muted-foreground">
             {data?.total ?? 0} comprobantes encontrados
           </div>
@@ -193,7 +194,7 @@ export function VoucherTable({
             </label>
             <select
               id="voucher-sort"
-              className="flex h-9 rounded-md border border-[#2A2A2E] bg-[#141417] px-3 py-2 text-sm text-[#FFFFFF] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#FF5C00]"
+              className="flex h-9 rounded-md border border-input bg-card px-3 py-2 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#FF5C00]"
               value={getVoucherSortValue(query.sortBy, query.sortOrder)}
               onChange={(event: ChangeEvent<HTMLSelectElement>) => {
                 const [sortBy, sortOrder] = event.target.value.split(":");
@@ -207,7 +208,7 @@ export function VoucherTable({
             </select>
             <Button
               variant="outline"
-              className="h-9 border-[#2A2A2E] bg-[#141417] px-3 text-[#FFFFFF] hover:bg-[#1A1A1D]"
+              className="h-9 border-input bg-card px-3 text-foreground hover:bg-muted"
               type="button"
             >
               <Download className="mr-2 h-4 w-4" />
@@ -222,40 +223,41 @@ export function VoucherTable({
           </div>
         </div>
 
-        <Table className="text-[13px] text-[#FFFFFF]">
-          <TableHeader className="bg-[#141417]">
-            <TableRow className="border-b-[#1F1F23] hover:bg-transparent">
-              <TableHead className="text-[#6B6B70] font-semibold tracking-[0.5px] text-[11px]">Fecha</TableHead>
-              <TableHead className="text-[#6B6B70] font-semibold tracking-[0.5px] text-[11px]">Letra</TableHead>
-              <TableHead className="text-[#6B6B70] font-semibold tracking-[0.5px] text-[11px]">Comprobante</TableHead>
-              <TableHead className="text-[#6B6B70] font-semibold tracking-[0.5px] text-[11px]">{type === "sales" ? "Cliente" : "Proveedor"}</TableHead>
-              <TableHead className="text-[#6B6B70] font-semibold tracking-[0.5px] text-[11px]">CUIT</TableHead>
-              <TableHead className="text-[#6B6B70] font-semibold tracking-[0.5px] text-[11px]">Concepto</TableHead>
-              <TableHead className="text-[#6B6B70] font-semibold tracking-[0.5px] text-[11px]">Medio Pago</TableHead>
-              <TableHead className="text-[#6B6B70] font-semibold tracking-[0.5px] text-[11px]">Estado</TableHead>
-              <TableHead className="text-[#6B6B70] font-semibold tracking-[0.5px] text-[11px]">F. Pago</TableHead>
-              <TableHead className="text-[#6B6B70] font-semibold tracking-[0.5px] text-[11px]">{type === "sales" ? "Retenciones" : "Percepciones"}</TableHead>
-              <TableHead className="text-right text-[#6B6B70] font-semibold tracking-[0.5px] text-[11px]">Total</TableHead>
-              <TableHead className="text-right text-[#6B6B70] font-semibold tracking-[0.5px] text-[11px]">Pagado</TableHead>
+        <Table className="text-[13px] text-foreground">
+          <TableHeader className="bg-muted/30">
+            <TableRow className="border-b-border hover:bg-transparent">
+              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Fecha</TableHead>
+              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Letra</TableHead>
+              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Comprobante</TableHead>
+              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">{type === "sales" ? "Cliente" : "Proveedor"}</TableHead>
+              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">CUIT</TableHead>
+              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Concepto</TableHead>
+              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Medio Pago</TableHead>
+              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Estado</TableHead>
+              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">F. Pago</TableHead>
+              <TableHead className="text-right text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">T/C</TableHead>
+              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">{type === "sales" ? "Retenciones" : "Percepciones"}</TableHead>
+              <TableHead className="text-right text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Total</TableHead>
+              <TableHead className="text-right text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Pagado</TableHead>
               <TableHead className="w-[50px]" />
             </TableRow>
           </TableHeader>
           <TableBody>
             {vouchers.length === 0 ? (
-              <TableRow className="border-b-[#1F1F23] bg-[#141417]">
-                <TableCell colSpan={13} className="h-24 text-center text-[#6B6B70]">
+              <TableRow className="border-b-border bg-card">
+                <TableCell colSpan={14} className="h-24 text-center text-muted-foreground">
                   No se encontraron comprobantes.
                 </TableCell>
               </TableRow>
             ) : (
               vouchers.map((item) => (
                 <TableRow
-                  key={item.composedVoucherId}
-                  className="bg-[#141417] border-b-[#1F1F23] hover:bg-[#1A1A1D] transition-colors"
+                  key={item.rowKey}
+                  className="border-b-border bg-card transition-colors hover:bg-muted/30"
                 >
-                  <TableCell className="text-[#6B6B70]">{getVoucherFormattedDate(item.voucher.date)}</TableCell>
-                  <TableCell className="text-[#FFFFFF]">{item.voucher.voucherLetter?.letter || "—"}</TableCell>
-                  <TableCell className="text-[#ADADB0]">
+                  <TableCell className="text-muted-foreground">{getVoucherFormattedDate(item.voucher.date)}</TableCell>
+                  <TableCell className="text-foreground">{item.voucher.voucherLetter?.letter || "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">
                     <button
                       type="button"
                       className="text-left font-medium text-[#FF5C00] hover:text-[#FF8A4C] underline-offset-4 hover:underline"
@@ -267,10 +269,10 @@ export function VoucherTable({
                       {`${item.voucher.posNumber}-${item.voucher.number}`}
                     </button>
                   </TableCell>
-                  <TableCell className="font-medium text-[#FFFFFF]">{item.partyName || "—"}</TableCell>
-                  <TableCell className="text-[#6B6B70]">{item.partyCuit || "—"}</TableCell>
-                  <TableCell className="text-[#ADADB0]">{item.voucher.concept || "—"}</TableCell>
-                  <TableCell className="text-[#ADADB0]">{item.voucher.paymentMethod || "—"}</TableCell>
+                  <TableCell className="font-medium text-foreground">{item.partyName || "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">{item.partyCuit || "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">{item.voucher.concept || "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">{item.voucher.paymentMethod || "—"}</TableCell>
                   <TableCell>
                     <span
                       className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium ${getVoucherStatusBadgeClassName(item.voucher.status)}`}
@@ -278,17 +280,20 @@ export function VoucherTable({
                       {getVoucherStatusLabel(item.voucher.status)}
                     </span>
                   </TableCell>
-                  <TableCell className="text-[#6B6B70]">{getVoucherFormattedDate(item.voucher.paymentDate)}</TableCell>
-                  <TableCell className="text-[#ADADB0]">
+                  <TableCell className="text-muted-foreground">{getVoucherFormattedDate(item.voucher.paymentDate)}</TableCell>
+                  <TableCell className="text-right text-muted-foreground">
+                    {getVoucherFormattedExchangeRate(Number(item.voucher.exchangeRate))}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
                     {getVoucherFormattedAmount(
                       item.voucher.currency,
                       getVoucherTaxTotal(item.voucher, type),
                     )}
                   </TableCell>
-                  <TableCell className="text-right text-[#ADADB0]">
+                  <TableCell className="text-right text-muted-foreground">
                     {getVoucherFormattedAmount(item.voucher.currency, Number(item.voucher.totalAmount))}
                   </TableCell>
-                  <TableCell className="text-right text-[#ADADB0]">
+                  <TableCell className="text-right text-muted-foreground">
                     {getVoucherFormattedAmount(item.voucher.currency, Number(item.voucher.paidAmount))}
                   </TableCell>
                   <TableCell>
@@ -296,7 +301,7 @@ export function VoucherTable({
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="text-[#6B6B70] hover:text-destructive hover:bg-destructive/10"
+                      className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                       aria-label="Eliminar comprobante"
                       onClick={(event: MouseEvent<HTMLButtonElement>) => {
                         event.stopPropagation();

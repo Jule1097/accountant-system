@@ -49,6 +49,35 @@ describe('VoucherService', () => {
       expect(result.status).toBe('pending')
     })
 
+    it('should derive accountingPeriod from date when it is missing', async () => {
+      const voucherData = {
+        companyId,
+        type: 'sale',
+        voucherTypeId: validUuid,
+        voucherLetterId: validUuid,
+        posNumber: '00001',
+        number: '00000123',
+        clientId: validUuid,
+        date: new Date('2026-08-18T00:00:00.000Z'),
+        currency: '$',
+        exchangeRate: 1,
+        subtotal: 100,
+        vatAmount: 21,
+        totalAmount: 121,
+        paymentMethod: 'cash',
+        retentions: [],
+      }
+
+      repositoryMock.findDuplicate.mockResolvedValue(null)
+      repositoryMock.create.mockImplementation(async (voucher) => voucher)
+
+      const result = await service.createVoucher(voucherData)
+
+      expect(result.accountingPeriod.getFullYear()).toBe(2026)
+      expect(result.accountingPeriod.getMonth()).toBe(7)
+      expect(result.accountingPeriod.getDate()).toBe(1)
+    })
+
     it('should calculate purchase totals including perceptions and extra fields', async () => {
       const voucherData = {
         companyId,

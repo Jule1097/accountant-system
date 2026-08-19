@@ -15,14 +15,30 @@ interface VoucherDeleteDialogProps {
   isOpen: boolean;
   voucher: Voucher | null;
   isDeleting: boolean;
+  title?: string;
+  description?: string;
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
+}
+
+function resolveDeleteDescription(voucher: Voucher | null, description?: string): string {
+  if (description) {
+    return description;
+  }
+
+  if (voucher) {
+    return `Vas a eliminar el comprobante ${voucher.posNumber}-${voucher.number}. Esta acción no se puede deshacer.`;
+  }
+
+  return "Esta acción no se puede deshacer.";
 }
 
 export function VoucherDeleteDialog({
   isOpen,
   voucher,
   isDeleting,
+  title,
+  description,
   onOpenChange,
   onConfirm,
 }: VoucherDeleteDialogProps) {
@@ -30,12 +46,8 @@ export function VoucherDeleteDialog({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Eliminar comprobante</DialogTitle>
-          <DialogDescription>
-            {voucher
-              ? `Vas a eliminar el comprobante ${voucher.posNumber}-${voucher.number}. Esta acción no se puede deshacer.`
-              : "Esta acción no se puede deshacer."}
-          </DialogDescription>
+          <DialogTitle>{title || "Eliminar comprobante"}</DialogTitle>
+          <DialogDescription>{resolveDeleteDescription(voucher, description)}</DialogDescription>
         </DialogHeader>
 
         <DialogFooter className="pt-2">

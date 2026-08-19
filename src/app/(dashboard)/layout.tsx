@@ -2,8 +2,7 @@ import { SidebarProvider, SidebarTrigger } from "src/components/ui/sidebar";
 import { AppSidebar } from "src/components/layout/app-sidebar";
 import { ThemeToggle } from "src/components/layout/theme-toggle";
 import { CompanySelectorModal } from "src/components/layout/company-selector-modal";
-import { Bell } from "lucide-react";
-import { Button } from "src/components/ui/button";
+import { NotificationBell } from "src/components/layout/notification-bell";
 
 export default function DashboardLayout({
   children,
@@ -19,9 +18,7 @@ export default function DashboardLayout({
           <header className="flex h-14 items-center justify-between border-b px-4 lg:h-[60px]">
             <SidebarTrigger />
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="icon" className="rounded-full">
-                <Bell className="h-4 w-4" />
-              </Button>
+              <NotificationBell />
               <ThemeToggle />
             </div>
           </header>

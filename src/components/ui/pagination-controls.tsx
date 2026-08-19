@@ -29,13 +29,13 @@ export function PaginationControls({
   const items = buildPaginationItems(currentPage, totalPages);
 
   return (
-    <div className="flex flex-col gap-3 border-t border-[#1F1F23] px-4 py-3 md:flex-row md:items-center md:justify-between">
+    <div className="flex flex-col gap-3 border-t border-border px-4 py-3 md:flex-row md:items-center md:justify-between">
       <div className="text-sm text-muted-foreground">{pageLabel}</div>
 
       <div className="flex flex-wrap items-center gap-3">
         <select
           aria-label={pageSizeAriaLabel}
-          className="flex h-9 rounded-md border border-[#2A2A2E] bg-[#141417] px-3 py-2 text-sm text-[#FFFFFF] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#FF5C00]"
+          className="flex h-9 rounded-md border border-input bg-card px-3 py-2 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#FF5C00]"
           value={String(pageSize)}
           onChange={(event) => onPageSizeChange(Number(event.target.value))}
         >
@@ -51,7 +51,7 @@ export function PaginationControls({
             type="button"
             variant="outline"
             size="icon"
-            className="h-8 w-8 border-[#2A2A2E] bg-[#141417] text-[#6B6B70] hover:bg-[#1A1A1D] hover:text-[#FFFFFF]"
+            className="h-8 w-8 border-input bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
             onClick={() => onPageChange(currentPage - 1)}
             disabled={currentPage <= 1}
           >
@@ -70,7 +70,7 @@ export function PaginationControls({
                 variant={item === currentPage ? "default" : "outline"}
                 className={item === currentPage
                   ? "min-w-10 h-8 border-[#FF5C00] bg-[#FF5C00] text-[#FFFFFF] hover:bg-[#FF8A4C]"
-                  : "min-w-10 h-8 border-[#2A2A2E] bg-[#141417] text-[#FFFFFF] hover:bg-[#1A1A1D]"}
+                  : "min-w-10 h-8 border-input bg-card text-foreground hover:bg-muted"}
                 onClick={() => onPageChange(item)}
               >
                 {item}
@@ -82,7 +82,7 @@ export function PaginationControls({
             type="button"
             variant="outline"
             size="icon"
-            className="h-8 w-8 border-[#2A2A2E] bg-[#141417] text-[#6B6B70] hover:bg-[#1A1A1D] hover:text-[#FFFFFF]"
+            className="h-8 w-8 border-input bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
             onClick={() => onPageChange(currentPage + 1)}
             disabled={currentPage >= totalPages}
           >

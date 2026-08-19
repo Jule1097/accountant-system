@@ -5,6 +5,7 @@ import { useFieldArray, useForm, useWatch, Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToastManager } from "src/components/ui/toast";
 import { useAuth } from "src/hooks/use-auth";
+import { useVoucherPreview } from "src/hooks/use-voucher-preview";
 import { ApiRequestError, apiRequest } from "src/lib/api-client";
 import { voucherFormSchema, VoucherFormValues } from "src/lib/schemas/voucher-form-schemas";
 import { VoucherForm } from "src/models/VoucherForm";
@@ -13,7 +14,9 @@ import { ParserBatchAsyncResponse } from "src/types/parser-batch";
 import { VoucherModalMode, VoucherScreenType } from "src/types/voucher";
 import {
   VoucherFormCatalogState,
+  VoucherFormPayload,
   VoucherParsedData,
+  VoucherPreviewDocument,
   VoucherThirdPartyOption,
 } from "src/types/voucher-form";
 
@@ -27,6 +30,10 @@ export interface UseVoucherFormProps {
   catalogs: VoucherFormCatalogState;
   thirdParties: VoucherThirdPartyOption[];
   initialVoucher?: Voucher | null;
+  initialParsedData?: VoucherParsedData | null;
+  resetKey?: string;
+  submitAction?: (payload: VoucherFormPayload, values: VoucherFormValues) => Promise<void>;
+  submitButtonLabel?: string;
   onSuccess?: (voucher: Voucher, mode: VoucherModalMode) => void;
 }
 
@@ -76,6 +83,10 @@ function resolveVoucherErrorMessage(error: unknown, mode: VoucherModalMode): str
   return "No se pudo guardar el comprobante.";
 }
 
+function buildEmptyVoucherFormValues(userId?: string): VoucherFormValues {
+  return VoucherForm.buildInitialValues(undefined, userId);
+}
+
 export function useVoucherForm({
   isOpen,
   onOpenChange,
@@ -84,14 +95,19 @@ export function useVoucherForm({
   catalogs,
   thirdParties,
   initialVoucher,
+  initialParsedData,
+  resetKey,
+  submitAction,
   onSuccess,
 }: UseVoucherFormProps) {
   const [isParsing, setIsParsing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [previewFile, setPreviewFile] = useState<File | null>(null);
   const toastManager = useToastManager();
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastResetKeyRef = useRef<string | null>(null);
+  const previewSourceUrl = useVoucherPreview(previewFile);
   const form = useForm<VoucherFormValues>({
     resolver: zodResolver(voucherFormSchema) as unknown as Resolver<VoucherFormValues>,
     mode: "onChange",
@@ -130,23 +146,39 @@ export function useVoucherForm({
     name: "vatAmount",
   });
   const isProcessing = isParsing || isSubmitting;
+  const previewDocument: VoucherPreviewDocument | null = previewSourceUrl && previewFile
+    ? {
+      sourceUrl: previewSourceUrl,
+      mimeType: previewFile.type,
+      fileName: previewFile.name,
+    }
+    : null;
 
   useEffect(() => {
     if (!isOpen) {
       lastResetKeyRef.current = null;
+      setTimeout(() => setPreviewFile(null), 0);
       return;
     }
 
-    const resetKey = mode === "edit" ? initialVoucher?.id || "edit-pending" : "create";
+    const nextResetKey = resetKey || (mode === "edit" ? initialVoucher?.id || "edit-pending" : "create");
 
-    if (lastResetKeyRef.current === resetKey) {
+    if (lastResetKeyRef.current === nextResetKey) {
       return;
     }
 
-    lastResetKeyRef.current = resetKey;
-    reset(VoucherForm.buildInitialValues(initialVoucher, user?.id));
+    lastResetKeyRef.current = nextResetKey;
+    const nextValues = VoucherForm.buildInitialValues(initialVoucher, user?.id);
+
+    if (initialParsedData) {
+      const patch = VoucherForm.buildParsedPatch(initialParsedData, nextValues, type, catalogs, thirdParties);
+      reset({ ...nextValues, ...patch });
+    } else {
+      reset(nextValues);
+    }
+
     void trigger();
-  }, [initialVoucher, isOpen, mode, reset, trigger, user?.id]);
+  }, [catalogs, initialParsedData, initialVoucher, isOpen, mode, reset, resetKey, thirdParties, trigger, type, user?.id]);
 
   useEffect(() => {
     if (!selectedThirdPartyId) {
@@ -214,6 +246,9 @@ export function useVoucherForm({
       return;
     }
 
+    setPreviewFile(files.length === 1 ? files[0] : null);
+    reset(buildEmptyVoucherFormValues(user?.id));
+    void trigger();
     setIsParsing(true);
 
     try {
@@ -235,7 +270,7 @@ export function useVoucherForm({
       if (isParserBatchResponse(parsedResponse)) {
         toastManager.add({
           type: "success",
-          title: "Lote en procesamiento",
+          title: "Facturas en procesamiento",
           description: `Se enviaron ${parsedResponse.batch.totalFiles} archivos para procesar.`,
         });
         return;
@@ -301,6 +336,12 @@ export function useVoucherForm({
 
     try {
       const payload = VoucherForm.buildPayload(values, type, catalogs);
+
+      if (submitAction) {
+        await submitAction(payload, values);
+        return;
+      }
+
       const endpoint = mode === "edit" ? `/api/vouchers/${initialVoucher?.id}` : "/api/vouchers";
 
       const response = await apiRequest(endpoint, {
@@ -371,5 +412,6 @@ export function useVoucherForm({
     onSubmit,
     handlePosBlur,
     handleNumberBlur,
+    previewDocument,
   };
 }

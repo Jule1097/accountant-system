@@ -3,13 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "tsx src/scripts/dev.ts",
+    "dev:web": "next dev",
+    "dev:worker": "tsx src/workers/voucher-parser-worker.ts",
+    "next": "tsx src/scripts/next.ts",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "test": "jest",
     "test:watch": "jest --watch",
-    "worker:voucher-parser": "tsx src/workers/voucher-parser-worker.ts"
+    "worker:voucher-parser": "pnpm dev:worker"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
@@ -17,8 +20,10 @@
     "@google/genai": "^2.16.0",
     "@google/generative-ai": "^0.24.1",
     "@hookform/resolvers": "^5.5.7",
+    "@next/env": "^16.3.1",
     "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "^7.9.1",
+    "@react-pdf/renderer": "^4.6.1",
     "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.111.0",
     "@upstash/redis": "^1.38.1",
@@ -35,6 +40,7 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-hook-form": "^7.83.0",
+    "react-pdf": "^10.2.0",
     "shadcn": "^4.16.1",
     "swr": "^2.5.1",
     "tailwind-merge": "^3.6.0",
