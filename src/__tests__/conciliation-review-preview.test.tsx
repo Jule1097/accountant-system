@@ -3,11 +3,6 @@
 import { render, screen } from "@testing-library/react";
 import { ConciliationReviewPreview } from "src/components/conciliations/conciliation-review-preview";
 
-jest.mock("next/image", () => ({
-  __esModule: true,
-  default: ({ alt, src }: { alt: string; src: string }) => <img alt={alt} src={src} />,
-}));
-
 jest.mock("next/dynamic", () => ({
   __esModule: true,
   default: () => {
