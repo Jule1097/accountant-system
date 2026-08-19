@@ -11,6 +11,7 @@
 
 # production
 /build
+/dist
 
 # misc
 .DS_Store
@@ -53,6 +54,10 @@ CLAUDE.md
 supabase/.temp/
 csv
 scripts
+!src/scripts/
+src/scripts/*
+!src/scripts/build-worker.js
 .vscode
 
 /design
+.env.docker

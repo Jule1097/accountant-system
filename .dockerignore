@@ -1,0 +1,14 @@
+node_modules
+.next
+dist
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+npm-debug.log*
+pnpm-debug.log*
+coverage
+.turbo
+.codex
+.agents
