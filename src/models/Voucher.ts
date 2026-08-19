@@ -1,6 +1,24 @@
 import { Decimal } from 'decimal.js'
 import { VoucherPerception, VoucherRetention, VoucherVatDetail } from 'src/types/voucher'
 
+function toValidDate(value: unknown): Date | null {
+  if (!value) {
+    return null
+  }
+
+  const parsedDate = value instanceof Date ? value : new Date(value as string | number)
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return null
+  }
+
+  return parsedDate
+}
+
+function getAccountingPeriodFromDate(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), 1)
+}
+
 export class Voucher {
   id?: string
   companyId: string
@@ -49,10 +67,8 @@ export class Voucher {
     this.number = record.number as string
     this.clientId = record.clientId as string | null | undefined
     this.supplierId = record.supplierId as string | null | undefined
-    this.date = record.date instanceof Date ? record.date : new Date(record.date as string | number)
-    this.accountingPeriod = record.accountingPeriod instanceof Date
-      ? record.accountingPeriod
-      : new Date(record.accountingPeriod as string | number)
+    this.date = toValidDate(record.date) || new Date()
+    this.accountingPeriod = toValidDate(record.accountingPeriod) || getAccountingPeriodFromDate(this.date)
     this.currency = record.currency as string
     this.exchangeRate = record.exchangeRate as Decimal | number
     this.subtotal = record.subtotal as Decimal | number
@@ -64,11 +80,7 @@ export class Voucher {
     this.netAmount = (record.netAmount as Decimal | number) ?? 0
     this.concept = record.concept as string | null | undefined
     this.paymentMethod = (record.paymentMethod as string) || ''
-    this.paymentDate = record.paymentDate
-      ? record.paymentDate instanceof Date
-        ? record.paymentDate
-        : new Date(record.paymentDate as string | number)
-      : null
+    this.paymentDate = toValidDate(record.paymentDate)
     this.paidAmount = (record.paidAmount as Decimal | number) || 0
     this.comments = record.comments as string | null | undefined
     this.createdByUserId = (record.createdByUserId as string) || ''

@@ -1,4 +1,5 @@
 import { GeminiParserResponse } from "src/types/gemini-parser";
+import { VoucherFormPayload } from "src/types/voucher-form";
 
 export type ParserVoucherType = "sale" | "purchase";
 
@@ -8,9 +9,12 @@ export type ParserBatchItemStatus =
   | "queued"
   | "processing"
   | "parsed"
+  | "duplicate"
   | "failed"
   | "expired"
   | "validated"
+  | "persisting"
+  | "persisted"
   | "discarded";
 
 export type ParserInputStrategy = "pdf-text" | "pdf-visual" | "image-visual";
@@ -38,6 +42,7 @@ export interface ParserBatchItemRecord {
   inputStrategy: ParserInputStrategy | null;
   status: ParserBatchItemStatus;
   parsedPayload: GeminiParserResponse | null;
+  validatedPayload: VoucherFormPayload | null;
   currentError: string | null;
   currentAttempt: number;
   queuedAt: string | null;
@@ -86,6 +91,11 @@ export interface ParserBatchItemCreateInput {
 }
 
 export interface ParserBatchQueueJob {
+  batchId: string;
+  itemId: string;
+}
+
+export interface ParserBatchPersistenceJob {
   batchId: string;
   itemId: string;
 }

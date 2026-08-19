@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { POST } from '../app/api/vouchers/parse/route'
-import { parseInvoiceImage } from '../lib/gemini'
+import { parseInvoiceImage, parseInvoiceMarkdown, parseInvoiceVisualFieldRepair } from '../lib/gemini'
 import * as parserAuthHelpers from '../lib/helpers/parser-auth'
 import { resolveParserPdfStrategy } from '../lib/helpers/parser-pdf'
 import { CatalogRepository } from '../repositories/catalog.repository'
@@ -129,6 +129,7 @@ describe('Parser Route Handler', () => {
       number: '00000123',
       date: '2026-08-06',
       currency: '$',
+      exchangeRate: 1,
       subtotal: 100,
       vatAmount: 21,
       totalAmount: 121,
@@ -174,6 +175,75 @@ describe('Parser Route Handler', () => {
     expect(body.thirdPartyCuit).toBe('30-22222222-9')
     expect(body.thirdPartyName).toBe('Test Client')
     expect(body.thirdPartyId).toBe('client-uuid-123')
+    expect(body.exchangeRate).toBe(1)
+  })
+
+  it('should repair only corrupted markdown text fields with visual parsing', async () => {
+    ;(resolveParserPdfStrategy as jest.Mock).mockResolvedValue({
+      strategy: 'pdf-text',
+      markdown: 'Factura A\nCliente: Aseguradora de Cr�ditos\nConcepto: Comisi�n mensual\nTotal: 121',
+      pdfType: 'TextBased',
+    })
+    ;(parseInvoiceMarkdown as jest.Mock).mockResolvedValue({
+      posNumber: '00002',
+      number: '00000123',
+      date: '2026-08-06',
+      currency: '$',
+      exchangeRate: 1,
+      subtotal: 100,
+      vatAmount: 21,
+      totalAmount: 121,
+      thirdPartyCuit: '30222222229',
+      thirdPartyName: 'Aseguradora de Cr�ditos',
+      concept: 'Comisi�n mensual',
+      voucherType: 'Factura',
+      voucherLetter: 'A',
+    })
+    ;(parseInvoiceVisualFieldRepair as jest.Mock).mockResolvedValue({
+      thirdPartyName: 'Aseguradora de Créditos',
+      concept: 'Comisión mensual',
+    })
+
+    ClientRepository.prototype.findByCuitAndCompany = jest.fn().mockResolvedValue({ id: 'client-uuid-123' })
+    SupplierRepository.prototype.findByCuitAndCompany = jest.fn().mockResolvedValue(null)
+
+    const request = {
+      headers: { get: () => companyId },
+      formData: async () => ({
+        get: (key: string) => {
+          if (key === 'file') {
+            return mockFile
+          }
+
+          if (key === 'voucherKind') {
+            return 'sale'
+          }
+
+          return null
+        },
+        getAll: () => [],
+      }),
+    } as unknown as NextRequest
+
+    const response = await POST(request)
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(parseInvoiceMarkdown).toHaveBeenCalled()
+    expect(parseInvoiceVisualFieldRepair).toHaveBeenCalledWith(
+      expect.any(String),
+      'application/pdf',
+      ['thirdPartyName', 'concept'],
+      expect.objectContaining({
+        activeCompanyCuit: '30-11111111-9',
+        voucherKind: 'sale',
+      })
+    )
+    expect(parseInvoiceImage).not.toHaveBeenCalled()
+    expect(body.thirdPartyName).toBe('Aseguradora de Créditos')
+    expect(body.concept).toBe('Comisión mensual')
+    expect(body.subtotal).toBe(100)
+    expect(body.vatAmount).toBe(21)
   })
 
   it('should nullify shared third party fields when CUIT matches the active company CUIT', async () => {
@@ -182,6 +252,7 @@ describe('Parser Route Handler', () => {
       number: '00000123',
       date: '2026-08-06',
       currency: '$',
+      exchangeRate: 1,
       subtotal: 100,
       vatAmount: 21,
       totalAmount: 121,
@@ -227,6 +298,7 @@ describe('Parser Route Handler', () => {
       number: '00000123',
       date: '2026-08-06',
       currency: '$',
+      exchangeRate: 1,
       subtotal: 100,
       vatAmount: 21,
       nonTaxableAmount: 5,
@@ -346,6 +418,7 @@ describe('Parser Route Handler', () => {
     expect(body.thirdPartyCuit).toBeNull()
     expect(body.thirdPartyName).toBeNull()
     expect(body.thirdPartyId).toBeNull()
+    expect(body.exchangeRate).toBeNull()
     expect(body.vatDetails).toEqual([])
     expect(body.retentions).toEqual([])
     expect(body.perceptions).toEqual([])

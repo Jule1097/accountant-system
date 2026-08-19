@@ -1,4 +1,7 @@
 import { compareCuit, normalizeCuit } from 'src/lib/cuit'
+import { normalizeParserText } from 'src/lib/helpers/parser-text'
+import { normalizeVoucherCurrency } from 'src/lib/helpers/voucher-form'
+import { resolveGeminiCatalogMatch } from 'src/lib/helpers/gemini-parser'
 import { resolveTaxJurisdictionName } from 'src/lib/tax-jurisdictions'
 import {
   GeminiParserCatalogs,
@@ -22,7 +25,7 @@ export class GeminiParsedVoucher {
       return null
     }
 
-    const normalizedValue = value.trim()
+    const normalizedValue = normalizeParserText(value).trim()
 
     if (!normalizedValue) {
       return null
@@ -64,6 +67,29 @@ export class GeminiParsedVoucher {
     return parsedDate.toISOString().split('T')[0]
   }
 
+  private normalizeCurrency(value?: string): "$" | "USD" | null {
+    return normalizeVoucherCurrency(value)
+  }
+
+  private normalizeExchangeRate(
+    currency: "$" | "USD" | null,
+    exchangeRate?: number,
+  ): number | null {
+    if (currency === "$") {
+      return 1
+    }
+
+    if (currency !== "USD") {
+      return null
+    }
+
+    if (typeof exchangeRate !== "number" || Number.isNaN(exchangeRate) || exchangeRate <= 0) {
+      return null
+    }
+
+    return exchangeRate
+  }
+
   private normalizeThirdPartyCuit(value?: string): string | null {
     if (!value) {
       return null
@@ -91,9 +117,7 @@ export class GeminiParsedVoucher {
   }
 
   private resolveVatDetail(detail: RawGeminiVatDetail, catalogs: GeminiParserCatalogs) {
-    const matchedVatRate = catalogs.vatRates.find(
-      (vatRate) => vatRate.name.toLowerCase() === detail.vatRateName?.toLowerCase()
-    )
+    const matchedVatRate = resolveGeminiCatalogMatch(detail.vatRateName, catalogs.vatRates)
 
     return {
       vatRateId: matchedVatRate ? matchedVatRate.id : null,
@@ -104,9 +128,7 @@ export class GeminiParsedVoucher {
   }
 
   private resolveRetention(retention: RawGeminiTaxItem, catalogs: GeminiParserCatalogs) {
-    const matchedRetentionConcept = catalogs.retentionConcepts.find(
-      (concept) => concept.name.toLowerCase() === retention.conceptName?.toLowerCase()
-    )
+    const matchedRetentionConcept = resolveGeminiCatalogMatch(retention.conceptName, catalogs.retentionConcepts)
     const jurisdictionName = resolveTaxJurisdictionName(retention.province)
     const matchedTaxJurisdiction = jurisdictionName
       ? catalogs.taxJurisdictions.find((jurisdiction) => jurisdiction.name === jurisdictionName)
@@ -122,9 +144,7 @@ export class GeminiParsedVoucher {
   }
 
   private resolvePerception(perception: RawGeminiTaxItem, catalogs: GeminiParserCatalogs) {
-    const matchedPerceptionConcept = catalogs.perceptionConcepts.find(
-      (concept) => concept.name.toLowerCase() === perception.conceptName?.toLowerCase()
-    )
+    const matchedPerceptionConcept = resolveGeminiCatalogMatch(perception.conceptName, catalogs.perceptionConcepts)
     const jurisdictionName = resolveTaxJurisdictionName(perception.province)
     const matchedTaxJurisdiction = jurisdictionName
       ? catalogs.taxJurisdictions.find((jurisdiction) => jurisdiction.name === jurisdictionName)
@@ -146,12 +166,14 @@ export class GeminiParsedVoucher {
   toResponse(catalogs: GeminiParserCatalogs, thirdPartyId: string | null): GeminiParserResponse {
     const thirdPartyCuit = this.getLookupThirdPartyCuit()
     const thirdPartyName = this.normalizeThirdPartyName(thirdPartyCuit)
+    const currency = this.normalizeCurrency(this.extractedData.currency)
 
     return {
       posNumber: this.extractedData.posNumber || null,
       number: this.extractedData.number || null,
       date: this.normalizeDate(this.extractedData.date),
-      currency: this.extractedData.currency || null,
+      currency,
+      exchangeRate: this.normalizeExchangeRate(currency, this.extractedData.exchangeRate),
       subtotal: this.extractedData.subtotal ?? null,
       vatAmount: this.extractedData.vatAmount ?? null,
       nonTaxableAmount: this.extractedData.nonTaxableAmount ?? null,

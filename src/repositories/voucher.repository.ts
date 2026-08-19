@@ -1,6 +1,7 @@
 import prisma from 'src/lib/prisma'
 import { Prisma } from 'src/generated/prisma/client'
 import { Voucher } from 'src/models/Voucher'
+import { GeminiParserResponse } from 'src/types/gemini-parser'
 import {
   VoucherFilterParams,
   VoucherListItem,
@@ -156,6 +157,7 @@ function mapVoucherListItem(rawVoucher: Prisma.VoucherGetPayload<{ include: type
   const party = voucher.type === 'sale' ? voucher.client : voucher.supplier
 
   return {
+    rowKey: rawVoucher.id,
     voucher,
     composedVoucherId: `${voucher.voucherLetter?.letter || ''} ${voucher.posNumber}-${voucher.number}`.trim(),
     partyName: party?.name || null,
@@ -212,6 +214,47 @@ export class VoucherRepository {
       whereClause.clientId = voucher.clientId
     } else {
       whereClause.supplierId = voucher.supplierId
+    }
+
+    const rawVoucher = await prisma.voucher.findFirst({
+      where: whereClause,
+      include: voucherInclude,
+    })
+
+    if (!rawVoucher) {
+      return null
+    }
+
+    return new Voucher(rawVoucher)
+  }
+
+  async findDuplicateByParsedPayload(
+    companyId: string,
+    type: VoucherRecordType,
+    parsedPayload: GeminiParserResponse
+  ): Promise<Voucher | null> {
+    if (!parsedPayload.thirdPartyId || !parsedPayload.voucherType || !parsedPayload.voucherLetter || !parsedPayload.posNumber || !parsedPayload.number) {
+      return null
+    }
+
+    const whereClause: Prisma.VoucherWhereInput = {
+      companyId,
+      type,
+      voucherType: {
+        name: {
+          equals: parsedPayload.voucherType,
+          mode: 'insensitive',
+        },
+      },
+      voucherLetter: {
+        letter: {
+          equals: parsedPayload.voucherLetter.toUpperCase(),
+        },
+      },
+      posNumber: parsedPayload.posNumber.padStart(5, '0'),
+      number: parsedPayload.number.padStart(8, '0'),
+      clientId: type === 'sale' ? parsedPayload.thirdPartyId : undefined,
+      supplierId: type === 'purchase' ? parsedPayload.thirdPartyId : undefined,
     }
 
     const rawVoucher = await prisma.voucher.findFirst({

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { parseInvoiceImage, parseInvoiceMarkdown } from "src/lib/gemini";
+import { parseInvoiceImage, parseInvoiceMarkdown, parseInvoiceVisualFieldRepair } from "src/lib/gemini";
 import {
   getParserBatchExpirationDate,
   getParserBatchMaxFiles,
@@ -12,10 +12,12 @@ import {
   ParserAcceptedFile,
 } from "src/lib/helpers/parser-file";
 import { resolveParserPdfStrategy } from "src/lib/helpers/parser-pdf";
+import { getGeminiRepairFields, mergeGeminiRepairFields } from "src/lib/helpers/parser-repair";
 import { CompanyRepository } from "src/repositories/company.repository";
 import { ParserBatchRepository } from "src/repositories/parser-batch.repository";
 import { ParserBatchAsyncResponse, ParserBatchQueueJob, ParserBatchSingleResponse, ParserVoucherType } from "src/types/parser-batch";
 import { RawGeminiParsedVoucher } from "src/types/gemini-parser";
+import { CompanyNotificationService } from "./company-notification.service";
 import { ParserQueueService } from "./parser-queue.service";
 import { ParserResponseService } from "./parser-response.service";
 import { ParserStorageService } from "./parser-storage.service";
@@ -23,6 +25,16 @@ import { ParserStorageService } from "./parser-storage.service";
 interface PreparedParserPayload {
   strategy: "pdf-text" | "pdf-visual" | "image-visual";
   execute: () => Promise<RawGeminiParsedVoucher>;
+}
+
+function isTerminalParserItemStatus(status: string | undefined): boolean {
+  return status === "parsed"
+    || status === "expired"
+    || status === "duplicate"
+    || status === "validated"
+    || status === "persisting"
+    || status === "persisted"
+    || status === "discarded";
 }
 
 function ensureParserFileLimit(files: ParserAcceptedFile[]): void {
@@ -49,6 +61,7 @@ export class VoucherParserService {
   private readonly queueService: ParserQueueService;
   private readonly responseService: ParserResponseService;
   private readonly storageService: ParserStorageService;
+  private readonly notificationService: CompanyNotificationService;
 
   constructor() {
     this.companyRepository = new CompanyRepository();
@@ -56,6 +69,7 @@ export class VoucherParserService {
     this.queueService = new ParserQueueService();
     this.responseService = new ParserResponseService();
     this.storageService = new ParserStorageService();
+    this.notificationService = new CompanyNotificationService();
   }
 
   private async getActiveCompanyCuit(companyId: string): Promise<string | undefined> {
@@ -68,10 +82,12 @@ export class VoucherParserService {
     voucherKind: ParserVoucherType,
     activeCompanyCuit?: string
   ): Promise<PreparedParserPayload> {
+    const base64Document = file.buffer.toString("base64");
+
     if (isParserImageMimeType(file.mimeType)) {
       return {
         strategy: "image-visual",
-        execute: () => parseInvoiceImage(file.buffer.toString("base64"), file.mimeType, { voucherKind, activeCompanyCuit }),
+        execute: () => parseInvoiceImage(base64Document, file.mimeType, { voucherKind, activeCompanyCuit }),
       };
     }
 
@@ -86,9 +102,23 @@ export class VoucherParserService {
         strategy: "pdf-text",
         execute: async () => {
           try {
-            return await parseInvoiceMarkdown(strategy.markdown as string, { voucherKind, activeCompanyCuit });
+            const markdownPayload = await parseInvoiceMarkdown(strategy.markdown as string, { voucherKind, activeCompanyCuit });
+            const repairFields = getGeminiRepairFields(markdownPayload);
+
+            if (repairFields.length === 0) {
+              return markdownPayload;
+            }
+
+            const repairedFields = await parseInvoiceVisualFieldRepair(
+              base64Document,
+              file.mimeType,
+              repairFields,
+              { voucherKind, activeCompanyCuit }
+            );
+
+            return mergeGeminiRepairFields(markdownPayload, repairFields, repairedFields);
           } catch {
-            return parseInvoiceImage(file.buffer.toString("base64"), file.mimeType, { voucherKind, activeCompanyCuit });
+            return parseInvoiceImage(base64Document, file.mimeType, { voucherKind, activeCompanyCuit });
           }
         },
       };
@@ -96,7 +126,7 @@ export class VoucherParserService {
 
     return {
       strategy: "pdf-visual",
-      execute: () => parseInvoiceImage(file.buffer.toString("base64"), file.mimeType, { voucherKind, activeCompanyCuit }),
+      execute: () => parseInvoiceImage(base64Document, file.mimeType, { voucherKind, activeCompanyCuit }),
     };
   }
 
@@ -223,16 +253,35 @@ export class VoucherParserService {
     return job;
   }
 
+  async recoverPendingItems(limit: number): Promise<number> {
+    const items = await this.batchRepository.listRecoverableItems(limit);
+
+    if (!items.length) {
+      return 0;
+    }
+
+    for (const item of items) {
+      const requeuedItem = await this.batchRepository.requeueItem(item.id);
+      await this.queueService.enqueue({
+        batchId: requeuedItem.batchId,
+        itemId: requeuedItem.id,
+      });
+    }
+
+    return items.length;
+  }
+
   async processItem(itemId: string): Promise<void> {
     const item = await this.batchRepository.findItemById(itemId);
 
-    if (!item || item.status === "parsed" || item.status === "expired") {
+    if (!item || isTerminalParserItemStatus(item.status)) {
       return;
     }
 
     if (isParserBatchExpired(item.expiresAt)) {
       await this.storageService.deleteFile(item.storagePath);
       await this.batchRepository.markItemExpired(item.id);
+
       return;
     }
 
@@ -262,6 +311,13 @@ export class VoucherParserService {
         { attemptNumber: nextAttempt }
       );
     }
+
+    const batch = await this.batchRepository.findBatchById(item.batch.companyId, item.batch.id);
+
+    if (!batch) {
+      return;
+    }
+    await this.notificationService.notifyBatchCompleted(batch);
   }
 
   async cleanupExpiredItems(limit: number): Promise<void> {

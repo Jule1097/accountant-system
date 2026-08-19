@@ -172,6 +172,13 @@ export function getVoucherFormattedAmount(currency: string, value: number): stri
   return `${currencyLabel} ${value.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+export function getVoucherFormattedExchangeRate(value: number): string {
+  return value.toLocaleString("es-AR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 4,
+  });
+}
+
 export function getVoucherFormattedDate(value?: Date | null): string {
   if (!value) {
     return "—";

@@ -72,6 +72,7 @@ export interface VoucherListQueryState {
 }
 
 export interface VoucherListItem {
+  rowKey: string
   voucher: Voucher
   composedVoucherId: string
   partyName: string | null
