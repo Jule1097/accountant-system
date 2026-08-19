@@ -1,16 +1,25 @@
 import { NextRequest } from 'next/server'
 import { POST } from '../app/api/vouchers/parse/route'
-import { parseInvoiceImage } from '../lib/gemini'
+import { parseInvoiceImage, parseInvoiceMarkdown, parseInvoiceVisualFieldRepair } from '../lib/gemini'
+import * as parserAuthHelpers from '../lib/helpers/parser-auth'
+import { resolveParserPdfStrategy } from '../lib/helpers/parser-pdf'
 import { CatalogRepository } from '../repositories/catalog.repository'
 import { ClientRepository } from '../repositories/client.repository'
 import { CompanyRepository } from '../repositories/company.repository'
 import { SupplierRepository } from '../repositories/supplier.repository'
+import { VoucherParserService } from '../services/voucher-parser.service'
 
 jest.mock('../lib/gemini')
 jest.mock('../repositories/client.repository')
 jest.mock('../repositories/supplier.repository')
 jest.mock('../repositories/company.repository')
 jest.mock('../repositories/catalog.repository')
+jest.mock('../lib/helpers/parser-pdf', () => ({
+  resolveParserPdfStrategy: jest.fn(),
+}))
+jest.mock('../lib/helpers/parser-auth', () => ({
+  getParserAuthenticatedUserId: jest.fn(),
+}))
 
 describe('Parser Route Handler', () => {
   const companyId = 'company-uuid'
@@ -23,6 +32,11 @@ describe('Parser Route Handler', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
+    ;(resolveParserPdfStrategy as jest.Mock).mockResolvedValue({
+      strategy: 'pdf-visual',
+      markdown: null,
+      pdfType: 'TextBased',
+    })
 
     CompanyRepository.prototype.findById = jest.fn().mockResolvedValue({
       id: companyId,
@@ -63,7 +77,16 @@ describe('Parser Route Handler', () => {
   it('should reject requests without file with 400', async () => {
     const request = {
       headers: { get: () => companyId },
-      formData: async () => ({ get: () => null }),
+      formData: async () => ({
+        get: (key: string) => {
+          if (key === 'voucherKind') {
+            return 'sale'
+          }
+
+          return null
+        },
+        getAll: () => [],
+      }),
     } as unknown as NextRequest
 
     const response = await POST(request)
@@ -75,18 +98,29 @@ describe('Parser Route Handler', () => {
     const request = {
       headers: { get: () => companyId },
       formData: async () => ({
-        get: () => ({
-          size: 3 * 1024 * 1024,
-          type: 'application/pdf',
-          name: 'large.pdf',
-          arrayBuffer: async () => new ArrayBuffer(8),
-        }),
+        get: (key: string) => {
+          if (key === 'voucherKind') {
+            return 'sale'
+          }
+
+          if (key === 'file') {
+            return {
+              size: 3 * 1024 * 1024,
+              type: 'application/pdf',
+              name: 'large.pdf',
+              arrayBuffer: async () => new ArrayBuffer(8),
+            }
+          }
+
+          return null
+        },
+        getAll: () => [],
       }),
     } as unknown as NextRequest
 
     const response = await POST(request)
     expect(response.status).toBe(400)
-    expect((await response.json()).error).toBe('El archivo excede el límite de 2MB')
+    expect((await response.json()).error).toBe('El archivo large.pdf excede el límite de 2MB para PDFs.')
   })
 
   it('should parse document and find the related third party in clients', async () => {
@@ -95,6 +129,7 @@ describe('Parser Route Handler', () => {
       number: '00000123',
       date: '2026-08-06',
       currency: '$',
+      exchangeRate: 1,
       subtotal: 100,
       vatAmount: 21,
       totalAmount: 121,
@@ -121,6 +156,7 @@ describe('Parser Route Handler', () => {
 
           return null
         },
+        getAll: () => [],
       }),
     } as unknown as NextRequest
 
@@ -139,6 +175,75 @@ describe('Parser Route Handler', () => {
     expect(body.thirdPartyCuit).toBe('30-22222222-9')
     expect(body.thirdPartyName).toBe('Test Client')
     expect(body.thirdPartyId).toBe('client-uuid-123')
+    expect(body.exchangeRate).toBe(1)
+  })
+
+  it('should repair only corrupted markdown text fields with visual parsing', async () => {
+    ;(resolveParserPdfStrategy as jest.Mock).mockResolvedValue({
+      strategy: 'pdf-text',
+      markdown: 'Factura A\nCliente: Aseguradora de Cr�ditos\nConcepto: Comisi�n mensual\nTotal: 121',
+      pdfType: 'TextBased',
+    })
+    ;(parseInvoiceMarkdown as jest.Mock).mockResolvedValue({
+      posNumber: '00002',
+      number: '00000123',
+      date: '2026-08-06',
+      currency: '$',
+      exchangeRate: 1,
+      subtotal: 100,
+      vatAmount: 21,
+      totalAmount: 121,
+      thirdPartyCuit: '30222222229',
+      thirdPartyName: 'Aseguradora de Cr�ditos',
+      concept: 'Comisi�n mensual',
+      voucherType: 'Factura',
+      voucherLetter: 'A',
+    })
+    ;(parseInvoiceVisualFieldRepair as jest.Mock).mockResolvedValue({
+      thirdPartyName: 'Aseguradora de Créditos',
+      concept: 'Comisión mensual',
+    })
+
+    ClientRepository.prototype.findByCuitAndCompany = jest.fn().mockResolvedValue({ id: 'client-uuid-123' })
+    SupplierRepository.prototype.findByCuitAndCompany = jest.fn().mockResolvedValue(null)
+
+    const request = {
+      headers: { get: () => companyId },
+      formData: async () => ({
+        get: (key: string) => {
+          if (key === 'file') {
+            return mockFile
+          }
+
+          if (key === 'voucherKind') {
+            return 'sale'
+          }
+
+          return null
+        },
+        getAll: () => [],
+      }),
+    } as unknown as NextRequest
+
+    const response = await POST(request)
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(parseInvoiceMarkdown).toHaveBeenCalled()
+    expect(parseInvoiceVisualFieldRepair).toHaveBeenCalledWith(
+      expect.any(String),
+      'application/pdf',
+      ['thirdPartyName', 'concept'],
+      expect.objectContaining({
+        activeCompanyCuit: '30-11111111-9',
+        voucherKind: 'sale',
+      })
+    )
+    expect(parseInvoiceImage).not.toHaveBeenCalled()
+    expect(body.thirdPartyName).toBe('Aseguradora de Créditos')
+    expect(body.concept).toBe('Comisión mensual')
+    expect(body.subtotal).toBe(100)
+    expect(body.vatAmount).toBe(21)
   })
 
   it('should nullify shared third party fields when CUIT matches the active company CUIT', async () => {
@@ -147,6 +252,7 @@ describe('Parser Route Handler', () => {
       number: '00000123',
       date: '2026-08-06',
       currency: '$',
+      exchangeRate: 1,
       subtotal: 100,
       vatAmount: 21,
       totalAmount: 121,
@@ -161,7 +267,20 @@ describe('Parser Route Handler', () => {
 
     const request = {
       headers: { get: () => companyId },
-      formData: async () => ({ get: () => mockFile }),
+      formData: async () => ({
+        get: (key: string) => {
+          if (key === 'voucherKind') {
+            return 'sale'
+          }
+
+          if (key === 'file') {
+            return mockFile
+          }
+
+          return null
+        },
+        getAll: () => [],
+      }),
     } as unknown as NextRequest
 
     const response = await POST(request)
@@ -179,6 +298,7 @@ describe('Parser Route Handler', () => {
       number: '00000123',
       date: '2026-08-06',
       currency: '$',
+      exchangeRate: 1,
       subtotal: 100,
       vatAmount: 21,
       nonTaxableAmount: 5,
@@ -207,7 +327,20 @@ describe('Parser Route Handler', () => {
 
     const request = {
       headers: { get: () => companyId },
-      formData: async () => ({ get: () => mockFile }),
+      formData: async () => ({
+        get: (key: string) => {
+          if (key === 'voucherKind') {
+            return 'sale'
+          }
+
+          if (key === 'file') {
+            return mockFile
+          }
+
+          return null
+        },
+        getAll: () => [],
+      }),
     } as unknown as NextRequest
 
     const response = await POST(request)
@@ -261,7 +394,20 @@ describe('Parser Route Handler', () => {
 
     const request = {
       headers: { get: () => companyId },
-      formData: async () => ({ get: () => mockFile }),
+      formData: async () => ({
+        get: (key: string) => {
+          if (key === 'voucherKind') {
+            return 'sale'
+          }
+
+          if (key === 'file') {
+            return mockFile
+          }
+
+          return null
+        },
+        getAll: () => [],
+      }),
     } as unknown as NextRequest
 
     const response = await POST(request)
@@ -272,8 +418,90 @@ describe('Parser Route Handler', () => {
     expect(body.thirdPartyCuit).toBeNull()
     expect(body.thirdPartyName).toBeNull()
     expect(body.thirdPartyId).toBeNull()
+    expect(body.exchangeRate).toBeNull()
     expect(body.vatDetails).toEqual([])
     expect(body.retentions).toEqual([])
     expect(body.perceptions).toEqual([])
+  })
+
+  it('should reject images exceeding 4MB with 400', async () => {
+    const request = {
+      headers: { get: () => companyId },
+      formData: async () => ({
+        get: (key: string) => {
+          if (key === 'voucherKind') {
+            return 'sale'
+          }
+
+          if (key === 'file') {
+            return {
+              size: 5 * 1024 * 1024,
+              type: 'image/png',
+              name: 'large.png',
+              arrayBuffer: async () => new ArrayBuffer(8),
+            }
+          }
+
+          return null
+        },
+        getAll: () => [],
+      }),
+    } as unknown as NextRequest
+
+    const response = await POST(request)
+    expect(response.status).toBe(400)
+    expect((await response.json()).error).toBe('El archivo large.png excede el límite de 4MB para imágenes.')
+  })
+
+  it('should create an async batch when more than one file is submitted', async () => {
+    jest.spyOn(parserAuthHelpers, 'getParserAuthenticatedUserId').mockResolvedValue('user-uuid')
+    jest.spyOn(VoucherParserService.prototype, 'createBatch').mockResolvedValue({
+      mode: 'batch',
+      batch: {
+        id: 'batch-uuid',
+        companyId,
+        createdByUserId: 'user-uuid',
+        voucherType: 'sale',
+        status: 'queued',
+        totalFiles: 2,
+        expiresAt: '2026-08-16T00:00:00.000Z',
+        createdAt: '2026-08-15T00:00:00.000Z',
+        updatedAt: '2026-08-15T00:00:00.000Z',
+        items: [],
+      },
+    })
+
+    const secondFile = {
+      size: 1000,
+      type: 'image/png',
+      name: 'invoice-2.png',
+      arrayBuffer: async () => new ArrayBuffer(8),
+    }
+    const request = {
+      headers: { get: () => companyId },
+      formData: async () => ({
+        get: (key: string) => {
+          if (key === 'voucherKind') {
+            return 'sale'
+          }
+
+          return null
+        },
+        getAll: (key: string) => {
+          if (key === 'files') {
+            return [mockFile, secondFile]
+          }
+
+          return []
+        },
+      }),
+    } as unknown as NextRequest
+
+    const response = await POST(request)
+    const body = await response.json()
+
+    expect(response.status).toBe(202)
+    expect(body.mode).toBe('batch')
+    expect(body.batch.id).toBe('batch-uuid')
   })
 })

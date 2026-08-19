@@ -1,6 +1,10 @@
 import { z } from 'zod'
 import { normalizeCuit } from 'src/lib/cuit'
 
+function isNonZeroVoucherValue(value: string): boolean {
+  return Number(value) > 0
+}
+
 export const cuitSchema = z
   .string()
   .min(10, 'El CUIT debe tener al menos 10 dígitos')
@@ -54,10 +58,12 @@ export const voucherSchema = z
     posNumber: z
       .string()
       .regex(/^\d+$/, 'El punto de venta debe contener solo números')
+      .refine(isNonZeroVoucherValue, 'El punto de venta debe ser mayor a cero')
       .transform((value) => value.padStart(5, '0')),
     number: z
       .string()
       .regex(/^\d+$/, 'El número de comprobante debe contener solo números')
+      .refine(isNonZeroVoucherValue, 'El número de comprobante debe ser mayor a cero')
       .transform((value) => value.padStart(8, '0')),
     clientId: z.string().uuid('ID de cliente inválido').nullable().optional(),
     supplierId: z.string().uuid('ID de proveedor inválido').nullable().optional(),
@@ -139,3 +145,23 @@ export const voucherSchema = z
       accountingPeriod,
     }
   })
+
+export const voucherListQuerySchema = z.object({
+  type: z.enum(['sale', 'purchase']),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().refine((value) => [10, 20, 50].includes(value)).default(10),
+  search: z.string().trim().optional(),
+  status: z.enum(['pending', 'partial', 'paid']).optional(),
+  dateFrom: z.coerce.date().optional(),
+  dateTo: z.coerce.date().optional(),
+  sortBy: z.enum(['date', 'status', 'voucher']).default('date'),
+  sortOrder: z.enum(['asc', 'desc']).default('desc'),
+})
+
+export const voucherSummaryQuerySchema = voucherListQuerySchema.omit({
+  page: true,
+  pageSize: true,
+}).extend({
+  page: z.coerce.number().int().min(1).optional(),
+  pageSize: z.coerce.number().int().optional(),
+})

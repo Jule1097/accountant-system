@@ -1,64 +1,31 @@
 "use client";
 
-import { use } from "react";
-import { Voucher } from "src/models/Voucher";
+import { VoucherSummaryResponse } from "src/types/voucher";
 
-export function SalesKpiCards({ promise }: { promise: Promise<Voucher[]> | null }) {
-  if (!promise) return null;
-  const vouchers = use(promise);
-  
-  const now = new Date();
-  const currentMonth = now.getMonth();
-  const currentYear = now.getFullYear();
-
-  const thisMonthVouchers = vouchers.filter((v: Voucher) => {
-    const d = new Date(v.date);
-    return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-  });
-
-  const count = thisMonthVouchers.length;
-  
-  const total = thisMonthVouchers.reduce((acc: number, v: Voucher) => acc + Number(v.totalAmount), 0);
-
-  const clientTotals = thisMonthVouchers.reduce((acc: Record<string, number>, v: Voucher) => {
-    if (v.client?.name) {
-      acc[v.client.name] = (acc[v.client.name] || 0) + Number(v.totalAmount);
-    }
-    return acc;
-  }, {} as Record<string, number>);
-
-  let topClient = "N/A";
-  let maxClientTotal = 0;
-  Object.entries(clientTotals).forEach(([name, amount]) => {
-    if (amount > maxClientTotal) {
-      maxClientTotal = amount;
-      topClient = name;
-    }
-  });
-
+export function SalesKpiCards({ summary }: { summary: VoucherSummaryResponse }) {
   return (
     <div className="grid gap-4 md:grid-cols-3 mb-6">
       <div className="flex flex-col gap-3 rounded-xl bg-card p-[18px] border border-border/50">
         <div className="text-xs font-medium text-muted-foreground tracking-wide">
-          Comprobantes del Mes
+          Comprobantes Filtrados
         </div>
         <div className="text-2xl font-mono font-medium text-foreground">
-          {count} facturas
+          {summary.totalCount} facturas
         </div>
         <div className="text-[11px] text-muted-foreground">
-          Total cargados en el período actual
+          Total de ventas dentro de la búsqueda actual
         </div>
       </div>
-      
+
       <div className="flex flex-col gap-3 rounded-xl bg-card p-[18px] border border-border/50">
         <div className="text-xs font-medium text-muted-foreground tracking-wide">
           Mayor Cliente
         </div>
         <div className="text-2xl font-mono font-medium text-foreground truncate">
-          {topClient}
+          {summary.topPartyName || "N/D"}
         </div>
         <div className="text-[11px] text-muted-foreground">
-          Mayor volumen de facturación
+          Mayor volumen dentro del resultado filtrado
         </div>
       </div>
 
@@ -67,10 +34,10 @@ export function SalesKpiCards({ promise }: { promise: Promise<Voucher[]> | null 
           Total Facturado
         </div>
         <div className="text-2xl font-mono font-medium text-foreground">
-          $ {total.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          $ {summary.totalAmount.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </div>
         <div className="text-[11px] text-muted-foreground">
-          Mes actual (neto)
+          Sumatoria del conjunto filtrado completo
         </div>
       </div>
     </div>

@@ -1,53 +1,19 @@
 "use client";
 
-import { Suspense, use } from "react";
-import { VoucherDetailModal } from "src/components/vouchers/voucher-detail-modal";
 import { VoucherDeleteDialog } from "src/components/vouchers/voucher-delete-dialog";
+import { VoucherDetailModal } from "src/components/vouchers/voucher-detail-modal";
 import { VoucherModal } from "src/components/vouchers/voucher-modal";
+import { PurchasesKpiCards } from "src/components/vouchers/purchases-kpi-cards";
+import { SalesKpiCards } from "src/components/vouchers/sales-kpi-cards";
 import { VoucherSkeleton } from "src/components/vouchers/voucher-skeleton";
 import { VoucherTable } from "src/components/vouchers/voucher-table";
 import { useVoucherManagement } from "src/hooks/use-voucher-management";
-import { Voucher } from "src/models/Voucher";
 import { VoucherScreenType } from "src/types/voucher";
-import { SalesKpiCards } from "src/components/vouchers/sales-kpi-cards";
-import { PurchasesKpiCards } from "src/components/vouchers/purchases-kpi-cards";
 
 interface VoucherManagementViewProps {
   type: VoucherScreenType;
   title: string;
   description: string;
-}
-
-interface VoucherTableContainerProps {
-  promise: Promise<Voucher[]> | null;
-  type: VoucherScreenType;
-  onAdd: () => void;
-  onSelectVoucher: (voucher: Voucher) => void;
-  onDeleteVoucher: (voucher: Voucher) => void;
-}
-
-function VoucherTableContainer({
-  promise,
-  type,
-  onAdd,
-  onSelectVoucher,
-  onDeleteVoucher,
-}: VoucherTableContainerProps) {
-  if (!promise) {
-    return null;
-  }
-
-  const vouchers = use(promise);
-
-  return (
-    <VoucherTable
-      data={vouchers}
-      type={type}
-      onAdd={onAdd}
-      onSelectVoucher={onSelectVoucher}
-      onDeleteVoucher={onDeleteVoucher}
-    />
-  );
 }
 
 export function VoucherManagementView({ type, title, description }: VoucherManagementViewProps) {
@@ -56,8 +22,15 @@ export function VoucherManagementView({ type, title, description }: VoucherManag
     isDeleting,
     voucherId,
     voucherPendingDelete,
-    vouchersPromise,
-    voucherDetailPromise,
+    query,
+    searchValue,
+    isTableLoading,
+    isSummaryLoading,
+    vouchersData,
+    summaryData,
+    voucherDetail,
+    voucherDetailError,
+    isVoucherDetailLoading,
     openCreateModal,
     handleCreateModalOpenChange,
     handleEditModalOpenChange,
@@ -67,6 +40,13 @@ export function VoucherManagementView({ type, title, description }: VoucherManag
     handleDeleteVoucher,
     handleDeleteDialogOpenChange,
     handleVoucherDetailError,
+    handleSearchChange,
+    handleClearFilters,
+    handleStatusChange,
+    handleDateRangeChange,
+    handleSortChange,
+    handlePageChange,
+    handlePageSizeChange,
     confirmVoucherDelete,
   } = useVoucherManagement(type);
 
@@ -75,33 +55,42 @@ export function VoucherManagementView({ type, title, description }: VoucherManag
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-[38px] font-mono font-normal tracking-[-1px] text-foreground leading-none">{title}</h2>
-          <p className="text-sm text-muted-foreground mt-2">{description}</p>
+          <p className="mt-2 text-sm text-muted-foreground">{description}</p>
         </div>
       </div>
 
-      <Suspense fallback={
+      {isSummaryLoading || !summaryData ? (
         <div className="grid gap-4 md:grid-cols-3 mb-6">
           <div className="h-[104px] rounded-xl bg-card animate-pulse border border-border/50" />
           <div className="h-[104px] rounded-xl bg-card animate-pulse border border-border/50" />
           <div className="h-[104px] rounded-xl bg-card animate-pulse border border-border/50" />
         </div>
-      }>
-        {type === "sales" ? (
-          <SalesKpiCards promise={vouchersPromise} />
-        ) : (
-          <PurchasesKpiCards promise={vouchersPromise} />
-        )}
-      </Suspense>
+      ) : type === "sales" ? (
+        <SalesKpiCards summary={summaryData} />
+      ) : (
+        <PurchasesKpiCards summary={summaryData} />
+      )}
 
-      <Suspense fallback={<VoucherSkeleton />}>
-        <VoucherTableContainer
-          promise={vouchersPromise}
+      {isTableLoading || !vouchersData ? (
+        <VoucherSkeleton />
+      ) : (
+        <VoucherTable
+          data={vouchersData}
+          query={query}
+          searchValue={searchValue}
           type={type}
           onAdd={openCreateModal}
           onSelectVoucher={handleSelectVoucher}
           onDeleteVoucher={handleDeleteVoucher}
+          onSearchChange={handleSearchChange}
+          onClearFilters={handleClearFilters}
+          onStatusChange={handleStatusChange}
+          onDateRangeChange={handleDateRangeChange}
+          onSortChange={handleSortChange}
+          onPageChange={handlePageChange}
+          onPageSizeChange={handlePageSizeChange}
         />
-      </Suspense>
+      )}
 
       <VoucherModal
         isOpen={isCreateModalOpen}
@@ -113,7 +102,9 @@ export function VoucherManagementView({ type, title, description }: VoucherManag
 
       <VoucherDetailModal
         voucherId={voucherId}
-        promise={voucherDetailPromise}
+        voucher={voucherDetail}
+        error={voucherDetailError}
+        isLoading={isVoucherDetailLoading}
         type={type}
         onOpenChange={handleEditModalOpenChange}
         onSuccess={handleEditSuccess}

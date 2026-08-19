@@ -1,0 +1,49 @@
+services:
+  web:
+    build:
+      context: .
+      target: development
+    command: pnpm exec next dev --hostname 0.0.0.0 --port 3000
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: ${DATABASE_URL}
+      DIRECT_URL: ${DIRECT_URL}
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      VOUCHER_PARSER_TEMP_BUCKET: ${VOUCHER_PARSER_TEMP_BUCKET}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      UPSTASH_REDIS_REST_URL: ${UPSTASH_REDIS_REST_URL}
+      UPSTASH_REDIS_REST_TOKEN: ${UPSTASH_REDIS_REST_TOKEN}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
+    volumes:
+      - .:/app
+      - pnpm-store:/pnpm/store
+      - node-modules:/app/node_modules
+
+  worker:
+    build:
+      context: .
+      target: development
+    command: pnpm dev:worker
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: ${DATABASE_URL}
+      DIRECT_URL: ${DIRECT_URL}
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      VOUCHER_PARSER_TEMP_BUCKET: ${VOUCHER_PARSER_TEMP_BUCKET}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      UPSTASH_REDIS_REST_URL: ${UPSTASH_REDIS_REST_URL}
+      UPSTASH_REDIS_REST_TOKEN: ${UPSTASH_REDIS_REST_TOKEN}
+    volumes:
+      - .:/app
+      - pnpm-store:/pnpm/store
+      - node-modules:/app/node_modules
+
+volumes:
+  pnpm-store:
+  node-modules:

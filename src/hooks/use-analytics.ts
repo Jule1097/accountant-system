@@ -1,23 +1,22 @@
 "use client"
 
-import { useMemo } from 'react'
+import useSWR from 'swr'
 import { useCompany } from 'src/contexts/company-context'
-import { apiRequest } from 'src/lib/api-client'
-import { UseAnalyticsResult, AnalyticsData } from 'src/types/analytics'
+import { buildCompanyPathKey, companyPathFetcher } from 'src/lib/helpers/swr'
+import { AnalyticsData } from 'src/types/analytics'
 
-export function useAnalytics(): UseAnalyticsResult {
+export function useAnalytics() {
   const { activeCompanyId } = useCompany()
-
-  const promise = useMemo(() => {
-    if (!activeCompanyId) {
-      return null
-    }
-    return apiRequest('/api/analytics')
-      .then((res) => res.json() as Promise<AnalyticsData>)
-  }, [activeCompanyId])
+  const key = buildCompanyPathKey(activeCompanyId, '/api/analytics')
+  const { data, error, isLoading, mutate } = useSWR(
+    key,
+    ([companyId, path]) => companyPathFetcher<AnalyticsData>(companyId, path)
+  )
 
   return {
-    promise
+    data,
+    error,
+    isLoading,
+    mutate,
   }
 }
-

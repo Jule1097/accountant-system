@@ -58,7 +58,9 @@ describe('Zod Validation Schemas', () => {
       if (result.success) {
         expect(result.data.posNumber).toBe('00001')
         expect(result.data.number).toBe('00000123')
-        expect(result.data.accountingPeriod.toISOString()).toContain('2026-07-01')
+        expect(result.data.accountingPeriod.getFullYear()).toBe(2026)
+        expect(result.data.accountingPeriod.getMonth()).toBe(6)
+        expect(result.data.accountingPeriod.getDate()).toBe(1)
       }
     })
 
@@ -112,6 +114,16 @@ describe('Zod Validation Schemas', () => {
         type: 'purchase',
         supplierId: validUuid,
         retentions: [{ retentionConceptId: validUuid, amount: 10 }],
+      }).success).toBe(false)
+    })
+
+    it('should reject zeroed voucher identifiers', () => {
+      expect(voucherSchema.safeParse({
+        ...baseVoucher,
+        type: 'purchase',
+        supplierId: validUuid,
+        posNumber: '00000',
+        number: '00000000',
       }).success).toBe(false)
     })
 

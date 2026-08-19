@@ -18,6 +18,7 @@
         "name": "next"
       }
     ],
+    "baseUrl": ".",
     "paths": {
       "src/*": ["./src/*"]
     }
@@ -30,5 +31,5 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "src/__tests__", "**/*.test.ts", "**/*.test.tsx"]
 }

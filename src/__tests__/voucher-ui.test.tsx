@@ -1,17 +1,19 @@
 /** @jest-environment jsdom */
 
 import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { VoucherManagementView } from 'src/components/vouchers/voucher-management-view'
 import { VoucherModalPerceptions } from 'src/components/vouchers/voucher-modal-perceptions'
 import { useVoucherForm, VoucherFormValues } from 'src/hooks/use-voucher-form'
 import { ApiRequestError } from 'src/lib/api-client'
 import { Voucher } from 'src/models/Voucher'
+import { VoucherListResponse, VoucherSummaryResponse } from 'src/types/voucher'
 
 const toastAdd = jest.fn()
 const apiRequestMock = jest.fn()
 const useVouchersMock = jest.fn()
+const useVoucherSummaryMock = jest.fn()
 const useVoucherByIdMock = jest.fn()
 const replaceMock = jest.fn()
 const searchParamsState = {
@@ -52,8 +54,15 @@ jest.mock('src/hooks/use-auth', () => ({
   }),
 }))
 
+jest.mock('src/contexts/company-context', () => ({
+  useCompany: () => ({
+    activeCompanyId: '123e4567-e89b-12d3-a456-426614174011',
+  }),
+}))
+
 jest.mock('src/hooks/use-vouchers', () => ({
   useVouchers: (...args: unknown[]) => useVouchersMock(...args),
+  useVoucherSummary: (...args: unknown[]) => useVoucherSummaryMock(...args),
   useVoucherById: (...args: unknown[]) => useVoucherByIdMock(...args),
 }))
 
@@ -64,7 +73,7 @@ jest.mock('src/components/vouchers/voucher-table', () => ({
     onSelectVoucher,
     onDeleteVoucher,
   }: {
-    data: Voucher[]
+    data: VoucherListResponse
     onAdd: () => void
     onSelectVoucher: (voucher: Voucher) => void
     onDeleteVoucher: (voucher: Voucher) => void
@@ -73,13 +82,13 @@ jest.mock('src/components/vouchers/voucher-table', () => ({
       <button type="button" onClick={onAdd}>
         Agregar
       </button>
-      {data.map((voucher) => (
-        <div key={voucher.id}>
-          <button type="button" onClick={() => onSelectVoucher(voucher)}>
-            Seleccionar {voucher.id}
+      {data?.items?.map((item) => (
+        <div key={item.voucher.id}>
+          <button type="button" onClick={() => onSelectVoucher(item.voucher)}>
+            Seleccionar {item.voucher.id}
           </button>
-          <button type="button" onClick={() => onDeleteVoucher(voucher)}>
-            Eliminar {voucher.id}
+          <button type="button" onClick={() => onDeleteVoucher(item.voucher)}>
+            Eliminar {item.voucher.id}
           </button>
         </div>
       ))}
@@ -89,13 +98,6 @@ jest.mock('src/components/vouchers/voucher-table', () => ({
 
 const { VoucherTable: RealVoucherTable } = jest.requireActual('src/components/vouchers/voucher-table') as {
   VoucherTable: typeof import('src/components/vouchers/voucher-table').VoucherTable
-}
-
-function createFulfilledPromise<T>(value: T): Promise<T> & { status: 'fulfilled'; value: T } {
-  const promise = Promise.resolve(value) as Promise<T> & { status: 'fulfilled'; value: T }
-  promise.status = 'fulfilled'
-  promise.value = value
-  return promise
 }
 
 jest.mock('src/components/vouchers/voucher-modal', () => ({
@@ -119,43 +121,35 @@ jest.mock('src/components/vouchers/voucher-modal', () => ({
 jest.mock('src/components/vouchers/voucher-detail-modal', () => ({
   VoucherDetailModal: ({
     voucherId,
-    promise,
+    voucher,
+    error,
+    isLoading,
     onLoadError,
   }: {
     voucherId: string | null
-    promise: Promise<Voucher> | null
+    voucher?: Voucher
+    error?: unknown
+    isLoading?: boolean
     onLoadError: (error: unknown) => void
   }) => {
-    const [, forceUpdate] = useState(0)
-
     useEffect(() => {
-      if (!promise) {
+      if (!error) {
         return
       }
-
-      promise
-        .then(() => {
-          forceUpdate((x: number) => x + 1)
-        })
-        .catch(onLoadError)
-    }, [forceUpdate, onLoadError, promise])
+      onLoadError(error)
+    }, [error, onLoadError])
 
     if (!voucherId) {
       return null
     }
 
-    if (!promise) {
+    if (isLoading || !voucher) {
       return <div data-testid="edit-modal">open|loading|none</div>
-    }
-
-    const resolvedPromise = promise as Promise<Voucher> & {
-      status?: 'fulfilled'
-      value?: Voucher
     }
 
     return (
       <div data-testid="edit-modal">
-        open|{resolvedPromise.status === 'fulfilled' ? 'idle' : 'loading'}|{resolvedPromise.value?.id ?? 'none'}
+        open|idle|{voucher.id ?? 'none'}
       </div>
     )
   },
@@ -191,6 +185,7 @@ function createBaseFormValues(): VoucherFormValues {
     thirdPartyId: '123e4567-e89b-12d3-a456-426614174002',
     thirdPartyCuit: '30-11111111-9',
     currency: '$',
+    exchangeRate: 1,
     subtotal: 100,
     vatAmount: 21,
     nonTaxableAmount: 0,
@@ -296,12 +291,37 @@ function createVoucher(overrides: Record<string, unknown> = {}) {
   })
 }
 
+function createVoucherListResponse(vouchers: Voucher[]): VoucherListResponse {
+  return {
+    items: vouchers.map((voucher) => ({
+      rowKey: voucher.id || `${voucher.posNumber}-${voucher.number}`,
+      voucher,
+      composedVoucherId: `${voucher.posNumber}-${voucher.number}`,
+      partyName: voucher.client?.name || voucher.supplier?.name || null,
+      partyCuit: voucher.client?.cuit || voucher.supplier?.cuit || null,
+    })),
+    page: 1,
+    pageSize: 10,
+    total: vouchers.length,
+    totalPages: 1,
+  }
+}
+
+function createVoucherSummaryResponse(): VoucherSummaryResponse {
+  return {
+    totalCount: 1,
+    totalAmount: 136,
+    topPartyName: 'Proveedor Uno',
+  }
+}
+
 describe('Voucher UI', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     searchParamsState.value = ''
-    useVouchersMock.mockReturnValue({ promise: createFulfilledPromise([]) })
-    useVoucherByIdMock.mockReturnValue({ promise: null })
+    useVouchersMock.mockReturnValue({ data: createVoucherListResponse([]), isLoading: false, mutate: jest.fn() })
+    useVoucherSummaryMock.mockReturnValue({ data: createVoucherSummaryResponse(), isLoading: false, mutate: jest.fn() })
+    useVoucherByIdMock.mockReturnValue({ data: undefined, isLoading: false, error: undefined, mutate: jest.fn() })
   })
 
   it('shows a jurisdiction select for IIBB perceptions', async () => {
@@ -325,26 +345,136 @@ describe('Voucher UI', () => {
 
     render(
       <RealVoucherTable
-        data={[voucher]}
+        data={createVoucherListResponse([voucher])}
+        query={{ page: 1, pageSize: 10, sortBy: 'date', sortOrder: 'desc', voucherId: null }}
+        searchValue=""
         type="purchases"
         onAdd={onAdd}
         onSelectVoucher={onSelectVoucher}
         onDeleteVoucher={onDeleteVoucher}
+        onSearchChange={jest.fn()}
+        onClearFilters={jest.fn()}
+        onStatusChange={jest.fn()}
+        onDateRangeChange={jest.fn()}
+        onSortChange={jest.fn()}
+        onPageChange={jest.fn()}
+        onPageSizeChange={jest.fn()}
       />
     )
 
     expect(screen.getByText('Letra')).toBeInTheDocument()
-    expect(screen.getByText('Comprobante')).toBeInTheDocument()
+    expect(screen.getAllByText('Comprobante')[0]).toBeInTheDocument()
     expect(screen.getByText('Concepto')).toBeInTheDocument()
     expect(screen.getByText('Medio Pago')).toBeInTheDocument()
+    expect(screen.getByText('T/C')).toBeInTheDocument()
     expect(screen.getByText('Percepciones')).toBeInTheDocument()
     expect(screen.getByText(/15,00/)).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Mostrar comprobantes por página' })).toHaveValue('10')
 
     fireEvent.click(screen.getByRole('button', { name: '00001-00000123' }))
     fireEvent.click(screen.getByRole('button', { name: 'Eliminar comprobante' }))
 
     expect(onSelectVoucher).toHaveBeenCalledWith(voucher)
     expect(onDeleteVoucher).toHaveBeenCalledWith(voucher)
+  })
+
+  it('forwards voucher search input changes immediately to the hook layer', () => {
+    const onSearchChange = jest.fn()
+    const voucher = createVoucher()
+
+    render(
+      <RealVoucherTable
+        data={createVoucherListResponse([voucher])}
+        query={{ page: 1, pageSize: 10, sortBy: 'date', sortOrder: 'desc', voucherId: null }}
+        searchValue=""
+        type="purchases"
+        onAdd={jest.fn()}
+        onSelectVoucher={jest.fn()}
+        onDeleteVoucher={jest.fn()}
+        onSearchChange={onSearchChange}
+        onClearFilters={jest.fn()}
+        onStatusChange={jest.fn()}
+        onDateRangeChange={jest.fn()}
+        onSortChange={jest.fn()}
+        onPageChange={jest.fn()}
+        onPageSizeChange={jest.fn()}
+      />
+    )
+
+    fireEvent.change(screen.getByPlaceholderText('Buscar por nombre, CUIT...'), { target: { value: 'Proveedor' } })
+
+    expect(onSearchChange).toHaveBeenCalledWith('Proveedor')
+  })
+
+  it('applies date filters only when both dates are present', async () => {
+    const onDateRangeChange = jest.fn()
+    const voucher = createVoucher()
+    const { container } = render(
+      <RealVoucherTable
+        data={createVoucherListResponse([voucher])}
+        query={{ page: 1, pageSize: 10, sortBy: 'date', sortOrder: 'desc', voucherId: null }}
+        searchValue=""
+        type="purchases"
+        onAdd={jest.fn()}
+        onSelectVoucher={jest.fn()}
+        onDeleteVoucher={jest.fn()}
+        onSearchChange={jest.fn()}
+        onClearFilters={jest.fn()}
+        onStatusChange={jest.fn()}
+        onDateRangeChange={onDateRangeChange}
+        onSortChange={jest.fn()}
+        onPageChange={jest.fn()}
+        onPageSizeChange={jest.fn()}
+      />
+    )
+
+    const [dateFromInput, dateToInput] = Array.from(container.querySelectorAll('input[type="date"]'))
+
+    fireEvent.change(dateFromInput, { target: { value: '2026-08-01' } })
+
+    expect(onDateRangeChange).not.toHaveBeenCalled()
+
+    fireEvent.change(dateToInput, { target: { value: '2026-08-14' } })
+
+    await waitFor(() => {
+      expect(onDateRangeChange).toHaveBeenCalledWith('2026-08-01', '2026-08-14')
+    })
+  })
+
+  it('shows direct page shortcuts for pagination jumps', () => {
+    const onPageChange = jest.fn()
+    const voucher = createVoucher()
+
+    render(
+      <RealVoucherTable
+        data={{
+          ...createVoucherListResponse([voucher]),
+          page: 5,
+          pageSize: 10,
+          total: 120,
+          totalPages: 12,
+        }}
+        query={{ page: 5, pageSize: 10, sortBy: 'date', sortOrder: 'desc', voucherId: null }}
+        searchValue=""
+        type="purchases"
+        onAdd={jest.fn()}
+        onSelectVoucher={jest.fn()}
+        onDeleteVoucher={jest.fn()}
+        onSearchChange={jest.fn()}
+        onClearFilters={jest.fn()}
+        onStatusChange={jest.fn()}
+        onDateRangeChange={jest.fn()}
+        onSortChange={jest.fn()}
+        onPageChange={onPageChange}
+        onPageSizeChange={jest.fn()}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: '1' }))
+    fireEvent.click(screen.getByRole('button', { name: '12' }))
+
+    expect(onPageChange).toHaveBeenCalledWith(1)
+    expect(onPageChange).toHaveBeenCalledWith(12)
   })
 
   it('persists voucher creation and closes the modal on success', async () => {
@@ -524,14 +654,9 @@ describe('Voucher UI', () => {
   it('opens the edit modal from voucherId and hydrates the selected voucher when the request finishes', async () => {
     const voucher = createVoucher({ id: 'voucher-detail-id' })
 
-    let resolvePromise!: (value: Voucher) => void
-    const voucherPromise = new Promise<Voucher>((resolve) => {
-      resolvePromise = resolve
-    }) as Promise<Voucher> & { status?: 'fulfilled'; value?: Voucher }
-
     searchParamsState.value = 'voucherId=voucher-detail-id'
-    useVouchersMock.mockReturnValue({ promise: createFulfilledPromise([voucher]) })
-    useVoucherByIdMock.mockReturnValue({ promise: voucherPromise })
+    useVouchersMock.mockReturnValue({ data: createVoucherListResponse([voucher]), isLoading: false, mutate: jest.fn() })
+    useVoucherByIdMock.mockReturnValue({ data: voucher, isLoading: false, error: undefined, mutate: jest.fn() })
 
     render(
       <VoucherManagementView
@@ -541,14 +666,6 @@ describe('Voucher UI', () => {
       />
     )
 
-    expect(screen.getByTestId('edit-modal')).toHaveTextContent('open|loading|none')
-
-    await act(async () => {
-      voucherPromise.status = 'fulfilled'
-      voucherPromise.value = voucher
-      resolvePromise(voucher)
-    })
-
     await waitFor(() => {
       expect(screen.getByTestId('edit-modal')).toHaveTextContent('open|idle|voucher-detail-id')
     })
@@ -556,9 +673,12 @@ describe('Voucher UI', () => {
 
   it('shows an error toast and clears the voucherId query param when detail fetch fails', async () => {
     searchParamsState.value = 'voucherId=missing-voucher-id'
-    useVouchersMock.mockReturnValue({ promise: createFulfilledPromise([]) })
+    useVouchersMock.mockReturnValue({ data: createVoucherListResponse([]), isLoading: false, mutate: jest.fn() })
     useVoucherByIdMock.mockReturnValue({
-      promise: Promise.reject(new ApiRequestError('Comprobante no existe.', 404, { error: 'Comprobante no existe.' })),
+      data: undefined,
+      isLoading: false,
+      error: new ApiRequestError('Comprobante no existe.', 404, { error: 'Comprobante no existe.' }),
+      mutate: jest.fn(),
     })
 
     render(
@@ -586,8 +706,8 @@ describe('Voucher UI', () => {
     const voucher = createVoucher({ id: 'voucher-delete-id' })
 
     searchParamsState.value = 'voucherId=voucher-delete-id'
-    useVouchersMock.mockReturnValue({ promise: createFulfilledPromise([voucher]) })
-    useVoucherByIdMock.mockReturnValue({ promise: createFulfilledPromise(voucher) })
+    useVouchersMock.mockReturnValue({ data: createVoucherListResponse([voucher]), isLoading: false, mutate: jest.fn() })
+    useVoucherByIdMock.mockReturnValue({ data: voucher, isLoading: false, error: undefined, mutate: jest.fn() })
     apiRequestMock.mockImplementation((path: string, options?: RequestInit) => {
       if (path === '/api/vouchers/voucher-delete-id' && options?.method === 'DELETE') {
         return Promise.resolve({

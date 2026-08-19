@@ -1,6 +1,6 @@
 "use client";
 
-import { Component, ReactNode, Suspense, useMemo, use } from "react";
+import { Suspense, use, useEffect } from "react";
 import { VoucherModalLoading, VoucherModalReady } from "src/components/vouchers/voucher-modal";
 import { VoucherFormOptionsData, useVoucherFormOptions } from "src/hooks/use-voucher-form-options";
 import { Voucher } from "src/models/Voucher";
@@ -8,73 +8,33 @@ import { VoucherModalMode, VoucherScreenType } from "src/types/voucher";
 
 interface VoucherDetailModalProps {
   voucherId: string | null;
-  promise: Promise<Voucher> | null;
+  voucher: Voucher | undefined;
+  error: unknown;
+  isLoading: boolean;
   type: VoucherScreenType;
   onOpenChange: (open: boolean) => void;
-  onSuccess: (voucher: Voucher, mode: VoucherModalMode) => void;
+  onSuccess: (voucher: Voucher, mode: VoucherModalMode) => Promise<void>;
   onLoadError: (error: unknown) => void;
 }
 
-interface VoucherDetailModalBoundaryProps {
-  children: ReactNode;
-  onError: (error: unknown) => void;
-  resetKey: string | null;
-}
-
-interface VoucherDetailModalBoundaryState {
-  hasError: boolean;
-}
-
-interface VoucherDetailModalResource {
-  voucher: Voucher;
-  options: VoucherFormOptionsData;
-}
-
-class VoucherDetailModalBoundary extends Component<
-  VoucherDetailModalBoundaryProps,
-  VoucherDetailModalBoundaryState
-> {
-  state: VoucherDetailModalBoundaryState = {
-    hasError: false,
-  };
-
-  static getDerivedStateFromError(): VoucherDetailModalBoundaryState {
-    return { hasError: true };
-  }
-
-  componentDidCatch(error: unknown): void {
-    this.props.onError(error);
-  }
-
-  componentDidUpdate(previousProps: VoucherDetailModalBoundaryProps): void {
-    if (previousProps.resetKey === this.props.resetKey || !this.state.hasError) {
-      return;
-    }
-
-    this.setState({ hasError: false });
-  }
-
-  render(): ReactNode {
-    if (this.state.hasError) {
-      return null;
-    }
-
-    return this.props.children;
-  }
-}
-
 function VoucherDetailModalContent({
-  resourcePromise,
+  voucher,
+  optionsPromise,
   type,
   onOpenChange,
   onSuccess,
 }: {
-  resourcePromise: Promise<VoucherDetailModalResource>;
+  voucher: Voucher;
+  optionsPromise: Promise<VoucherFormOptionsData> | null;
   type: VoucherScreenType;
   onOpenChange: (open: boolean) => void;
-  onSuccess: (voucher: Voucher, mode: VoucherModalMode) => void;
+  onSuccess: (voucher: Voucher, mode: VoucherModalMode) => Promise<void>;
 }) {
-  const resource = use(resourcePromise);
+  if (!optionsPromise) {
+    return null;
+  }
+
+  const options = use(optionsPromise);
 
   return (
     <VoucherModalReady
@@ -82,16 +42,18 @@ function VoucherDetailModalContent({
       onOpenChange={onOpenChange}
       type={type}
       mode="edit"
-      initialVoucher={resource.voucher}
+      initialVoucher={voucher}
       onSuccess={onSuccess}
-      options={resource.options}
+      options={options}
     />
   );
 }
 
 export function VoucherDetailModal({
   voucherId,
-  promise,
+  voucher,
+  error,
+  isLoading,
   type,
   onOpenChange,
   onSuccess,
@@ -99,19 +61,29 @@ export function VoucherDetailModal({
 }: VoucherDetailModalProps) {
   const { promise: optionsPromise } = useVoucherFormOptions({ isOpen: Boolean(voucherId), type });
 
-  const resourcePromise = useMemo(() => {
-    if (!voucherId || !promise || !optionsPromise) {
-      return null;
+  useEffect(() => {
+    if (!error) {
+      return;
     }
 
-    return Promise.all([promise, optionsPromise]).then(([voucher, options]) => ({
-      voucher,
-      options,
-    }));
-  }, [optionsPromise, promise, voucherId]);
+    onLoadError(error);
+  }, [error, onLoadError]);
 
-  if (!voucherId || !resourcePromise) {
+  if (!voucherId) {
     return null;
+  }
+
+  if (isLoading || !voucher) {
+    return (
+      <VoucherModalLoading
+        isOpen
+        onOpenChange={onOpenChange}
+        type={type}
+        mode="edit"
+        title="Cargando comprobante"
+        description="Estamos trayendo la información para editarla."
+      />
+    );
   }
 
   return (
@@ -122,19 +94,18 @@ export function VoucherDetailModal({
           onOpenChange={onOpenChange}
           type={type}
           mode="edit"
-          title="Cargando comprobante"
-          description="Estamos trayendo la información para editarla."
+          title="Cargando formulario"
+          description="Estamos preparando las opciones del comprobante."
         />
       }
     >
-      <VoucherDetailModalBoundary onError={onLoadError} resetKey={voucherId}>
-        <VoucherDetailModalContent
-          resourcePromise={resourcePromise}
-          type={type}
-          onOpenChange={onOpenChange}
-          onSuccess={onSuccess}
-        />
-      </VoucherDetailModalBoundary>
+      <VoucherDetailModalContent
+        voucher={voucher}
+        optionsPromise={optionsPromise}
+        type={type}
+        onOpenChange={onOpenChange}
+        onSuccess={onSuccess}
+      />
     </Suspense>
   );
 }

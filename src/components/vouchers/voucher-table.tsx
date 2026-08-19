@@ -1,5 +1,12 @@
 "use client";
 
+import type { ChangeEvent, MouseEvent } from "react";
+import { Download, Search, Trash2, X } from "lucide-react";
+import { useRef } from "react";
+
+import { Button } from "src/components/ui/button";
+import { Input } from "src/components/ui/input";
+import { PaginationControls } from "src/components/ui/pagination-controls";
 import {
   Table,
   TableBody,
@@ -8,225 +15,326 @@ import {
   TableHeader,
   TableRow,
 } from "src/components/ui/table";
-import { Button } from "src/components/ui/button";
-import { Input } from "src/components/ui/input";
-import { Search, Trash2, X, Filter, Download, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
-import { ChangeEvent, useState } from "react";
-import { Voucher } from "src/models/Voucher";
+import {
+  buildVoucherPageLabel,
+  getVoucherFormattedAmount,
+  getVoucherFormattedDate,
+  getVoucherFormattedExchangeRate,
+  getVoucherSortValue,
+  getVoucherStatusBadgeClassName,
+  getVoucherStatusLabel,
+  getVoucherTaxTotal,
+  voucherPageSizeOptions,
+} from "src/lib/helpers/voucher-management";
+import type { Voucher } from "src/models/Voucher";
+import type {
+  VoucherListItem,
+  VoucherListQueryState,
+  VoucherListResponse,
+  VoucherSortBy,
+  VoucherSortOrder,
+  VoucherScreenType,
+  VoucherStatus,
+} from "src/types/voucher";
 
-interface VoucherTableProps {
-  data: Voucher[];
-  type: "sales" | "purchases";
+type VoucherTableProps = {
+  data?: VoucherListResponse;
+  query: VoucherListQueryState;
+  searchValue: string;
+  type: VoucherScreenType;
   onAdd: () => void;
   onSelectVoucher: (voucher: Voucher) => void;
   onDeleteVoucher: (voucher: Voucher) => void;
-}
+  onSearchChange: (value: string) => void;
+  onClearFilters: () => void;
+  onStatusChange: (value: VoucherStatus | undefined) => void;
+  onDateRangeChange: (dateFrom: string, dateTo: string) => void;
+  onSortChange: (
+    sortBy: VoucherSortBy | undefined,
+    sortOrder: VoucherSortOrder | undefined,
+  ) => void;
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (pageSize: number) => void;
+};
 
-function getStatusBadge(status: string) {
-  switch (status) {
-    case "paid":
-      return (
-        <span className="inline-flex items-center rounded-full bg-[#22C55E18] px-2.5 py-1 text-[11px] font-medium text-[#22C55E]">
-          Pagado
-        </span>
-      );
-    case "partial":
-      return (
-        <span className="inline-flex items-center rounded-full bg-[#EAB30818] px-2.5 py-1 text-[11px] font-medium text-[#EAB308]">
-          Parcial
-        </span>
-      );
-    case "pending":
-      return (
-        <span className="inline-flex items-center rounded-full bg-[#FF5C0018] px-2.5 py-1 text-[11px] font-medium text-[#FF5C00]">
-          Pendiente
-        </span>
-      );
-    default:
-      return (
-        <span className="inline-flex items-center rounded-full bg-[#6B6B7018] px-2.5 py-1 text-[11px] font-medium text-[#6B6B70]">
-          {status}
-        </span>
-      );
-  }
-}
-
-function getFormattedAmount(currency: string, value: number) {
-  const currencyLabel = currency === "USD" ? "USD" : "$";
-  return `${currencyLabel} ${value.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
-function getFormattedDate(value?: Date | null) {
-  if (!value) {
-    return "—";
-  }
-
-  return new Date(value).toLocaleDateString("es-AR", { timeZone: "UTC" });
-}
-
-function getTaxTotal(voucher: Voucher, type: "sales" | "purchases") {
-  const list = type === "sales" ? voucher.retentions : voucher.perceptions;
-  return list.reduce((sum, item) => sum + Number(item.amount || 0), 0);
-}
-
-export function VoucherTable({ data, type, onAdd, onSelectVoucher, onDeleteVoucher }: VoucherTableProps) {
-  const [searchTerm, setSearchTerm] = useState("");
-  const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(event.target.value);
-  };
-
-  const filteredData = data.filter((item) => {
-    const name = type === "sales" ? item.client?.name : item.supplier?.name;
-    const cuit = type === "sales" ? item.client?.cuit : item.supplier?.cuit;
-
-    return (
-      (name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (cuit || "").includes(searchTerm) ||
-      `${item.posNumber}-${item.number}`.includes(searchTerm)
-    );
+export function VoucherTable({
+  data,
+  query,
+  searchValue,
+  type,
+  onAdd,
+  onSelectVoucher,
+  onDeleteVoucher,
+  onSearchChange,
+  onClearFilters,
+  onStatusChange,
+  onDateRangeChange,
+  onSortChange,
+  onPageChange,
+  onPageSizeChange,
+}: VoucherTableProps) {
+  const dateDraftRef = useRef({
+    dateFrom: query.dateFrom || "",
+    dateTo: query.dateTo || "",
   });
+
+  const vouchers: VoucherListItem[] = data?.items || [];
+  const currentPage = data?.page || query.page || 1;
+  const totalPages = data?.totalPages || 1;
+  const hasActiveFilters = Boolean(
+    query.search || query.status || query.dateFrom || query.dateTo,
+  );
+  const dateInputsKey = `${query.dateFrom || ""}-${query.dateTo || ""}`;
+
+  const updateDateRange = (dateFrom: string, dateTo: string) => {
+    dateDraftRef.current = { dateFrom, dateTo };
+
+    if (!dateFrom && !dateTo) {
+      onDateRangeChange("", "");
+      return;
+    }
+
+    if (!dateFrom || !dateTo) {
+      if (!query.dateFrom && !query.dateTo) {
+        return;
+      }
+
+      onDateRangeChange("", "");
+      return;
+    }
+
+    onDateRangeChange(dateFrom, dateTo);
+  };
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2">
-          <div className="relative w-[240px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por nombre, CUIT..."
-              className="pl-9 bg-card border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-[#FF5C00] h-9 text-sm"
-              value={searchTerm}
-              onChange={handleSearchChange}
-            />
+      <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 md:flex-row md:items-end md:justify-between">
+        <div className="grid flex-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
+          <div className="xl:col-span-2">
+            <label className="mb-2 block text-sm font-medium text-foreground">Buscar</label>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={searchValue}
+                placeholder="Buscar por nombre, CUIT..."
+                className="h-9 border-input bg-card pl-9 text-sm text-foreground placeholder:text-muted-foreground focus-visible:ring-[#FF5C00]"
+                onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                  onSearchChange(event.target.value)
+                }
+              />
+            </div>
           </div>
-          <Button variant="outline" size="sm" className="h-9 px-3 border-border bg-card text-foreground hover:bg-secondary">
-            <Filter className="mr-2 h-4 w-4 text-muted-foreground" />
-            Filtrar
-          </Button>
-          {searchTerm && (
-            <Button variant="ghost" onClick={() => setSearchTerm("")} className="h-9 px-2 lg:px-3 text-muted-foreground hover:text-foreground hover:bg-secondary">
-              Borrar
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-foreground">Estado</label>
+            <select
+              className="flex h-9 w-full rounded-md border border-input bg-card px-3 py-2 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#FF5C00]"
+              value={query.status || ""}
+              onChange={(event: ChangeEvent<HTMLSelectElement>) =>
+                onStatusChange(event.target.value ? (event.target.value as VoucherStatus) : undefined)
+              }
+            >
+              <option value="">Todos</option>
+              <option value="pending">Pendiente</option>
+              <option value="partial">Parcial</option>
+              <option value="paid">Pagado</option>
+            </select>
+          </div>
+
+          <div key={dateInputsKey} className="contents">
+            <div>
+              <label className="mb-2 block text-sm font-medium text-foreground">Desde</label>
+              <Input
+                type="date"
+                defaultValue={query.dateFrom || ""}
+                className="h-9 border-input bg-card text-sm text-foreground focus-visible:ring-[#FF5C00]"
+                onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                  updateDateRange(event.target.value, dateDraftRef.current.dateTo)
+                }
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-foreground">Hasta</label>
+              <Input
+                type="date"
+                defaultValue={query.dateTo || ""}
+                className="h-9 border-input bg-card text-sm text-foreground focus-visible:ring-[#FF5C00]"
+                onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                  updateDateRange(dateDraftRef.current.dateFrom, event.target.value)
+                }
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 md:justify-end">
+          {hasActiveFilters ? (
+            <Button
+              variant="outline"
+              className="h-9 border-input bg-card px-3 text-foreground hover:bg-muted hover:text-foreground"
+              onClick={onClearFilters}
+            >
+              Borrar filtros
               <X className="ml-2 h-4 w-4" />
             </Button>
-          )}
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="h-9 px-3 border-border bg-card text-foreground hover:bg-secondary">
-            <Download className="mr-2 h-4 w-4 text-muted-foreground" />
-            Exportar
-          </Button>
-          <Button size="sm" onClick={onAdd} className="h-9 bg-[#FF5C00] hover:bg-[#FF8A4C] text-primary-foreground">
-            Agregar {type === "sales" ? "Venta" : "Compra"}
-          </Button>
+          ) : null}
         </div>
       </div>
 
-      <div className="rounded-[12px] overflow-hidden bg-muted/40 border border-border">
+      <div className="overflow-hidden rounded-[12px] border border-border bg-card">
+        <div className="flex flex-col gap-3 border-b border-border px-4 py-3 md:flex-row md:items-center md:justify-between">
+          <div className="text-sm text-muted-foreground">
+            {data?.total ?? 0} comprobantes encontrados
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 md:justify-end">
+            <label className="text-sm text-muted-foreground" htmlFor="voucher-sort">
+              Ordenar por
+            </label>
+            <select
+              id="voucher-sort"
+              className="flex h-9 rounded-md border border-input bg-card px-3 py-2 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#FF5C00]"
+              value={getVoucherSortValue(query.sortBy, query.sortOrder)}
+              onChange={(event: ChangeEvent<HTMLSelectElement>) => {
+                const [sortBy, sortOrder] = event.target.value.split(":");
+                onSortChange(sortBy as VoucherSortBy, sortOrder as VoucherSortOrder);
+              }}
+            >
+              <option value="date:desc">Fecha (más reciente)</option>
+              <option value="date:asc">Fecha (más antigua)</option>
+              <option value="status:asc">Estado</option>
+              <option value="voucher:asc">Comprobante</option>
+            </select>
+            <Button
+              variant="outline"
+              className="h-9 border-input bg-card px-3 text-foreground hover:bg-muted"
+              type="button"
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Exportar
+            </Button>
+            <Button
+              onClick={onAdd}
+              className="h-9 bg-[#FF5C00] px-3 text-[#FFFFFF] hover:bg-[#FF8A4C]"
+            >
+              {`Agregar ${type === "sales" ? "Venta" : "Compra"}`}
+            </Button>
+          </div>
+        </div>
+
         <Table className="text-[13px] text-foreground">
-          <TableHeader className="bg-card">
+          <TableHeader className="bg-muted/30">
             <TableRow className="border-b-border hover:bg-transparent">
-              <TableHead className="text-muted-foreground font-semibold tracking-[0.5px] text-[11px]">Fecha</TableHead>
-              <TableHead className="text-muted-foreground font-semibold tracking-[0.5px] text-[11px]">Letra</TableHead>
-              <TableHead className="text-muted-foreground font-semibold tracking-[0.5px] text-[11px]">Comprobante</TableHead>
-              <TableHead className="text-muted-foreground font-semibold tracking-[0.5px] text-[11px]">{type === "sales" ? "Cliente" : "Proveedor"}</TableHead>
-              <TableHead className="text-muted-foreground font-semibold tracking-[0.5px] text-[11px]">CUIT</TableHead>
-              <TableHead className="text-muted-foreground font-semibold tracking-[0.5px] text-[11px]">Concepto</TableHead>
-              <TableHead className="text-muted-foreground font-semibold tracking-[0.5px] text-[11px]">Medio Pago</TableHead>
-              <TableHead className="text-muted-foreground font-semibold tracking-[0.5px] text-[11px]">Estado</TableHead>
-              <TableHead className="text-muted-foreground font-semibold tracking-[0.5px] text-[11px]">F. Pago</TableHead>
-              <TableHead className="text-muted-foreground font-semibold tracking-[0.5px] text-[11px]">{type === "sales" ? "Retenciones" : "Percepciones"}</TableHead>
-              <TableHead className="text-right text-muted-foreground font-semibold tracking-[0.5px] text-[11px]">Total</TableHead>
-              <TableHead className="text-right text-muted-foreground font-semibold tracking-[0.5px] text-[11px]">Pagado</TableHead>
+              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Fecha</TableHead>
+              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Letra</TableHead>
+              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Comprobante</TableHead>
+              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">{type === "sales" ? "Cliente" : "Proveedor"}</TableHead>
+              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">CUIT</TableHead>
+              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Concepto</TableHead>
+              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Medio Pago</TableHead>
+              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Estado</TableHead>
+              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">F. Pago</TableHead>
+              <TableHead className="text-right text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">T/C</TableHead>
+              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">{type === "sales" ? "Retenciones" : "Percepciones"}</TableHead>
+              <TableHead className="text-right text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Total</TableHead>
+              <TableHead className="text-right text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Pagado</TableHead>
               <TableHead className="w-[50px]" />
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredData.length === 0 ? (
+            {vouchers.length === 0 ? (
               <TableRow className="border-b-border bg-card">
                 <TableCell colSpan={14} className="h-24 text-center text-muted-foreground">
                   No se encontraron comprobantes.
                 </TableCell>
               </TableRow>
             ) : (
-              filteredData.map((item) => {
-                const name = type === "sales" ? item.client?.name : item.supplier?.name;
-                const cuit = type === "sales" ? item.client?.cuit : item.supplier?.cuit;
-                const taxTotal = getTaxTotal(item, type);
-
-                return (
-                  <TableRow key={item.id} className="bg-card border-b-border hover:bg-secondary transition-colors">
-                    <TableCell className="text-muted-foreground">{getFormattedDate(item.date)}</TableCell>
-                    <TableCell>{item.voucherLetter?.letter || "—"}</TableCell>
-                    <TableCell>
-                      <button
-                        type="button"
-                        className="text-left font-medium text-[#FF5C00] hover:text-[#FF8A4C] underline-offset-4 hover:underline"
-                        onClick={() => onSelectVoucher(item)}
-                      >
-                        {item.posNumber}-{item.number}
-                      </button>
-                    </TableCell>
-                    <TableCell className="font-medium text-foreground">{name || "—"}</TableCell>
-                    <TableCell className="text-muted-foreground">{cuit || "—"}</TableCell>
-                    <TableCell className="text-muted-foreground">{item.concept || "—"}</TableCell>
-                    <TableCell className="text-muted-foreground">{item.paymentMethod || "—"}</TableCell>
-                    <TableCell>{getStatusBadge(item.status)}</TableCell>
-                    <TableCell className="text-muted-foreground">{getFormattedDate(item.paymentDate)}</TableCell>
-                    <TableCell className="text-muted-foreground">{taxTotal > 0 ? getFormattedAmount(item.currency, taxTotal) : "—"}</TableCell>
-                    <TableCell className="text-right font-mono text-muted-foreground">{getFormattedAmount(item.currency, Number(item.totalAmount || 0))}</TableCell>
-                    <TableCell className="text-right font-mono text-muted-foreground">{getFormattedAmount(item.currency, Number(item.paidAmount || 0))}</TableCell>
-                    <TableCell>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                        onClick={() => onDeleteVoucher(item)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        <span className="sr-only">Eliminar comprobante</span>
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
+              vouchers.map((item) => (
+                <TableRow
+                  key={item.rowKey}
+                  className="border-b-border bg-card transition-colors hover:bg-muted/30"
+                >
+                  <TableCell className="text-muted-foreground">{getVoucherFormattedDate(item.voucher.date)}</TableCell>
+                  <TableCell className="text-foreground">{item.voucher.voucherLetter?.letter || "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    <button
+                      type="button"
+                      className="text-left font-medium text-[#FF5C00] hover:text-[#FF8A4C] underline-offset-4 hover:underline"
+                      onClick={(event: MouseEvent<HTMLButtonElement>) => {
+                        event.stopPropagation();
+                        onSelectVoucher(item.voucher);
+                      }}
+                    >
+                      {`${item.voucher.posNumber}-${item.voucher.number}`}
+                    </button>
+                  </TableCell>
+                  <TableCell className="font-medium text-foreground">{item.partyName || "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">{item.partyCuit || "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">{item.voucher.concept || "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">{item.voucher.paymentMethod || "—"}</TableCell>
+                  <TableCell>
+                    <span
+                      className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium ${getVoucherStatusBadgeClassName(item.voucher.status)}`}
+                    >
+                      {getVoucherStatusLabel(item.voucher.status)}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{getVoucherFormattedDate(item.voucher.paymentDate)}</TableCell>
+                  <TableCell className="text-right text-muted-foreground">
+                    {getVoucherFormattedExchangeRate(Number(item.voucher.exchangeRate))}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {getVoucherFormattedAmount(
+                      item.voucher.currency,
+                      getVoucherTaxTotal(item.voucher, type),
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right text-muted-foreground">
+                    {getVoucherFormattedAmount(item.voucher.currency, Number(item.voucher.totalAmount))}
+                  </TableCell>
+                  <TableCell className="text-right text-muted-foreground">
+                    {getVoucherFormattedAmount(item.voucher.currency, Number(item.voucher.paidAmount))}
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                      aria-label="Eliminar comprobante"
+                      onClick={(event: MouseEvent<HTMLButtonElement>) => {
+                        event.stopPropagation();
+                        onDeleteVoucher(item.voucher);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
             )}
           </TableBody>
         </Table>
-      </div>
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center justify-between pt-1 pb-4">
-        <div className="text-sm text-muted-foreground">
-          Mostrando 1-{Math.min(20, filteredData.length)} de {filteredData.length} (Pág. 1 de 1)
-        </div>
-        <div className="flex items-center gap-1">
-          <Button variant="outline" size="icon" className="h-8 w-8 bg-card border-border text-muted-foreground opacity-50 cursor-not-allowed">
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="icon" className="h-8 w-8 bg-[#FF5C00] border-[#FF5C00] text-primary-foreground hover:bg-[#FF8A4C] hover:text-primary-foreground">
-            1
-          </Button>
-          <Button variant="outline" size="icon" className="h-8 w-8 bg-card border-border text-foreground hover:bg-secondary hidden sm:flex">
-            2
-          </Button>
-          <Button variant="outline" size="icon" className="h-8 w-8 bg-card border-border text-foreground hover:bg-secondary hidden sm:flex">
-            3
-          </Button>
-          <span className="mx-1 text-muted-foreground hidden sm:block">...</span>
-          <Button variant="outline" size="icon" className="h-8 w-8 bg-card border-border text-foreground hover:bg-secondary hidden sm:flex">
-            12
-          </Button>
-          <Button variant="outline" size="icon" className="h-8 w-8 bg-card border-border text-muted-foreground hover:text-foreground hover:bg-secondary">
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="h-8 px-3 border-border bg-card text-muted-foreground hover:bg-secondary">
-            Mostrar: 20
-            <ChevronDown className="ml-2 h-4 w-4" />
-          </Button>
-        </div>
+        <PaginationControls
+          currentPage={currentPage}
+          totalPages={totalPages}
+          pageSize={query.pageSize}
+          pageLabel={buildVoucherPageLabel(
+            data || {
+              items: [],
+              total: 0,
+              page: query.page,
+              pageSize: query.pageSize,
+              totalPages: 1,
+            },
+          )}
+          pageSizeOptions={voucherPageSizeOptions}
+          pageSizeAriaLabel="Mostrar comprobantes por página"
+          onPageChange={onPageChange}
+          onPageSizeChange={onPageSizeChange}
+        />
       </div>
     </div>
   );

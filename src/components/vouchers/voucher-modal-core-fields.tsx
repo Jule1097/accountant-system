@@ -1,6 +1,7 @@
-import { UseFormReturn } from "react-hook-form";
+import { UseFormReturn, useWatch } from "react-hook-form";
 import { Input } from "src/components/ui/input";
 import { VoucherFormValues } from "src/hooks/use-voucher-form";
+import { shouldRequireVoucherExchangeRate } from "src/lib/helpers/voucher-form";
 import { cn } from "src/lib/utils";
 
 interface VoucherModalCoreFieldsProps {
@@ -17,10 +18,10 @@ interface VoucherModalCoreFieldsProps {
   taxListsNode?: React.ReactNode;
 }
 
-const fieldContainerClass = "flex flex-col gap-1.5 relative pb-3.5";
+const fieldContainerClass = "flex min-w-0 flex-col gap-1.5";
 const labelClass = "text-[10px] font-medium text-muted-foreground uppercase";
 const inputClass = "w-full rounded-md border border-input bg-card px-3 py-2 text-[13px] ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 h-[38px]";
-const errorClass = "absolute bottom-0 left-0 text-[10px] text-destructive leading-none z-10 whitespace-nowrap";
+const errorClass = "text-[10px] leading-tight text-destructive";
 
 export function VoucherModalCoreFields({
   form,
@@ -34,8 +35,14 @@ export function VoucherModalCoreFields({
 }: VoucherModalCoreFieldsProps) {
   const {
     register,
+    control,
     formState: { errors },
   } = form;
+  const selectedCurrency = useWatch({
+    control,
+    name: "currency",
+  });
+  const shouldShowExchangeRate = shouldRequireVoucherExchangeRate(selectedCurrency || "$");
 
   return (
     <div className="flex flex-col gap-4">
@@ -84,13 +91,29 @@ export function VoucherModalCoreFields({
             {errors.currency && <p className={errorClass}>{errors.currency.message}</p>}
           </div>
         </div>
+        {shouldShowExchangeRate ? (
+          <div className="grid grid-cols-2 gap-3">
+            <div className={fieldContainerClass}>
+              <label className={labelClass}>Tipo de cambio</label>
+              <Input
+                type="number"
+                step="0.0001"
+                placeholder="0.0000"
+                className="bg-card h-[38px] text-[13px] px-3"
+                disabled={isProcessing}
+                {...register("exchangeRate", { valueAsNumber: true })}
+              />
+              {errors.exchangeRate && <p className={errorClass}>{errors.exchangeRate.message}</p>}
+            </div>
+          </div>
+        ) : null}
         <div className="grid gap-3">
           <div className={fieldContainerClass}>
             <label className={labelClass}>Concepto</label>
             <Input placeholder="Detalle del comprobante" className="bg-card h-[38px] text-[13px] px-3" disabled={isProcessing} {...register("concept")} />
             {errors.concept && <p className={errorClass}>{errors.concept.message}</p>}
           </div>
-          <div className={cn(fieldContainerClass, "pb-4")}>
+          <div className={fieldContainerClass}>
             <label className={labelClass}>Comentarios</label>
             <textarea
               rows={2}

@@ -1,4 +1,8 @@
 import * as z from "zod";
+import {
+  normalizeVoucherExchangeRate,
+  shouldRequireVoucherExchangeRate,
+} from "src/lib/helpers/voucher-form";
 
 function normalizeOptionalNumberInput(value: unknown): number {
   if (value === "" || value === null || value === undefined) {
@@ -33,6 +37,7 @@ export const voucherFormSchema = z.object({
   thirdPartyId: z.string().min(1, "El cliente o proveedor es obligatorio"),
   thirdPartyCuit: z.string().min(1, "El CUIT es obligatorio"),
   currency: z.enum(["$", "USD"], { message: "La moneda es obligatoria" }),
+  exchangeRate: z.number({ message: "Debe ser un numero" }).positive("El tipo de cambio debe ser mayor a 0"),
   subtotal: z.number({ message: "Debe ser un numero" }).min(0, "No puede ser negativo"),
   vatAmount: z.number({ message: "Debe ser un numero" }).min(0, "No puede ser negativo"),
   nonTaxableAmount: z.number({ message: "Debe ser un numero" }).min(0, "No puede ser negativo"),
@@ -51,6 +56,24 @@ export const voucherFormSchema = z.object({
   createdByUserId: z.string().min(1, "El usuario es obligatorio"),
   retentions: z.array(retentionFormSchema),
   perceptions: z.array(perceptionFormSchema),
+}).superRefine((values, context) => {
+  const normalizedExchangeRate = normalizeVoucherExchangeRate(values.currency, values.exchangeRate);
+
+  if (!shouldRequireVoucherExchangeRate(values.currency) && normalizedExchangeRate !== 1) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Si la moneda es ARS, el tipo de cambio debe ser 1.",
+      path: ["exchangeRate"],
+    });
+  }
+
+  if (shouldRequireVoucherExchangeRate(values.currency) && normalizedExchangeRate === 1) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Si la moneda es USD, el tipo de cambio debe ser distinto de 1.",
+      path: ["exchangeRate"],
+    });
+  }
 });
 
 export type VoucherFormValues = z.infer<typeof voucherFormSchema>;

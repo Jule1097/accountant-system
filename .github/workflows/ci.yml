@@ -53,6 +53,10 @@ jobs:
           UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
           ALLOWED_ORIGINS: ${{ secrets.ALLOWED_ORIGINS }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          VOUCHER_PARSER_TEMP_BUCKET: ${{ secrets.VOUCHER_PARSER_TEMP_BUCKET }}
+
+      - name: Build Worker
+        run: pnpm run build:worker
 
       - name: Build Next.js
         run: pnpm run build
@@ -66,3 +70,4 @@ jobs:
           UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
           ALLOWED_ORIGINS: ${{ secrets.ALLOWED_ORIGINS }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          VOUCHER_PARSER_TEMP_BUCKET: ${{ secrets.VOUCHER_PARSER_TEMP_BUCKET }}

@@ -17,6 +17,7 @@ export interface RawGeminiParsedVoucher {
   number?: string
   date?: string
   currency?: string
+  exchangeRate?: number
   subtotal?: number
   vatAmount?: number
   nonTaxableAmount?: number
@@ -37,6 +38,18 @@ export interface RawGeminiParsedVoucher {
   retentions?: RawGeminiTaxItem[]
   perceptions?: RawGeminiTaxItem[]
 }
+
+export type GeminiRepairableField =
+  | "thirdPartyName"
+  | "concept"
+  | "paymentMethod"
+  | "status"
+  | "comments"
+  | "voucherType"
+  | "voucherLetter"
+  | "vatDetails"
+  | "retentions"
+  | "perceptions"
 
 export interface GeminiParserCatalogVatRate {
   id: string
@@ -93,6 +106,7 @@ export interface GeminiParserResponse {
   number: string | null
   date: string | null
   currency: string | null
+  exchangeRate: number | null
   subtotal: number | null
   vatAmount: number | null
   nonTaxableAmount: number | null

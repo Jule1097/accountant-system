@@ -24,7 +24,8 @@ export function VoucherModalDropzone({
         type="file"
         ref={fileInputRef}
         onChange={onFileChange}
-        accept=".pdf,.jpg,.jpeg"
+        multiple
+        accept=".pdf,.png,.jpg,.jpeg"
         className="hidden"
       />
 
@@ -43,8 +44,8 @@ export function VoucherModalDropzone({
         ) : (
           <>
             <UploadCloud className="h-10 w-10 text-muted-foreground mb-4" />
-            <p className="text-sm font-medium">Arrastra y suelta tu archivo aquí, o haz click para buscar</p>
-            <p className="text-xs text-muted-foreground mt-1">Soporta PDF, JPG o JPEG</p>
+            <p className="text-sm font-medium">Arrastra y suelta tus archivos aquí, o haz click para buscar</p>
+            <p className="text-xs text-muted-foreground mt-1">Soporta PDF, PNG, JPG o JPEG</p>
           </>
         )}
       </div>

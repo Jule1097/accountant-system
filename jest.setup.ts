@@ -7,3 +7,5 @@ process.env.UPSTASH_REDIS_REST_URL = process.env.UPSTASH_REDIS_REST_URL || 'redi
 process.env.UPSTASH_REDIS_REST_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || 'mock-token'
 process.env.ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS || '*'
 process.env.GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'mock-gemini-key'
+process.env.VOUCHER_PARSER_TEMP_BUCKET = process.env.VOUCHER_PARSER_TEMP_BUCKET || 'mock-temp-bucket'
+
