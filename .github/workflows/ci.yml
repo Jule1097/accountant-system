@@ -55,6 +55,9 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           VOUCHER_PARSER_TEMP_BUCKET: ${{ secrets.VOUCHER_PARSER_TEMP_BUCKET }}
 
+      - name: Build Worker
+        run: pnpm run build:worker
+
       - name: Build Next.js
         run: pnpm run build
         env:
