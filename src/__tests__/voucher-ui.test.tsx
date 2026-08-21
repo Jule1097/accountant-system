@@ -8,7 +8,7 @@ import { VoucherModalPerceptions } from 'src/components/vouchers/voucher-modal-p
 import { useVoucherForm, VoucherFormValues } from 'src/hooks/use-voucher-form'
 import { ApiRequestError } from 'src/lib/api-client'
 import { Voucher } from 'src/models/Voucher'
-import { VoucherListResponse, VoucherSummaryResponse } from 'src/types/voucher'
+import { VoucherListResponse, VoucherModalMode, VoucherSummaryResponse } from 'src/types/voucher'
 
 const toastAdd = jest.fn()
 const apiRequestMock = jest.fn()
@@ -75,7 +75,7 @@ jest.mock('src/components/vouchers/voucher-table', () => ({
   }: {
     data: VoucherListResponse
     onAdd: () => void
-    onSelectVoucher: (voucher: Voucher) => void
+    onSelectVoucher: (voucher: Voucher, action?: "view" | "edit") => void
     onDeleteVoucher: (voucher: Voucher) => void
   }) => (
     <div data-testid="voucher-table-mock">
@@ -84,7 +84,7 @@ jest.mock('src/components/vouchers/voucher-table', () => ({
       </button>
       {data?.items?.map((item) => (
         <div key={item.voucher.id}>
-          <button type="button" onClick={() => onSelectVoucher(item.voucher)}>
+          <button type="button" onClick={() => onSelectVoucher(item.voucher, "edit")}>
             Seleccionar {item.voucher.id}
           </button>
           <button type="button" onClick={() => onDeleteVoucher(item.voucher)}>
@@ -108,7 +108,7 @@ jest.mock('src/components/vouchers/voucher-modal', () => ({
     initialVoucher,
   }: {
     isOpen: boolean
-    mode: 'create' | 'edit'
+    mode: 'create' | 'edit' | 'view'
     isLoadingDetail?: boolean
     initialVoucher?: Voucher | null
   }) => (
@@ -124,12 +124,14 @@ jest.mock('src/components/vouchers/voucher-detail-modal', () => ({
     voucher,
     error,
     isLoading,
+    mode,
     onLoadError,
   }: {
     voucherId: string | null
     voucher?: Voucher
     error?: unknown
     isLoading?: boolean
+    mode: VoucherModalMode
     onLoadError: (error: unknown) => void
   }) => {
     useEffect(() => {
@@ -144,11 +146,11 @@ jest.mock('src/components/vouchers/voucher-detail-modal', () => ({
     }
 
     if (isLoading || !voucher) {
-      return <div data-testid="edit-modal">open|loading|none</div>
+      return <div data-testid={`${mode}-modal`}>open|loading|none</div>
     }
 
     return (
-      <div data-testid="edit-modal">
+      <div data-testid={`${mode}-modal`}>
         open|idle|{voucher.id ?? 'none'}
       </div>
     )
@@ -371,10 +373,10 @@ describe('Voucher UI', () => {
     expect(screen.getByText(/15,00/)).toBeInTheDocument()
     expect(screen.getByRole('combobox', { name: 'Mostrar comprobantes por página' })).toHaveValue('10')
 
-    fireEvent.click(screen.getByRole('button', { name: '00001-00000123' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Ver detalle del comprobante' }))
     fireEvent.click(screen.getByRole('button', { name: 'Eliminar comprobante' }))
 
-    expect(onSelectVoucher).toHaveBeenCalledWith(voucher)
+    expect(onSelectVoucher).toHaveBeenCalledWith(voucher, 'view')
     expect(onDeleteVoucher).toHaveBeenCalledWith(voucher)
   })
 
