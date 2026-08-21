@@ -1,13 +1,12 @@
 import { ParserBatchRepository } from "src/repositories/parser-batch.repository";
 import { VoucherService } from "src/services/voucher.service";
 import { VoucherPersistenceService } from "src/services/voucher-persistence.service";
-import { PersistenceQueueService } from "src/services/persistence-queue.service";
+import { AsyncBatchRunner } from "src/types/async-batch-runner";
 import { ParserBatchItemContextRecord } from "src/types/parser-batch";
 import { VoucherFormPayload } from "src/types/voucher-form";
 
 jest.mock("src/repositories/parser-batch.repository");
 jest.mock("src/services/voucher.service");
-jest.mock("src/services/persistence-queue.service");
 
 const companyId = "123e4567-e89b-12d3-a456-426614174001";
 const supplierId = "123e4567-e89b-12d3-a456-426614174002";
@@ -78,17 +77,20 @@ describe("VoucherPersistenceService", () => {
   let service: VoucherPersistenceService;
   let batchRepositoryMock: jest.Mocked<ParserBatchRepository>;
   let voucherServiceMock: jest.Mocked<VoucherService>;
+  let asyncBatchRunnerMock: jest.Mocked<AsyncBatchRunner>;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new VoucherPersistenceService();
+    asyncBatchRunnerMock = {
+      triggerParserBatch: jest.fn(),
+      triggerPersistenceBatch: jest.fn(),
+    };
+    service = new VoucherPersistenceService(asyncBatchRunnerMock);
     batchRepositoryMock = new ParserBatchRepository() as jest.Mocked<ParserBatchRepository>;
     voucherServiceMock = new VoucherService() as jest.Mocked<VoucherService>;
 
     (service as unknown as { batchRepository: ParserBatchRepository }).batchRepository = batchRepositoryMock;
     (service as unknown as { voucherService: VoucherService }).voucherService = voucherServiceMock;
-    (service as unknown as { queueService: PersistenceQueueService }).queueService =
-      new PersistenceQueueService() as jest.Mocked<PersistenceQueueService>;
   });
 
   it("persists the validated purchase payload without losing voucher number or supplier", async () => {
@@ -138,5 +140,31 @@ describe("VoucherPersistenceService", () => {
       "item-1",
       "Validated voucher payload is invalid",
     );
+  });
+
+  it("triggers the async persistence runner for validated batch items", async () => {
+    const item = createPersistingItem();
+
+    item.status = "validated";
+    batchRepositoryMock.listValidatedItemsByBatch.mockResolvedValue([item]);
+    batchRepositoryMock.claimValidatedItemForPersistence.mockResolvedValue(createPersistingItem());
+
+    const queuedItems = await service.enqueueBatch(companyId, "batch-1");
+
+    expect(queuedItems).toBe(1);
+    expect(asyncBatchRunnerMock.triggerPersistenceBatch).toHaveBeenCalledWith("batch-1");
+  });
+
+  it("restores validated items when triggering the async runner fails", async () => {
+    const item = createPersistingItem();
+
+    item.status = "validated";
+    batchRepositoryMock.listValidatedItemsByBatch.mockResolvedValue([item]);
+    batchRepositoryMock.claimValidatedItemForPersistence.mockResolvedValue(createPersistingItem());
+    batchRepositoryMock.restoreItemsToValidated.mockResolvedValue();
+    asyncBatchRunnerMock.triggerPersistenceBatch.mockRejectedValue(new Error("Failed to trigger"));
+
+    await expect(service.enqueueBatch(companyId, "batch-1")).rejects.toThrow("Failed to trigger");
+    expect(batchRepositoryMock.restoreItemsToValidated).toHaveBeenCalledWith(["item-1"]);
   });
 });
