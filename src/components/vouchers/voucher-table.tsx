@@ -1,7 +1,7 @@
 "use client";
 
 import type { ChangeEvent, MouseEvent } from "react";
-import { Download, Search, Trash2, X } from "lucide-react";
+import { Download, Eye, Pencil, Search, Trash2, X } from "lucide-react";
 import { useRef } from "react";
 
 import { Button } from "src/components/ui/button";
@@ -43,7 +43,7 @@ type VoucherTableProps = {
   searchValue: string;
   type: VoucherScreenType;
   onAdd: () => void;
-  onSelectVoucher: (voucher: Voucher) => void;
+  onSelectVoucher: (voucher: Voucher, action?: "view" | "edit") => void;
   onDeleteVoucher: (voucher: Voucher) => void;
   onSearchChange: (value: string) => void;
   onClearFilters: () => void;
@@ -226,26 +226,27 @@ export function VoucherTable({
         <Table className="text-[13px] text-foreground">
           <TableHeader className="bg-muted/30">
             <TableRow className="border-b-border hover:bg-transparent">
-              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Fecha</TableHead>
-              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Letra</TableHead>
-              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Comprobante</TableHead>
-              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">{type === "sales" ? "Cliente" : "Proveedor"}</TableHead>
-              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">CUIT</TableHead>
-              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Concepto</TableHead>
-              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Medio Pago</TableHead>
-              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Estado</TableHead>
-              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">F. Pago</TableHead>
-              <TableHead className="text-right text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">T/C</TableHead>
-              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">{type === "sales" ? "Retenciones" : "Percepciones"}</TableHead>
-              <TableHead className="text-right text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Total</TableHead>
-              <TableHead className="text-right text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Pagado</TableHead>
-              <TableHead className="w-[50px]" />
+              <TableHead className="text-center text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Fecha</TableHead>
+              <TableHead className="text-center text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Letra</TableHead>
+              <TableHead className="text-center text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Comprobante</TableHead>
+              <TableHead className="text-center text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">{type === "sales" ? "Cliente" : "Proveedor"}</TableHead>
+              <TableHead className="text-center text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">CUIT</TableHead>
+              <TableHead className="text-center text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Concepto</TableHead>
+              <TableHead className="text-center text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Medio Pago</TableHead>
+              <TableHead className="text-center text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Estado</TableHead>
+              <TableHead className="text-center text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">F. Pago</TableHead>
+              <TableHead className="text-center text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">T/C</TableHead>
+              <TableHead className="text-center text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">{type === "sales" ? "Retenciones" : "Percepciones"}</TableHead>
+              <TableHead className="text-center text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Total</TableHead>
+              <TableHead className="text-center text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Pagado</TableHead>
+              <TableHead className="text-center text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Saldo</TableHead>
+              <TableHead className="text-center text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {vouchers.length === 0 ? (
               <TableRow className="border-b-border bg-card">
-                <TableCell colSpan={14} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={15} className="h-24 text-center text-muted-foreground">
                   No se encontraron comprobantes.
                 </TableCell>
               </TableRow>
@@ -258,16 +259,7 @@ export function VoucherTable({
                   <TableCell className="text-muted-foreground">{getVoucherFormattedDate(item.voucher.date)}</TableCell>
                   <TableCell className="text-foreground">{item.voucher.voucherLetter?.letter || "—"}</TableCell>
                   <TableCell className="text-muted-foreground">
-                    <button
-                      type="button"
-                      className="text-left font-medium text-[#FF5C00] hover:text-[#FF8A4C] underline-offset-4 hover:underline"
-                      onClick={(event: MouseEvent<HTMLButtonElement>) => {
-                        event.stopPropagation();
-                        onSelectVoucher(item.voucher);
-                      }}
-                    >
-                      {`${item.voucher.posNumber}-${item.voucher.number}`}
-                    </button>
+                    {`${item.voucher.posNumber}-${item.voucher.number}`}
                   </TableCell>
                   <TableCell className="font-medium text-foreground">{item.partyName || "—"}</TableCell>
                   <TableCell className="text-muted-foreground">{item.partyCuit || "—"}</TableCell>
@@ -296,20 +288,51 @@ export function VoucherTable({
                   <TableCell className="text-right text-muted-foreground">
                     {getVoucherFormattedAmount(item.voucher.currency, Number(item.voucher.paidAmount))}
                   </TableCell>
+                  <TableCell className="text-right text-muted-foreground font-medium">
+                    {getVoucherFormattedAmount(item.voucher.currency, Number(item.voucher.saldo))}
+                  </TableCell>
                   <TableCell>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                      aria-label="Eliminar comprobante"
-                      onClick={(event: MouseEvent<HTMLButtonElement>) => {
-                        event.stopPropagation();
-                        onDeleteVoucher(item.voucher);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center justify-end gap-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:bg-muted hover:text-[#FF5C00]"
+                        aria-label="Ver detalle del comprobante"
+                        onClick={(event: MouseEvent<HTMLButtonElement>) => {
+                          event.stopPropagation();
+                          onSelectVoucher(item.voucher, "view");
+                        }}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:bg-muted hover:text-[#FF5C00]"
+                        aria-label="Editar comprobante"
+                        onClick={(event: MouseEvent<HTMLButtonElement>) => {
+                          event.stopPropagation();
+                          onSelectVoucher(item.voucher, "edit");
+                        }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                        aria-label="Eliminar comprobante"
+                        onClick={(event: MouseEvent<HTMLButtonElement>) => {
+                          event.stopPropagation();
+                          onDeleteVoucher(item.voucher);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))

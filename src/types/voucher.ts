@@ -100,7 +100,7 @@ export interface VoucherCollectionKey {
 
 export type VoucherScreenType = 'sales' | 'purchases'
 
-export type VoucherModalMode = 'create' | 'edit'
+export type VoucherModalMode = 'create' | 'edit' | 'view'
 
 export interface UseVouchersResult {
   data: VoucherListResponse | undefined
@@ -125,6 +125,8 @@ export interface UseVoucherManagementResult {
   isCreateModalOpen: boolean;
   isDeleting: boolean;
   voucherId: string | null;
+  viewVoucherId: string | null;
+  setViewVoucherId: (id: string | null) => void;
   voucherPendingDelete: Voucher | null;
   query: VoucherListQueryState;
   searchValue: string;
@@ -138,7 +140,7 @@ export interface UseVoucherManagementResult {
   openCreateModal: () => void;
   handleCreateModalOpenChange: (open: boolean) => void;
   handleEditModalOpenChange: (open: boolean) => void;
-  handleSelectVoucher: (voucher: Voucher) => void;
+  handleSelectVoucher: (voucher: Voucher, action?: "view" | "edit") => void;
   handleCreateSuccess: () => Promise<void>;
   handleEditSuccess: (_voucher: Voucher, mode: VoucherModalMode) => Promise<void>;
   handleDeleteVoucher: (voucher: Voucher) => void;

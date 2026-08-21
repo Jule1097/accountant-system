@@ -21,6 +21,7 @@ export function VoucherManagementView({ type, title, description }: VoucherManag
     isCreateModalOpen,
     isDeleting,
     voucherId,
+    viewVoucherId,
     voucherPendingDelete,
     query,
     searchValue,
@@ -101,11 +102,12 @@ export function VoucherManagementView({ type, title, description }: VoucherManag
       />
 
       <VoucherDetailModal
-        voucherId={voucherId}
+        voucherId={voucherId || viewVoucherId}
         voucher={voucherDetail}
         error={voucherDetailError}
         isLoading={isVoucherDetailLoading}
         type={type}
+        mode={voucherId ? "edit" : "view"}
         onOpenChange={handleEditModalOpenChange}
         onSuccess={handleEditSuccess}
         onLoadError={handleVoucherDetailError}
