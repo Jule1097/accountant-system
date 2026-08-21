@@ -1,48 +1,56 @@
 services:
-  web:
+  web-dev:
     build:
       context: .
       target: development
-    command: pnpm exec next dev --hostname 0.0.0.0 --port 3000
+    command:
+      - sh
+      - -c
+      - pnpm exec prisma generate && pnpm exec next dev --hostname 0.0.0.0 --port 3000
     ports:
       - "3000:3000"
-    environment:
-      NODE_ENV: development
-      DATABASE_URL: ${DATABASE_URL}
-      DIRECT_URL: ${DIRECT_URL}
-      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
-      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
-      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
-      VOUCHER_PARSER_TEMP_BUCKET: ${VOUCHER_PARSER_TEMP_BUCKET}
-      GEMINI_API_KEY: ${GEMINI_API_KEY}
-      UPSTASH_REDIS_REST_URL: ${UPSTASH_REDIS_REST_URL}
-      UPSTASH_REDIS_REST_TOKEN: ${UPSTASH_REDIS_REST_TOKEN}
-      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
+    env_file:
+      - .env.docker
     volumes:
       - .:/app
       - pnpm-store:/pnpm/store
       - node-modules:/app/node_modules
 
-  worker:
+  web-prod:
     build:
       context: .
-      target: development
-    command: pnpm dev:worker
-    environment:
-      NODE_ENV: development
-      DATABASE_URL: ${DATABASE_URL}
-      DIRECT_URL: ${DIRECT_URL}
-      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
-      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
-      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
-      VOUCHER_PARSER_TEMP_BUCKET: ${VOUCHER_PARSER_TEMP_BUCKET}
-      GEMINI_API_KEY: ${GEMINI_API_KEY}
-      UPSTASH_REDIS_REST_URL: ${UPSTASH_REDIS_REST_URL}
-      UPSTASH_REDIS_REST_TOKEN: ${UPSTASH_REDIS_REST_TOKEN}
-    volumes:
-      - .:/app
-      - pnpm-store:/pnpm/store
-      - node-modules:/app/node_modules
+      target: runner
+    command:
+      - pnpm
+      - start:web
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.docker
+
+  parser-job:
+    build:
+      context: .
+      target: runner
+    entrypoint:
+      - node
+      - dist/parser-batch-job.mjs
+    env_file:
+      - .env.docker
+    profiles:
+      - jobs
+
+  persistence-job:
+    build:
+      context: .
+      target: runner
+    entrypoint:
+      - node
+      - dist/persistence-batch-job.mjs
+    env_file:
+      - .env.docker
+    profiles:
+      - jobs
 
 volumes:
   pnpm-store:
