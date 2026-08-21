@@ -1,8 +1,15 @@
 import { ContentListUnion, GoogleGenAI } from "@google/genai";
 import { GeminiParseOptions, GeminiRepairableField, RawGeminiParsedVoucher } from "src/types/gemini-parser";
 
-const apiKey = process.env.GEMINI_API_KEY || "";
-const ai = new GoogleGenAI({ apiKey });
+function getGeminiClient(): GoogleGenAI {
+  const apiKey = process.env.GEMINI_API_KEY;
+
+  if (!apiKey) {
+    throw new Error("Missing GEMINI_API_KEY");
+  }
+
+  return new GoogleGenAI({ apiKey });
+}
 
 function buildSharedPromptParts(options: GeminiParseOptions): string[] {
   const promptParts = [
@@ -153,7 +160,7 @@ async function parseGeminiResponseWithSchema(
   contents: ContentListUnion,
   responseSchema: Record<string, unknown>
 ): Promise<Partial<RawGeminiParsedVoucher>> {
-  const response = await ai.models.generateContent({
+  const response = await getGeminiClient().models.generateContent({
     model: "gemini-3.1-flash-lite",
     contents,
     config: {

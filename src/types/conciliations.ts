@@ -46,6 +46,14 @@ export interface ConciliationBulkDiscardResponse {
   removedItems: number;
 }
 
+export interface ConciliationBulkPersistPayload {
+  itemIds: string[];
+}
+
+export interface ConciliationBulkPersistResponse {
+  queuedItems: number;
+}
+
 export type ConciliationPersistResultStatus = "persisted" | "duplicate" | "failed";
 
 export interface ConciliationPersistResult {
@@ -73,7 +81,7 @@ export interface ConciliationsPageData {
 }
 
 export interface ConciliationPersistBatchActionState {
-  batchId?: string;
+  itemIds: string[];
   selectedValidatedCount: number;
   canPersist: boolean;
 }

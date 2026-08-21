@@ -46,7 +46,6 @@ export function ConciliationsView() {
     currentPage,
     totalPages,
     readyCount,
-    validatedCount,
     persistBatchAction,
     startIndex,
     isPageLoading,
@@ -82,9 +81,7 @@ export function ConciliationsView() {
     <div className="flex-1 space-y-6">
       <ConciliationsToolbar
         canPersistBatch={persistBatchAction.canPersist}
-        persistLabel={persistBatchAction.selectedValidatedCount > 0
-          ? `Guardar validadas (${persistBatchAction.selectedValidatedCount})`
-          : `Guardar validadas (${validatedCount})`}
+        persistLabel={`Guardar seleccionadas (${persistBatchAction.selectedValidatedCount})`}
         onPersistBatch={() => {
           void handlePersistBatch();
         }}
@@ -133,6 +130,9 @@ export function ConciliationsView() {
               onRegenerate={handleRegenerate}
               onPersist={handlePersist}
               onDelete={handleDelete}
+              onPersistSelected={(itemIds) => {
+                void handlePersistBatch(itemIds);
+              }}
               onDeleteSelected={(itemIds) => {
                 void handleDeleteSelected(itemIds);
               }}

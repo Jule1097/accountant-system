@@ -16,6 +16,11 @@ export const conciliationBulkDiscardSchema = z.object({
   itemIds: z.array(z.string().uuid("El ítem es inválido.")).min(1, "Debe seleccionar al menos una factura."),
 });
 
+export const conciliationBulkPersistSchema = z.object({
+  itemIds: z.array(z.string().uuid("El ítem es inválido.")).min(1, "Debe seleccionar al menos una factura."),
+});
+
 export type ConciliationsQueryInput = z.infer<typeof conciliationsQuerySchema>;
 export type ConciliationItemParamsInput = z.infer<typeof conciliationItemParamsSchema>;
 export type ConciliationBulkDiscardInput = z.infer<typeof conciliationBulkDiscardSchema>;
+export type ConciliationBulkPersistInput = z.infer<typeof conciliationBulkPersistSchema>;

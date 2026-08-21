@@ -18,11 +18,16 @@ interface ConciliationSectionProps {
   onRegenerate: (voucher: ConciliationSectionData["items"][number]) => void;
   onPersist: (voucher: ConciliationSectionData["items"][number]) => void;
   onDelete: (voucher: ConciliationSectionData["items"][number]) => void;
+  onPersistSelected: (itemIds: string[]) => void;
   onDeleteSelected: (itemIds: string[]) => void;
 }
 
 function getDiscardableItemIds(section: ConciliationSectionData): string[] {
   return section.items.filter((item) => item.canDiscard).map((item) => item.id);
+}
+
+function getValidatedItemIds(section: ConciliationSectionData): string[] {
+  return section.items.filter((item) => item.status === "Validada").map((item) => item.id);
 }
 
 export function ConciliationSection({
@@ -37,10 +42,13 @@ export function ConciliationSection({
   onRegenerate,
   onPersist,
   onDelete,
+  onPersistSelected,
   onDeleteSelected,
 }: ConciliationSectionProps) {
   const discardableItemIds = getDiscardableItemIds(section);
+  const validatedItemIds = getValidatedItemIds(section);
   const selectedCount = getSelectedCount(discardableItemIds);
+  const selectedValidatedCount = getSelectedCount(validatedItemIds);
 
   return (
     <section className="space-y-3">
@@ -73,13 +81,25 @@ export function ConciliationSection({
             </label>
 
             {selectedCount > 0 && (
-              <button
-                type="button"
-                onClick={() => onDeleteSelected(discardableItemIds.filter((itemId) => isVoucherSelected(itemId)))}
-                className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-600 transition-colors hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/15"
-              >
-                Eliminar seleccionadas ({selectedCount})
-              </button>
+              <>
+                {selectedValidatedCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => onPersistSelected(validatedItemIds.filter((itemId) => isVoucherSelected(itemId)))}
+                    className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-medium text-sky-600 transition-colors hover:bg-sky-100 dark:border-sky-500/20 dark:bg-sky-500/10 dark:text-sky-300 dark:hover:bg-sky-500/15"
+                  >
+                    Guardar seleccionadas ({selectedValidatedCount})
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => onDeleteSelected(discardableItemIds.filter((itemId) => isVoucherSelected(itemId)))}
+                  className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-600 transition-colors hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/15"
+                >
+                  Eliminar seleccionadas ({selectedCount})
+                </button>
+              </>
             )}
           </div>
         )}
