@@ -33,3 +33,6 @@ steps:
 images:
   - 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/accountant-web:$COMMIT_SHA'
   - 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/accountant-web:latest'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
