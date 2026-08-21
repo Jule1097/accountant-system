@@ -9,7 +9,7 @@ import { useVouchers } from "src/hooks/use-vouchers";
 
 const salesQuery = {
   page: 1,
-  pageSize: 50,
+  pageSize: 10,
   sortBy: "date" as const,
   sortOrder: "desc" as const,
   voucherId: null,

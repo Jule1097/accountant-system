@@ -109,11 +109,20 @@ function VoucherModalShell({
   sidePanel?: ReactNode;
 }) {
   const isEditing = mode === "edit";
-  const title = titleOverride || (isEditing ? "Detalle del Comprobante" : `Agregar Comprobante de ${type === "sales" ? "Venta" : "Compra"}`);
+  const isViewing = mode === "view";
+  const title = titleOverride || (
+    isViewing
+      ? "Detalle del Comprobante"
+      : isEditing
+        ? "Detalle del Comprobante"
+        : `Agregar Comprobante de ${type === "sales" ? "Venta" : "Compra"}`
+  );
   const description = descriptionOverride || (
-    isEditing
-      ? "Revisa el comprobante y ajusta la información cargada desde la base."
-      : "Sube el comprobante (PDF/JPG) para procesarlo con IA o completa los datos manualmente."
+    isViewing
+      ? "Visualiza la información del comprobante."
+      : isEditing
+        ? "Revisa el comprobante y ajusta la información cargada desde la base."
+        : "Sube el comprobante (PDF/JPG) para procesarlo con IA o completa los datos manualmente."
   );
   const dialogWidthClass = sidePanel
     ? "sm:max-w-[1180px]"
@@ -189,7 +198,8 @@ function VoucherModalForm({
     formState: { isValid },
   } = form;
   const isEditing = mode === "edit";
-  const shouldShowDropzone = !isEditing && !initialParsedData && !submitAction;
+  const isViewing = mode === "view";
+  const shouldShowDropzone = !isEditing && !isViewing && !initialParsedData && !submitAction;
   const primaryButtonLabel = resolvePrimaryButtonLabel(mode, isProcessing, submitButtonLabel);
 
   return (
@@ -214,6 +224,8 @@ function VoucherModalForm({
               catalogs={options.catalogs}
               thirdParties={options.thirdParties}
               type={type}
+              mode={mode}
+              initialVoucher={initialVoucher}
               handlePosBlur={handlePosBlur}
               handleNumberBlur={handleNumberBlur}
               taxListsNode={
@@ -225,6 +237,7 @@ function VoucherModalForm({
                       append={appendRetention}
                       remove={removeRetention}
                       catalogs={options.catalogs}
+                      disabled={isProcessing || mode === "view"}
                     />
                   )}
                   {type === "purchases" && (
@@ -234,16 +247,23 @@ function VoucherModalForm({
                       append={appendPerception}
                       remove={removePerception}
                       catalogs={options.catalogs}
+                      disabled={isProcessing || mode === "view"}
                     />
                   )}
                 </>
               }
             />
 
-            <Button type="submit" className="w-full h-10 !bg-[#FF5C00] hover:!bg-[#FF5C00]/90 !text-white text-sm font-medium rounded-md" disabled={!isValid || isProcessing}>
-              {isProcessing && <LoaderCircle className="h-4 w-4 animate-spin" />}
-              {primaryButtonLabel}
-            </Button>
+            {mode === "view" ? (
+              <Button type="button" onClick={() => onOpenChange(false)} className="w-full h-10 !bg-[#FF5C00] hover:!bg-[#FF5C00]/90 !text-white text-sm font-medium rounded-md">
+                Cerrar
+              </Button>
+            ) : (
+              <Button type="submit" className="w-full h-10 !bg-[#FF5C00] hover:!bg-[#FF5C00]/90 !text-white text-sm font-medium rounded-md" disabled={!isValid || isProcessing}>
+                {isProcessing && <LoaderCircle className="h-4 w-4 animate-spin" />}
+                {primaryButtonLabel}
+              </Button>
+            )}
           </div>
 
           <div className="min-w-0 lg:sticky lg:top-0">
@@ -262,6 +282,8 @@ function VoucherModalForm({
             catalogs={options.catalogs}
             thirdParties={options.thirdParties}
             type={type}
+            mode={mode}
+            initialVoucher={initialVoucher}
             handlePosBlur={handlePosBlur}
             handleNumberBlur={handleNumberBlur}
             taxListsNode={
@@ -273,6 +295,7 @@ function VoucherModalForm({
                     append={appendRetention}
                     remove={removeRetention}
                     catalogs={options.catalogs}
+                    disabled={isProcessing || mode === "view"}
                   />
                 )}
                 {type === "purchases" && (
@@ -282,16 +305,23 @@ function VoucherModalForm({
                     append={appendPerception}
                     remove={removePerception}
                     catalogs={options.catalogs}
+                    disabled={isProcessing || mode === "view"}
                   />
                 )}
               </>
             }
           />
 
-          <Button type="submit" className="w-full h-10 !bg-[#FF5C00] hover:!bg-[#FF5C00]/90 !text-white text-sm font-medium rounded-md" disabled={!isValid || isProcessing}>
-            {isProcessing && <LoaderCircle className="h-4 w-4 animate-spin" />}
-            {primaryButtonLabel}
-          </Button>
+          {mode === "view" ? (
+            <Button type="button" onClick={() => onOpenChange(false)} className="w-full h-10 !bg-[#FF5C00] hover:!bg-[#FF5C00]/90 !text-white text-sm font-medium rounded-md">
+              Cerrar
+            </Button>
+          ) : (
+            <Button type="submit" className="w-full h-10 !bg-[#FF5C00] hover:!bg-[#FF5C00]/90 !text-white text-sm font-medium rounded-md" disabled={!isValid || isProcessing}>
+              {isProcessing && <LoaderCircle className="h-4 w-4 animate-spin" />}
+              {primaryButtonLabel}
+            </Button>
+          )}
         </>
       )}
     </form>
