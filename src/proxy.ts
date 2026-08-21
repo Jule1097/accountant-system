@@ -2,13 +2,27 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { Redis } from '@upstash/redis'
 
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-})
+function getProxyRedisClient(): Redis {
+  const url = process.env.UPSTASH_REDIS_REST_URL
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN
+
+  if (!url) {
+    throw new Error('Missing UPSTASH_REDIS_REST_URL')
+  }
+
+  if (!token) {
+    throw new Error('Missing UPSTASH_REDIS_REST_TOKEN')
+  }
+
+  return new Redis({
+    url,
+    token,
+  })
+}
 
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next()
+  const redis = getProxyRedisClient()
 
   const { pathname } = request.nextUrl
 
