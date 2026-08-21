@@ -253,6 +253,25 @@ export class ParserBatchRepository {
     return records.map(mapParserBatchItemContext);
   }
 
+  async listItemIdsByBatchAndStatuses(batchId: string, statuses: ParserBatchItemStatus[]): Promise<string[]> {
+    const records = await prisma.parserBatchItem.findMany({
+      where: {
+        batchId,
+        status: {
+          in: statuses,
+        },
+      },
+      select: {
+        id: true,
+      },
+      orderBy: {
+        createdAt: "asc",
+      },
+    });
+
+    return records.map((record) => record.id);
+  }
+
   async markItemProcessing(itemId: string, attemptNumber: number, inputStrategy: ParserInputStrategy): Promise<void> {
     await prisma.$transaction(async (tx) => {
       const item = await tx.parserBatchItem.update({
@@ -494,6 +513,25 @@ export class ParserBatchRepository {
     return records.map(mapParserBatchItemContext);
   }
 
+  async claimValidatedItemForPersistence(itemId: string): Promise<ParserBatchItemContextRecord | null> {
+    const result = await prisma.parserBatchItem.updateMany({
+      where: {
+        id: itemId,
+        status: "validated",
+      },
+      data: {
+        status: "persisting",
+        currentError: null,
+      },
+    });
+
+    if (result.count === 0) {
+      return null;
+    }
+
+    return this.findItemById(itemId);
+  }
+
   async markItemPersisting(itemId: string): Promise<ParserBatchItemContextRecord> {
     await prisma.$transaction(async (tx) => {
       const item = await tx.parserBatchItem.update({
@@ -516,6 +554,24 @@ export class ParserBatchRepository {
     }
 
     return item;
+  }
+
+  async restoreItemsToValidated(itemIds: string[]): Promise<void> {
+    if (!itemIds.length) {
+      return;
+    }
+
+    await prisma.parserBatchItem.updateMany({
+      where: {
+        id: {
+          in: itemIds,
+        },
+        status: "persisting",
+      },
+      data: {
+        status: "validated",
+      },
+    });
   }
 
   async markItemPersisted(itemId: string): Promise<void> {

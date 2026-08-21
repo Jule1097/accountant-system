@@ -1,17 +1,20 @@
-/* eslint-disable @typescript-eslint/no-require-imports */
 const esbuild = require('esbuild');
 const path = require('path');
 
 const rootDir = path.resolve(__dirname, '../..');
 
 esbuild.build({
-  entryPoints: [path.join(rootDir, 'src/workers/voucher-parser-worker.ts')],
+  entryPoints: {
+    'parser-batch-job': path.join(rootDir, 'src/workers/parser-batch-job.ts'),
+    'persistence-batch-job': path.join(rootDir, 'src/workers/persistence-batch-job.ts'),
+  },
   bundle: true,
   platform: 'node',
   format: 'esm',
   target: 'node22',
   tsconfig: path.join(rootDir, 'tsconfig.json'),
-  outfile: path.join(rootDir, 'dist/worker.mjs'),
+  outdir: path.join(rootDir, 'dist'),
+  outExtension: { '.js': '.mjs' },
   plugins: [
     {
       name: 'make-node-modules-external',
@@ -26,8 +29,8 @@ esbuild.build({
     }
   ]
 }).then(() => {
-  console.log('Worker bundled successfully to dist/worker.mjs');
+  console.log('Batch jobs bundled successfully to dist/');
 }).catch((err) => {
-  console.error('Worker bundling failed:', err);
+  console.error('Batch job bundling failed:', err);
   process.exit(1);
 });

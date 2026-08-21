@@ -36,7 +36,7 @@ jest.mock("src/hooks/use-conciliations", () => ({
     readyCount: 1,
     validatedCount: 1,
     persistBatchAction: {
-      batchId: "batch-42",
+      itemIds: ["item-validated"],
       selectedValidatedCount: 1,
       canPersist: true,
     },
@@ -148,8 +148,9 @@ jest.mock("src/hooks/use-conciliations", () => ({
     reviewItem: undefined,
     isReviewItemLoading: false,
     reviewSourceUrl: null,
-    isVoucherSelected: (itemId: string) => itemId === "item-ready",
-    getSelectedCount: (itemIds: string[]) => itemIds.filter((itemId) => itemId === "item-ready").length,
+    isVoucherSelected: (itemId: string) => itemId === "item-ready" || itemId === "item-validated",
+    getSelectedCount: (itemIds: string[]) =>
+      itemIds.filter((itemId) => itemId === "item-ready" || itemId === "item-validated").length,
     areAllSectionItemsSelected: () => false,
     handleTabChange: handleTabChangeMock,
     handlePageChange: handlePageChangeMock,
@@ -199,7 +200,8 @@ describe("Login Theme & Conciliations UI", () => {
     expect(screen.getByRole("button", { name: "Guardar factura A 00001-00000076" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Regenerar factura A 00001-00000077" })).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /Eliminar factura/ })).toHaveLength(4);
-    expect(screen.getByRole("button", { name: "Eliminar seleccionadas (1)" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Guardar seleccionadas (1)" })).toHaveLength(2);
+    expect(screen.getAllByRole("button", { name: "Eliminar seleccionadas (1)" })).toHaveLength(2);
     expect(screen.getByLabelText("Seleccionar facturas de Listas para revisar")).toBeInTheDocument();
   });
 
@@ -236,7 +238,7 @@ describe("Login Theme & Conciliations UI", () => {
 
     fireEvent.click(await screen.findByLabelText("Seleccionar facturas de Listas para revisar"));
     fireEvent.click(screen.getByLabelText("Seleccionar factura A 00001-00000075"));
-    fireEvent.click(screen.getByRole("button", { name: "Eliminar seleccionadas (1)" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Eliminar seleccionadas (1)" })[0]);
 
     expect(handleToggleAllDiscardableMock).toHaveBeenCalledWith(["item-ready"], true);
     expect(handleToggleItemSelectionMock).toHaveBeenCalledWith(
@@ -249,7 +251,7 @@ describe("Login Theme & Conciliations UI", () => {
   it("shows mass confirmation button for validated items and current batch", async () => {
     render(<ConciliationsPage />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "Guardar validadas (1)" }));
+    fireEvent.click((await screen.findAllByRole("button", { name: "Guardar seleccionadas (1)" }))[0]);
     expect(handlePersistBatchMock).toHaveBeenCalled();
   });
 });

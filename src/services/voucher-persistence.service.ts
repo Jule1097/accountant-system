@@ -2,11 +2,12 @@ import { ParserBatchRepository } from "src/repositories/parser-batch.repository"
 import { voucherSchema } from "src/lib/schemas/voucher-schemas";
 import { normalizeVoucherFormPayload } from "src/lib/helpers/voucher-form";
 import { VoucherService } from "src/services/voucher.service";
+import { AsyncBatchRunner } from "src/types/async-batch-runner";
 import { ConciliationPersistResult } from "src/types/conciliations";
 import { GeminiParserResponse } from "src/types/gemini-parser";
 import { ParserBatchItemContextRecord, ParserBatchPersistenceJob } from "src/types/parser-batch";
 import { VoucherFormPayload } from "src/types/voucher-form";
-import { PersistenceQueueService } from "./persistence-queue.service";
+import { AsyncBatchRunnerService } from "./async-batch-runner.service";
 
 function isDuplicateVoucherError(error: unknown): boolean {
   return error instanceof Error && error.message.includes("duplicate");
@@ -44,13 +45,21 @@ function buildParsedPayloadFallback(item: ParserBatchItemContextRecord): GeminiP
 
 export class VoucherPersistenceService {
   private readonly batchRepository: ParserBatchRepository;
-  private readonly queueService: PersistenceQueueService;
+  private readonly asyncBatchRunner: AsyncBatchRunner | null;
   private readonly voucherService: VoucherService;
 
-  constructor() {
+  constructor(asyncBatchRunner: AsyncBatchRunner | null = new AsyncBatchRunnerService()) {
     this.batchRepository = new ParserBatchRepository();
-    this.queueService = new PersistenceQueueService();
+    this.asyncBatchRunner = asyncBatchRunner;
     this.voucherService = new VoucherService();
+  }
+
+  private getRequiredAsyncBatchRunner(): AsyncBatchRunner {
+    if (!this.asyncBatchRunner) {
+      throw new Error("Async batch runner is not configured");
+    }
+
+    return this.asyncBatchRunner;
   }
 
   private async resolveValidatedItem(companyId: string, itemId: string): Promise<ParserBatchItemContextRecord> {
@@ -109,22 +118,33 @@ export class VoucherPersistenceService {
 
   async persistItem(companyId: string, itemId: string): Promise<ConciliationPersistResult> {
     await this.resolveValidatedItem(companyId, itemId);
-    const persistingItem = await this.batchRepository.markItemPersisting(itemId);
+    const persistingItem = await this.batchRepository.claimValidatedItemForPersistence(itemId);
+
+    if (!persistingItem) {
+      return {
+        status: "failed",
+        message: "La factura ya se está guardando.",
+      };
+    }
+
     return this.persistStagedItem(persistingItem);
   }
 
   async enqueueBatch(companyId: string, batchId: string): Promise<number> {
     const items = await this.batchRepository.listValidatedItemsByBatch(companyId, batchId);
+    return this.enqueueValidatedItems(items);
+  }
 
-    for (const item of items) {
-      await this.batchRepository.markItemPersisting(item.id);
-      await this.queueService.enqueue({
-        batchId,
-        itemId: item.id,
-      });
+  async enqueueItems(companyId: string, itemIds: string[]): Promise<number> {
+    const uniqueItemIds = [...new Set(itemIds)];
+    const items: ParserBatchItemContextRecord[] = [];
+
+    for (const itemId of uniqueItemIds) {
+      const item = await this.resolveValidatedItem(companyId, itemId);
+      items.push(item);
     }
 
-    return items.length;
+    return this.enqueueValidatedItems(items);
   }
 
   async processJob(job: ParserBatchPersistenceJob): Promise<void> {
@@ -134,5 +154,36 @@ export class VoucherPersistenceService {
       return;
     }
     await this.persistStagedItem(item);
+  }
+
+  private async enqueueValidatedItems(items: ParserBatchItemContextRecord[]): Promise<number> {
+    const persistingItemIds: string[] = [];
+    const batchIds = new Set<string>();
+
+    for (const item of items) {
+      const persistingItem = await this.batchRepository.claimValidatedItemForPersistence(item.id);
+
+      if (!persistingItem) {
+        continue;
+      }
+
+      persistingItemIds.push(persistingItem.id);
+      batchIds.add(persistingItem.batchId);
+    }
+
+    if (!persistingItemIds.length) {
+      return 0;
+    }
+
+    try {
+      for (const batchId of batchIds) {
+        await this.getRequiredAsyncBatchRunner().triggerPersistenceBatch(batchId);
+      }
+    } catch (error: unknown) {
+      await this.batchRepository.restoreItemsToValidated(persistingItemIds);
+      throw error;
+    }
+
+    return persistingItemIds.length;
   }
 }

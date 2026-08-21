@@ -20,6 +20,7 @@ import { buildCompanyPathKey, companyPathFetcher, revalidateCompanyScope } from 
 import { useToastManager } from "src/components/ui/toast";
 import {
   ConciliationBulkDiscardResponse,
+  ConciliationBulkPersistResponse,
   ConciliationDeleteDialogState,
   ConciliationItem,
   ConciliationItemAction,
@@ -41,8 +42,8 @@ function getValidatedVisibleItems(items: ConciliationItem[], selectedItemIds: st
   return items.filter((item) => item.status === "Validada" && selectedItemIds.includes(item.id));
 }
 
-function getUniqueBatchIds(items: ConciliationItem[]): string[] {
-  return [...new Set(items.map((item) => item.batchId))];
+function getValidatedVisibleItemIds(items: ConciliationItem[], selectedItemIds: string[]): string[] {
+  return getValidatedVisibleItems(items, selectedItemIds).map((item) => item.id);
 }
 
 export function useConciliations() {
@@ -93,41 +94,16 @@ export function useConciliations() {
     return resolveSelectedVisibleItemIds(removableItemIds, selectedItemIds);
   }, [removableItemIds, selectedItemIds]);
   const allVisibleDiscardableSelected = areAllVisibleDiscardableSelected(removableItemIds, selectedItemIds);
+  const selectedValidatedItemIds = useMemo(() => {
+    return getValidatedVisibleItemIds(visibleItems, selectedItemIds);
+  }, [selectedItemIds, visibleItems]);
   const persistBatchAction = useMemo<ConciliationPersistBatchActionState>(() => {
-    const validatedItems = getValidatedVisibleItems(visibleItems, selectedItemIds);
-
-    if (query.batchId) {
-      return {
-        batchId: query.batchId,
-        selectedValidatedCount: validatedItems.length,
-        canPersist: (data?.validatedCount || 0) > 0,
-      };
-    }
-
-    if (validatedItems.length === 0) {
-      return {
-        batchId: undefined,
-        selectedValidatedCount: 0,
-        canPersist: false,
-      };
-    }
-
-    const batchIds = getUniqueBatchIds(validatedItems);
-
-    if (batchIds.length !== 1) {
-      return {
-        batchId: undefined,
-        selectedValidatedCount: validatedItems.length,
-        canPersist: false,
-      };
-    }
-
     return {
-      batchId: batchIds[0],
-      selectedValidatedCount: validatedItems.length,
-      canPersist: true,
+      itemIds: selectedValidatedItemIds,
+      selectedValidatedCount: selectedValidatedItemIds.length,
+      canPersist: selectedValidatedItemIds.length > 0,
     };
-  }, [data?.validatedCount, query.batchId, selectedItemIds, visibleItems]);
+  }, [selectedValidatedItemIds]);
   const deleteDialogState = useMemo<ConciliationDeleteDialogState>(() => {
     if (deleteDialogMode === "single" && pendingDeleteItem) {
       return {
@@ -494,22 +470,31 @@ export function useConciliations() {
     }
   }
 
-  async function handlePersistBatch(): Promise<void> {
-    if (!persistBatchAction.batchId) {
+  async function handlePersistBatch(itemIds?: string[]): Promise<void> {
+    const nextItemIds = itemIds && itemIds.length > 0 ? itemIds : persistBatchAction.itemIds;
+
+    if (!nextItemIds.length) {
       return;
     }
 
     try {
-      const response = await apiRequest(`/api/conciliations/batches/${persistBatchAction.batchId}/persist`, {
+      const response = await apiRequest("/api/conciliations/items/persist", {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          itemIds: nextItemIds,
+        }),
       });
-      const payload = await response.json() as { queuedItems: number };
+      const payload = await response.json() as ConciliationBulkPersistResponse;
       await revalidateConciliations();
       router.refresh();
+      setSelectedItemIds((currentValue) => removeSelectedItemIds(currentValue, nextItemIds));
       toastManager.add({
         type: "success",
         title: "Facturas enviadas",
-        description: `Se enviaron ${payload.queuedItems} facturas a la cola de guardar.`,
+        description: `Se enviaron ${payload.queuedItems} facturas seleccionadas a la cola de guardar.`,
       });
     } catch (error: unknown) {
       toastManager.add({

@@ -3,20 +3,18 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "tsx src/scripts/dev.ts",
+    "dev": "next dev",
     "dev:web": "next dev",
-    "dev:worker": "tsx src/workers/voucher-parser-worker.ts",
-    "next": "tsx src/scripts/next.ts",
     "build": "next build",
     "build:worker": "node src/scripts/build-worker.js",
     "db:migrate:deploy": "prisma migrate deploy",
-    "start": "next start",
-    "start:web": "next start",
-    "start:worker": "node dist/worker.mjs",
+    "start": "node .next/standalone/server.js",
+    "start:web": "node .next/standalone/server.js",
+    "start:parser-job": "node dist/parser-batch-job.mjs",
+    "start:persistence-job": "node dist/persistence-batch-job.mjs",
     "lint": "eslint",
     "test": "jest",
-    "test:watch": "jest --watch",
-    "worker:voucher-parser": "pnpm dev:worker"
+    "test:watch": "jest --watch"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
