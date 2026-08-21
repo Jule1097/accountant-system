@@ -21,7 +21,7 @@ export function NotificationBell() {
         render={
           <button
             type="button"
-            className={cn(buttonVariants({ variant: "outline", size: "icon" }))}
+            className={cn("relative", buttonVariants({ variant: "outline", size: "icon" }))}
           >
             <Bell className="h-4 w-4" />
             {notifications.length > 0 && (

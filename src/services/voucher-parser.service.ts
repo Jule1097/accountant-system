@@ -15,10 +15,11 @@ import { resolveParserPdfStrategy } from "src/lib/helpers/parser-pdf";
 import { getGeminiRepairFields, mergeGeminiRepairFields } from "src/lib/helpers/parser-repair";
 import { CompanyRepository } from "src/repositories/company.repository";
 import { ParserBatchRepository } from "src/repositories/parser-batch.repository";
+import { AsyncBatchRunner } from "src/types/async-batch-runner";
 import { ParserBatchAsyncResponse, ParserBatchQueueJob, ParserBatchSingleResponse, ParserVoucherType } from "src/types/parser-batch";
 import { RawGeminiParsedVoucher } from "src/types/gemini-parser";
+import { AsyncBatchRunnerService } from "./async-batch-runner.service";
 import { CompanyNotificationService } from "./company-notification.service";
-import { ParserQueueService } from "./parser-queue.service";
 import { ParserResponseService } from "./parser-response.service";
 import { ParserStorageService } from "./parser-storage.service";
 
@@ -58,18 +59,26 @@ function ensureParserFilesAreUnique(files: ParserAcceptedFile[]): void {
 export class VoucherParserService {
   private readonly companyRepository: CompanyRepository;
   private readonly batchRepository: ParserBatchRepository;
-  private readonly queueService: ParserQueueService;
+  private readonly asyncBatchRunner: AsyncBatchRunner | null;
   private readonly responseService: ParserResponseService;
   private readonly storageService: ParserStorageService;
   private readonly notificationService: CompanyNotificationService;
 
-  constructor() {
+  constructor(asyncBatchRunner: AsyncBatchRunner | null = new AsyncBatchRunnerService()) {
     this.companyRepository = new CompanyRepository();
     this.batchRepository = new ParserBatchRepository();
-    this.queueService = new ParserQueueService();
+    this.asyncBatchRunner = asyncBatchRunner;
     this.responseService = new ParserResponseService();
     this.storageService = new ParserStorageService();
     this.notificationService = new CompanyNotificationService();
+  }
+
+  private getRequiredAsyncBatchRunner(): AsyncBatchRunner {
+    if (!this.asyncBatchRunner) {
+      throw new Error("Async batch runner is not configured");
+    }
+
+    return this.asyncBatchRunner;
   }
 
   private async getActiveCompanyCuit(companyId: string): Promise<string | undefined> {
@@ -173,6 +182,7 @@ export class VoucherParserService {
       };
     });
     const uploadedPaths: string[] = [];
+    let batchCreated = false;
 
     try {
       for (const item of items) {
@@ -200,21 +210,19 @@ export class VoucherParserService {
           expiresAt: item.expiresAt,
         }))
       );
+      batchCreated = true;
 
-      for (const item of batch.items || []) {
-        await this.queueService.enqueue({
-          batchId: batch.id,
-          itemId: item.id,
-        });
-      }
+      await this.getRequiredAsyncBatchRunner().triggerParserBatch(batch.id);
 
       return {
         mode: "batch",
         batch,
       };
     } catch (error: unknown) {
-      for (const uploadedPath of uploadedPaths) {
-        await this.storageService.deleteFile(uploadedPath);
+      if (!batchCreated) {
+        for (const uploadedPath of uploadedPaths) {
+          await this.storageService.deleteFile(uploadedPath);
+        }
       }
 
       throw error;
@@ -223,6 +231,16 @@ export class VoucherParserService {
 
   async getBatch(companyId: string, batchId: string) {
     return this.batchRepository.findBatchById(companyId, batchId);
+  }
+
+  async retryBatch(companyId: string, batchId: string): Promise<void> {
+    const batch = await this.batchRepository.findBatchById(companyId, batchId);
+
+    if (!batch) {
+      throw new Error("No se encontró el batch solicitado");
+    }
+
+    await this.getRequiredAsyncBatchRunner().triggerParserBatch(batchId);
   }
 
   async getItem(companyId: string, itemId: string) {
@@ -248,7 +266,7 @@ export class VoucherParserService {
       itemId: requeuedItem.id,
     };
 
-    await this.queueService.enqueue(job);
+    await this.getRequiredAsyncBatchRunner().triggerParserBatch(requeuedItem.batchId);
 
     return job;
   }
@@ -260,12 +278,15 @@ export class VoucherParserService {
       return 0;
     }
 
+    const batchIds = new Set<string>();
+
     for (const item of items) {
       const requeuedItem = await this.batchRepository.requeueItem(item.id);
-      await this.queueService.enqueue({
-        batchId: requeuedItem.batchId,
-        itemId: requeuedItem.id,
-      });
+      batchIds.add(requeuedItem.batchId);
+    }
+
+    for (const batchId of batchIds) {
+      await this.getRequiredAsyncBatchRunner().triggerParserBatch(batchId);
     }
 
     return items.length;
