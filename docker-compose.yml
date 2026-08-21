@@ -20,6 +20,9 @@ services:
     build:
       context: .
       target: runner
+      args:
+        - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+        - NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
     command:
       - pnpm
       - start:web
@@ -32,6 +35,9 @@ services:
     build:
       context: .
       target: runner
+      args:
+        - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+        - NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
     entrypoint:
       - node
       - dist/parser-batch-job.mjs
@@ -44,6 +50,9 @@ services:
     build:
       context: .
       target: runner
+      args:
+        - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+        - NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
     entrypoint:
       - node
       - dist/persistence-batch-job.mjs

@@ -3,7 +3,6 @@
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useToastManager } from "src/components/ui/toast";
-import { useDebouncedValue } from "src/hooks/use-debounced-value";
 import { useVoucherById, useVouchers, useVoucherSummary } from "src/hooks/use-vouchers";
 import { buildEffectiveVoucherQuery, buildVoucherMutationQuery, buildVoucherQuery, moveVoucherPageBack, readVoucherListQuery, resetVoucherPage, resolveVoucherManagementError, resolveVoucherRecordType } from "src/lib/helpers/voucher-management";
 import { revalidateCompanyScope } from "src/lib/helpers/swr";
@@ -33,7 +32,14 @@ export function useVoucherManagement(type: VoucherScreenType): UseVoucherManagem
   const currentQueryString = useMemo(() => searchParams.toString(), [searchParams]);
   const query = useMemo(() => readVoucherListQuery(searchParams), [searchParams]);
   const [searchValue, setSearchValue] = useState(query.search || "");
-  const debouncedSearch = useDebouncedValue(searchValue, 1500);
+  const [prevSearch, setPrevSearch] = useState(query.search || "");
+  const [viewVoucherId, setViewVoucherId] = useState<string | null>(null);
+
+  const currentSearch = query.search || "";
+  if (currentSearch !== prevSearch) {
+    setPrevSearch(currentSearch);
+    setSearchValue(currentSearch);
+  }
 
   const effectiveQuery = useMemo(
     () => buildEffectiveVoucherQuery(query, query.search || undefined),
@@ -42,12 +48,23 @@ export function useVoucherManagement(type: VoucherScreenType): UseVoucherManagem
   const voucherRecordType = resolveVoucherRecordType(type);
   const { data: vouchersData, isLoading: isTableLoading, mutate: mutateVouchers } = useVouchers(voucherRecordType, effectiveQuery);
   const { data: summaryData, isLoading: isSummaryLoading, mutate: mutateSummary } = useVoucherSummary(voucherRecordType, effectiveQuery);
+  
   const {
-    data: voucherDetail,
+    data: dbVoucherDetail,
     error: voucherDetailError,
-    isLoading: isVoucherDetailLoading,
+    isLoading: isDbVoucherDetailLoading,
     mutate: mutateVoucherDetail,
   } = useVoucherById(query.voucherId || "");
+
+  const selectedVoucherFromList = useMemo(() => {
+    if (!viewVoucherId || !vouchersData?.items) {
+      return undefined;
+    }
+    return vouchersData.items.find((item) => item.voucher.id === viewVoucherId)?.voucher;
+  }, [viewVoucherId, vouchersData]);
+
+  const voucherDetail = query.voucherId ? dbVoucherDetail : selectedVoucherFromList;
+  const isVoucherDetailLoading = query.voucherId ? isDbVoucherDetailLoading : false;
 
   const replaceQuery = useCallback((nextQuery: VoucherListQueryState): void => {
     const nextUrl = `${pathname}${buildVoucherQuery(new URLSearchParams(currentQueryString), nextQuery)}`;
@@ -69,29 +86,34 @@ export function useVoucherManagement(type: VoucherScreenType): UseVoucherManagem
     ]);
   };
 
+  // Debounce search input and update URL query
+  useEffect(() => {
+    if (searchValue === (query.search || "")) {
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      replaceQuery(
+        resetVoucherPage(
+          buildVoucherMutationQuery(query, {
+            search: searchValue || undefined,
+          })
+        )
+      );
+    }, 1500);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchValue, query, replaceQuery]);
+
   useEffect(() => {
     if (previousCompanyIdRef.current === activeCompanyId) {
       return;
     }
 
     previousCompanyIdRef.current = activeCompanyId;
-    setSearchValue("");
+    setViewVoucherId(null);
     replaceQuery(emptyQueryState);
   }, [activeCompanyId, replaceQuery]);
-
-  useEffect(() => {
-    if (debouncedSearch === (query.search || "")) {
-      return;
-    }
-
-    replaceQuery(
-      resetVoucherPage(
-        buildVoucherMutationQuery(query, {
-          search: debouncedSearch || undefined,
-        })
-      )
-    );
-  }, [debouncedSearch, query, replaceQuery]);
 
   const openCreateModal = (): void => {
     setIsCreateModalOpen(true);
@@ -107,14 +129,19 @@ export function useVoucherManagement(type: VoucherScreenType): UseVoucherManagem
     }
 
     replaceQuery(buildVoucherMutationQuery(query, { voucherId: null }));
+    setViewVoucherId(null);
   };
 
-  const handleSelectVoucher = (voucher: Voucher): void => {
+  const handleSelectVoucher = (voucher: Voucher, action: "view" | "edit" = "view"): void => {
     if (!voucher.id) {
       return;
     }
 
-    replaceQuery(buildVoucherMutationQuery(query, { voucherId: voucher.id }));
+    if (action === "edit") {
+      replaceQuery(buildVoucherMutationQuery(query, { voucherId: voucher.id }));
+    } else {
+      setViewVoucherId(voucher.id);
+    }
   };
 
   const handleDeleteVoucher = (voucher: Voucher): void => {
@@ -136,6 +163,7 @@ export function useVoucherManagement(type: VoucherScreenType): UseVoucherManagem
       description: resolveVoucherManagementError(error, "No se pudo cargar el comprobante seleccionado."),
     });
     replaceQuery(buildVoucherMutationQuery(query, { voucherId: null }));
+    setViewVoucherId(null);
   };
 
   const handleSearchChange = (value: string): void => {
@@ -143,7 +171,6 @@ export function useVoucherManagement(type: VoucherScreenType): UseVoucherManagem
   };
 
   const handleClearFilters = (): void => {
-    setSearchValue("");
     replaceQuery({
       ...emptyQueryState,
       voucherId: query.voucherId,
@@ -238,6 +265,8 @@ export function useVoucherManagement(type: VoucherScreenType): UseVoucherManagem
     isCreateModalOpen,
     isDeleting,
     voucherId: query.voucherId || null,
+    viewVoucherId,
+    setViewVoucherId,
     voucherPendingDelete,
     query,
     searchValue,

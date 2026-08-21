@@ -12,6 +12,7 @@ interface VoucherDetailModalProps {
   error: unknown;
   isLoading: boolean;
   type: VoucherScreenType;
+  mode: VoucherModalMode;
   onOpenChange: (open: boolean) => void;
   onSuccess: (voucher: Voucher, mode: VoucherModalMode) => Promise<void>;
   onLoadError: (error: unknown) => void;
@@ -21,12 +22,14 @@ function VoucherDetailModalContent({
   voucher,
   optionsPromise,
   type,
+  mode,
   onOpenChange,
   onSuccess,
 }: {
   voucher: Voucher;
   optionsPromise: Promise<VoucherFormOptionsData> | null;
   type: VoucherScreenType;
+  mode: VoucherModalMode;
   onOpenChange: (open: boolean) => void;
   onSuccess: (voucher: Voucher, mode: VoucherModalMode) => Promise<void>;
 }) {
@@ -41,7 +44,7 @@ function VoucherDetailModalContent({
       isOpen
       onOpenChange={onOpenChange}
       type={type}
-      mode="edit"
+      mode={mode}
       initialVoucher={voucher}
       onSuccess={onSuccess}
       options={options}
@@ -55,6 +58,7 @@ export function VoucherDetailModal({
   error,
   isLoading,
   type,
+  mode,
   onOpenChange,
   onSuccess,
   onLoadError,
@@ -79,7 +83,7 @@ export function VoucherDetailModal({
         isOpen
         onOpenChange={onOpenChange}
         type={type}
-        mode="edit"
+        mode={mode}
         title="Cargando comprobante"
         description="Estamos trayendo la información para editarla."
       />
@@ -93,7 +97,7 @@ export function VoucherDetailModal({
           isOpen
           onOpenChange={onOpenChange}
           type={type}
-          mode="edit"
+          mode={mode}
           title="Cargando formulario"
           description="Estamos preparando las opciones del comprobante."
         />
@@ -103,6 +107,7 @@ export function VoucherDetailModal({
         voucher={voucher}
         optionsPromise={optionsPromise}
         type={type}
+        mode={mode}
         onOpenChange={onOpenChange}
         onSuccess={onSuccess}
       />

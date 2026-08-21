@@ -45,6 +45,7 @@ export class Voucher {
   status: 'pending' | 'partial' | 'paid'
   paymentDate?: Date | null
   paidAmount: Decimal | number
+  saldo?: Decimal | number
   comments?: string | null
   createdByUserId: string
   retentions: VoucherRetention[]
@@ -82,6 +83,7 @@ export class Voucher {
     this.paymentMethod = (record.paymentMethod as string) || ''
     this.paymentDate = toValidDate(record.paymentDate)
     this.paidAmount = (record.paidAmount as Decimal | number) || 0
+    this.saldo = record.saldo !== undefined ? (record.saldo as Decimal | number) : undefined
     this.comments = record.comments as string | null | undefined
     this.createdByUserId = (record.createdByUserId as string) || ''
     this.retentions = (record.retentions as VoucherRetention[]) || []
@@ -98,6 +100,10 @@ export class Voucher {
 
     if (record.netAmount === undefined) {
       this.calculateNetAmount()
+    }
+
+    if (this.saldo === undefined) {
+      this.calculateSaldo()
     }
 
     this.status = (record.status as 'pending' | 'partial' | 'paid') || this.deriveStatus()
@@ -155,16 +161,24 @@ export class Voucher {
     return netAmount
   }
 
-  deriveStatus(): 'pending' | 'partial' | 'paid' {
-    const netAmount = new Decimal(this.netAmount.toString())
-    const paidAmount = new Decimal(this.paidAmount.toString())
+  calculateSaldo(): Decimal {
+    const net = new Decimal(this.netAmount.toString())
+    const paid = new Decimal(this.paidAmount.toString())
+    const saldo = net.minus(paid)
+    this.saldo = saldo
+    return saldo
+  }
 
-    if (paidAmount.gte(netAmount) && netAmount.gt(0)) {
+  deriveStatus(): 'pending' | 'partial' | 'paid' {
+    const net = new Decimal(this.netAmount.toString())
+    const paid = new Decimal(this.paidAmount.toString())
+
+    if (paid.gte(net) && net.gt(0)) {
       this.status = 'paid'
       return this.status
     }
 
-    if (paidAmount.gt(0)) {
+    if (paid.gt(0)) {
       this.status = 'partial'
       return this.status
     }
@@ -189,5 +203,6 @@ export class Voucher {
     this.calculateTotalAmount()
     this.calculateNetAmount()
     this.deriveStatus()
+    this.calculateSaldo()
   }
 }
