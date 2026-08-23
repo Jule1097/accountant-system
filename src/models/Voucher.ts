@@ -199,6 +199,20 @@ export class Voucher {
     )
   }
 
+  getExchangeRateDecimal(): Decimal {
+    return new Decimal(this.exchangeRate.toString())
+  }
+
+  getSignedValueInArs(amount: Decimal | number): Decimal {
+    const val = amount instanceof Decimal ? amount : new Decimal(amount.toString())
+    const rate = this.getExchangeRateDecimal()
+    const valInArs = val.mul(rate)
+    if (this.isCreditNote()) {
+      return valInArs.negated()
+    }
+    return valInArs
+  }
+
   recalculate(): void {
     this.calculateTotalAmount()
     this.calculateNetAmount()
