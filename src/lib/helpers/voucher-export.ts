@@ -53,7 +53,7 @@ export function cleanHeaderName(name: string, category: 'ret' | 'perc'): string 
 
   const lowercase = name.toLowerCase()
   const isRet = category === 'ret'
-  
+
   if (isRet && lowercase.includes('ganancias')) clean = 'Ret. Ganancias'
   if (isRet && lowercase.includes('iva')) clean = 'Ret. IVA'
   if (isRet && lowercase.includes('osseg')) clean = 'Ret. OSSEG'
@@ -72,9 +72,6 @@ export function mapSalesVoucherToRow(
 ): Record<string, unknown> {
   const isLetterC = voucher.voucherLetter?.letter === 'C'
   const subtotal = isLetterC ? 0 : voucher.getSignedValueInArs(voucher.subtotal).toNumber()
-  const exempt = isLetterC
-    ? voucher.getSignedValueInArs(voucher.subtotal).plus(voucher.getSignedValueInArs(voucher.exemptAmount)).toNumber()
-    : voucher.getSignedValueInArs(voucher.exemptAmount).toNumber()
 
   const row: Record<string, unknown> = {
     date: voucher.date,
@@ -88,8 +85,6 @@ export function mapSalesVoucherToRow(
     currency: voucher.currency,
     exchangeRate: voucher.getExchangeRateDecimal().toNumber(),
     subtotal,
-    nonTaxable: voucher.getSignedValueInArs(voucher.nonTaxableAmount).toNumber(),
-    exempt,
     vat: voucher.getSignedValueInArs(voucher.vatAmount).toNumber(),
     total: voucher.getSignedValueInArs(voucher.totalAmount).toNumber(),
   }
@@ -102,10 +97,10 @@ export function mapSalesVoucherToRow(
     row[`ret_${j}`] = 0
   })
 
-  let otrosRet = voucher.getSignedValueInArs(voucher.otherTaxesAmount)
+  let otrosRet = voucher.getSignedValueInArs(voucher.otherTaxesAmount).neg()
 
   voucher.retentions.forEach((ret) => {
-    const amount = voucher.getSignedValueInArs(ret.amount)
+    const amount = voucher.getSignedValueInArs(ret.amount).neg()
     const matchedConcept = saleConcepts.find((c) => c.id === ret.retentionConceptId)
     if (matchedConcept) {
       row[`ret_concept_${matchedConcept.id}`] = new Decimal((row[`ret_concept_${matchedConcept.id}`] as number) || 0)
@@ -285,18 +280,16 @@ export function prepareExportWorkbookData(
 
     const columns: ExportColumnDefinition[] = [
       { header: 'Fecha', key: 'date', isDate: true },
-      { header: 'Fecha Pago', key: 'paymentDate', isDate: true },
+      { header: isSales ? 'Fecha Cobro' : 'Fecha Pago', key: 'paymentDate', isDate: true },
       { header: 'Tipo Comprobante', key: 'voucherType' },
       { header: 'Letra', key: 'letter', isCenter: true },
       { header: 'Punto Venta', key: 'posNumber', isText: true },
       { header: 'Número', key: 'number', isText: true },
-      { header: 'Cliente', key: 'clientName' },
+      { header: isSales ? 'Cliente' : 'Proveedor', key: 'clientName' },
       { header: 'CUIT', key: 'clientCuit', isText: true },
       { header: 'Moneda', key: 'currency', isCenter: true },
       { header: 'Tipo de Cambio', key: 'exchangeRate', isRate: true },
       { header: 'Subtotal', key: 'subtotal', isMonetary: true },
-      { header: 'No Gravado', key: 'nonTaxable', isMonetary: true },
-      { header: 'Exento', key: 'exempt', isMonetary: true },
       { header: 'IVA', key: 'vat', isMonetary: true },
       ...dynamicRetentionColumns,
       ...standardJurisdictions.map((j) => ({
