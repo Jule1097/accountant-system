@@ -1,8 +1,9 @@
 "use client";
 
 import type { ChangeEvent, MouseEvent } from "react";
-import { Download, Eye, Pencil, Search, Trash2, X } from "lucide-react";
+import { Eye, Pencil, Search, Trash2, X } from "lucide-react";
 import { useRef } from "react";
+import { VoucherExportButton } from "src/components/vouchers/voucher-export-button";
 
 import { Button } from "src/components/ui/button";
 import { Input } from "src/components/ui/input";
@@ -206,14 +207,7 @@ export function VoucherTable({
               <option value="status:asc">Estado</option>
               <option value="voucher:asc">Comprobante</option>
             </select>
-            <Button
-              variant="outline"
-              className="h-9 border-input bg-card px-3 text-foreground hover:bg-muted"
-              type="button"
-            >
-              <Download className="mr-2 h-4 w-4" />
-              Exportar
-            </Button>
+            <VoucherExportButton type={type} query={query} />
             <Button
               onClick={onAdd}
               className="h-9 bg-[#FF5C00] px-3 text-[#FFFFFF] hover:bg-[#FF8A4C]"
