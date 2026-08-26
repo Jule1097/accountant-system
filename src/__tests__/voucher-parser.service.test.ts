@@ -1,13 +1,21 @@
 import { CompanyRepository } from "src/repositories/company.repository";
 import { ParserBatchRepository } from "src/repositories/parser-batch.repository";
+import { CatalogRepository } from "src/repositories/catalog.repository";
+import { ClientRepository } from "src/repositories/client.repository";
+import { SupplierRepository } from "src/repositories/supplier.repository";
 import { VoucherParserService } from "src/services/voucher-parser.service";
 import { ParserStorageService } from "src/services/parser-storage.service";
 import { AsyncBatchRunner } from "src/types/async-batch-runner";
 import { ParserAcceptedFile } from "src/lib/helpers/parser-file";
+import { parseInvoiceImage } from "src/lib/gemini";
 
 jest.mock("src/repositories/company.repository");
 jest.mock("src/repositories/parser-batch.repository");
+jest.mock("src/repositories/catalog.repository");
+jest.mock("src/repositories/client.repository");
+jest.mock("src/repositories/supplier.repository");
 jest.mock("src/services/parser-storage.service");
+jest.mock("src/lib/gemini");
 
 const companyId = "123e4567-e89b-12d3-a456-426614174001";
 const userId = "123e4567-e89b-12d3-a456-426614174002";
@@ -47,6 +55,12 @@ describe("VoucherParserService", () => {
       id: companyId,
       cuit: "30-11111111-9",
     });
+    (CatalogRepository as jest.MockedClass<typeof CatalogRepository>).prototype.getVatRates = jest.fn().mockResolvedValue([]);
+    (CatalogRepository as jest.MockedClass<typeof CatalogRepository>).prototype.getRetentionConcepts = jest.fn().mockResolvedValue([]);
+    (CatalogRepository as jest.MockedClass<typeof CatalogRepository>).prototype.getPerceptionConcepts = jest.fn().mockResolvedValue([]);
+    (CatalogRepository as jest.MockedClass<typeof CatalogRepository>).prototype.getTaxJurisdictions = jest.fn().mockResolvedValue([]);
+    (ClientRepository as jest.MockedClass<typeof ClientRepository>).prototype.findByCuitAndCompany = jest.fn().mockResolvedValue(null);
+    (SupplierRepository as jest.MockedClass<typeof SupplierRepository>).prototype.findByCuitAndCompany = jest.fn().mockResolvedValue(null);
   });
 
   it("triggers parser batch execution after creating the batch", async () => {
@@ -133,5 +147,83 @@ describe("VoucherParserService", () => {
     await service.retryItem(companyId, itemId);
 
     expect(asyncBatchRunnerMock.triggerParserBatch).toHaveBeenCalledWith(batchId);
+  });
+
+  it("normalizes FCE voucher data while processing batch items", async () => {
+    batchRepositoryMock.findItemById
+      .mockResolvedValueOnce({
+        id: itemId,
+        batchId,
+        fileName: "invoice.pdf",
+        mimeType: "image/png",
+        fileSize: 1000,
+        fileHash: "hash-1",
+        storagePath: "path",
+        inputStrategy: null,
+        status: "queued",
+        parsedPayload: null,
+        validatedPayload: null,
+        currentError: null,
+        currentAttempt: 0,
+        queuedAt: null,
+        processedAt: null,
+        expiresAt: "2026-08-30T00:00:00.000Z",
+        createdAt: "2026-08-20T00:00:00.000Z",
+        updatedAt: "2026-08-20T00:00:00.000Z",
+        batch: {
+          id: batchId,
+          companyId,
+          createdByUserId: userId,
+          voucherType: "sale",
+          status: "queued",
+          expiresAt: "2026-08-30T00:00:00.000Z",
+        },
+      })
+      .mockResolvedValueOnce({
+        id: itemId,
+        batchId,
+        fileName: "invoice.pdf",
+        mimeType: "image/png",
+        fileSize: 1000,
+        fileHash: "hash-1",
+        storagePath: "path",
+        inputStrategy: "image-visual",
+        status: "parsed",
+        parsedPayload: null,
+        validatedPayload: null,
+        currentError: null,
+        currentAttempt: 1,
+        queuedAt: null,
+        processedAt: "2026-08-20T00:00:00.000Z",
+        expiresAt: "2026-08-30T00:00:00.000Z",
+        createdAt: "2026-08-20T00:00:00.000Z",
+        updatedAt: "2026-08-20T00:00:00.000Z",
+        batch: {
+          id: batchId,
+          companyId,
+          createdByUserId: userId,
+          voucherType: "sale",
+          status: "partial",
+          expiresAt: "2026-08-30T00:00:00.000Z",
+        },
+      });
+    storageServiceMock.downloadFile.mockResolvedValue(Buffer.from("content"));
+    (parseInvoiceImage as jest.Mock).mockResolvedValue({
+      voucherType: "Factura de Crédito Electrónica MiPyME (FCE)",
+      voucherLetter: "Letra A",
+      posNumber: "1",
+      number: "123",
+    });
+
+    await service.processItem(itemId);
+
+    expect(batchRepositoryMock.markItemParsed).toHaveBeenCalledWith(
+      itemId,
+      expect.objectContaining({
+        voucherType: "Factura de Crédito Electrónica MiPyME (FCE)",
+        voucherLetter: "A",
+      }),
+      "image-visual",
+    );
   });
 });
