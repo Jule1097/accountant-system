@@ -289,7 +289,7 @@ export class VoucherForm {
     thirdParties: VoucherThirdPartyOption[]
   ): Partial<VoucherFormValues> {
     const voucherTypeId = resolveParsedVoucherTypeId(parsedData.voucherType, catalogs);
-    const voucherLetterId = resolveParsedVoucherLetterId(parsedData.voucherLetter, catalogs);
+    const voucherLetterId = resolveParsedVoucherLetterId(parsedData.voucherLetter, catalogs, parsedData.voucherType);
     const thirdPartyId = resolveThirdPartyId(parsedData, thirdParties);
     const parsedCurrency = normalizeVoucherCurrency(parsedData.currency);
     const nextValues = {

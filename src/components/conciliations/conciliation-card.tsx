@@ -159,7 +159,7 @@ export function ConciliationCard({
               </div>
 
               <p className="truncate text-sm font-semibold text-foreground">
-                {voucher.thirdParty || "Sin tercero identificado"}
+                {voucher.thirdParty}
               </p>
               <p className="text-xs leading-relaxed text-muted-foreground">{voucher.message}</p>
 

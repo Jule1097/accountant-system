@@ -48,7 +48,7 @@ export function useVoucherManagement(type: VoucherScreenType): UseVoucherManagem
   const voucherRecordType = resolveVoucherRecordType(type);
   const { data: vouchersData, isLoading: isTableLoading, mutate: mutateVouchers } = useVouchers(voucherRecordType, effectiveQuery);
   const { data: summaryData, isLoading: isSummaryLoading, mutate: mutateSummary } = useVoucherSummary(voucherRecordType, effectiveQuery);
-  
+
   const {
     data: dbVoucherDetail,
     error: voucherDetailError,
@@ -86,7 +86,6 @@ export function useVoucherManagement(type: VoucherScreenType): UseVoucherManagem
     ]);
   };
 
-  // Debounce search input and update URL query
   useEffect(() => {
     if (searchValue === (query.search || "")) {
       return;

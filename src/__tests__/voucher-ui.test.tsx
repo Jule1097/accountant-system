@@ -8,6 +8,7 @@ import { VoucherModalPerceptions } from 'src/components/vouchers/voucher-modal-p
 import { useVoucherForm, VoucherFormValues } from 'src/hooks/use-voucher-form'
 import { ApiRequestError } from 'src/lib/api-client'
 import { Voucher } from 'src/models/Voucher'
+import { VoucherParsedData } from 'src/types/voucher-form'
 import { VoucherListResponse, VoucherModalMode, VoucherSummaryResponse } from 'src/types/voucher'
 
 const toastAdd = jest.fn()
@@ -563,6 +564,73 @@ describe('Voucher UI', () => {
         title: 'Comprobante guardado',
       })
     )
+  })
+
+  it('hydrates batch review parsed data when it arrives after opening the form', async () => {
+    const reviewOptions = {
+      catalogs: {
+        voucherTypes: [{ id: 'type-fce', name: 'Factura de Crédito Electrónica MiPyME' }],
+        voucherLetters: [{ id: 'letter-a', letter: 'A' }],
+        retentionConcepts: [],
+        perceptionConcepts: [],
+        taxJurisdictions: [],
+      },
+      thirdParties: [],
+    }
+    const baseProps = {
+      isOpen: true,
+      onOpenChange: jest.fn(),
+      type: 'sales' as const,
+      mode: 'create' as const,
+      resetKey: 'batch-item-1',
+      ...reviewOptions,
+    } as Parameters<typeof useVoucherForm>[0]
+    const parsedReviewData: VoucherParsedData = {
+      posNumber: '1',
+      number: '123',
+      date: '2026-08-08',
+      currency: '$',
+      exchangeRate: 1,
+      subtotal: 100,
+      vatAmount: 21,
+      nonTaxableAmount: 0,
+      exemptAmount: 0,
+      otherTaxesAmount: 0,
+      totalAmount: 121,
+      concept: null,
+      paymentMethod: null,
+      status: null,
+      paymentDate: null,
+      paidAmount: null,
+      comments: null,
+      thirdPartyCuit: null,
+      thirdPartyName: null,
+      thirdPartyId: null,
+      voucherType: 'Factura de Crédito Electrónica MiPyME (FCE)',
+      voucherLetter: 'A',
+      vatDetails: [],
+      retentions: [],
+      perceptions: [],
+    }
+    const { result, rerender } = renderHook((props: Parameters<typeof useVoucherForm>[0]) => useVoucherForm(props), {
+      initialProps: {
+        ...baseProps,
+        initialParsedData: null,
+      } as Parameters<typeof useVoucherForm>[0],
+    })
+
+    expect(result.current.form.getValues('voucherTypeId')).toBe('')
+    expect(result.current.form.getValues('voucherLetterId')).toBe('')
+
+    rerender({
+      ...baseProps,
+      initialParsedData: parsedReviewData,
+    } as Parameters<typeof useVoucherForm>[0])
+
+    await waitFor(() => {
+      expect(result.current.form.getValues('voucherTypeId')).toBe('type-fce')
+      expect(result.current.form.getValues('voucherLetterId')).toBe('letter-a')
+    })
   })
 
   it('persists voucher edition through the API and keeps the modal open', async () => {

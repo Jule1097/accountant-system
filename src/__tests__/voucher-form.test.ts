@@ -2,6 +2,7 @@ import { VoucherForm } from "src/models/VoucherForm";
 import { normalizeVoucherFormPayload } from "src/lib/helpers/voucher-form";
 import { VoucherFormValues } from "src/lib/schemas/voucher-form-schemas";
 import { VoucherFormPayload } from "src/types/voucher-form";
+import { VoucherParsedData } from "src/types/voucher-form";
 
 const basePayload: VoucherFormPayload = {
   type: "sale",
@@ -39,6 +40,24 @@ const formCatalogs = {
   retentionConcepts: [],
   perceptionConcepts: [{ id: "perception-1", name: "Ingresos Brutos" }],
   taxJurisdictions: [{ id: "jurisdiction-1", name: "Santa Fe" }],
+};
+
+const parsedCatalogs = {
+  voucherTypes: [
+    { id: "type-invoice", name: "Factura" },
+    { id: "type-credit-note", name: "Nota de Crédito" },
+    { id: "type-mipyme", name: "Factura de Crédito MiPyME" },
+    { id: "type-fce", name: "Factura de Crédito Electrónica MiPyME" },
+  ],
+  voucherLetters: [
+    { id: "letter-a", letter: "A" },
+    { id: "letter-b", letter: "B" },
+    { id: "letter-c", letter: "C" },
+    { id: "letter-m", letter: "M" },
+  ],
+  retentionConcepts: [],
+  perceptionConcepts: [],
+  taxJurisdictions: [],
 };
 
 const purchaseFormValues: VoucherFormValues = {
@@ -121,5 +140,170 @@ describe("VoucherForm.buildPayload", () => {
 
     expect(result.currency).toBe("USD");
     expect(result.exchangeRate).toBe(1087.45);
+  });
+});
+
+describe("VoucherForm.buildParsedPatch", () => {
+  function createParsedData(overrides: Partial<VoucherParsedData>): VoucherParsedData {
+    return {
+      posNumber: null,
+      number: null,
+      date: null,
+      currency: null,
+      exchangeRate: null,
+      subtotal: null,
+      vatAmount: null,
+      nonTaxableAmount: null,
+      exemptAmount: null,
+      otherTaxesAmount: null,
+      totalAmount: null,
+      concept: null,
+      paymentMethod: null,
+      status: null,
+      paymentDate: null,
+      paidAmount: null,
+      comments: null,
+      thirdPartyCuit: null,
+      thirdPartyName: null,
+      voucherType: null,
+      voucherLetter: null,
+      vatDetails: [],
+      retentions: [],
+      perceptions: [],
+      thirdPartyId: null,
+      ...overrides,
+    };
+  }
+
+  function createCurrentValues(): VoucherFormValues {
+    return {
+      ...purchaseFormValues,
+      voucherTypeId: "",
+      voucherLetterId: "",
+    };
+  }
+
+  it("resolves voucher type and letter when AI returns a combined invoice label", () => {
+    const result = VoucherForm.buildParsedPatch(
+      createParsedData({
+        voucherType: "Factura A",
+        voucherLetter: null,
+      }),
+      createCurrentValues(),
+      "sales",
+      parsedCatalogs,
+      [],
+    );
+
+    expect(result.voucherTypeId).toBe("type-invoice");
+    expect(result.voucherLetterId).toBe("letter-a");
+  });
+
+  it("resolves credit note labels that include the invoice letter in the same parsed value", () => {
+    const result = VoucherForm.buildParsedPatch(
+      createParsedData({
+        voucherType: "Nota de Crédito A",
+        voucherLetter: null,
+      }),
+      createCurrentValues(),
+      "sales",
+      parsedCatalogs,
+      [],
+    );
+
+    expect(result.voucherTypeId).toBe("type-credit-note");
+    expect(result.voucherLetterId).toBe("letter-a");
+  });
+
+  it("resolves MiPyME wording variants to the corresponding voucher type", () => {
+    const result = VoucherForm.buildParsedPatch(
+      createParsedData({
+        voucherType: "Factura Crédito MiPyME A",
+        voucherLetter: null,
+      }),
+      createCurrentValues(),
+      "sales",
+      parsedCatalogs,
+      [],
+    );
+
+    expect(result.voucherTypeId).toBe("type-mipyme");
+    expect(result.voucherLetterId).toBe("letter-a");
+  });
+
+  it("resolves the exact FCE label to the electronic credit invoice type", () => {
+    const result = VoucherForm.buildParsedPatch(
+      createParsedData({
+        voucherType: "Factura de Crédito Electrónica MiPyME (FCE)",
+        voucherLetter: "A",
+      }),
+      createCurrentValues(),
+      "sales",
+      parsedCatalogs,
+      [],
+    );
+
+    expect(result.voucherTypeId).toBe("type-fce");
+    expect(result.voucherLetterId).toBe("letter-a");
+  });
+
+  it("does not derive an invalid letter token from the FCE acronym", () => {
+    const result = VoucherForm.buildParsedPatch(
+      createParsedData({
+        voucherType: "Factura de Crédito Electrónica MiPyME (FCE)",
+        voucherLetter: null,
+      }),
+      createCurrentValues(),
+      "sales",
+      parsedCatalogs,
+      [],
+    );
+
+    expect(result.voucherTypeId).toBe("type-fce");
+    expect(result.voucherLetterId).toBe("");
+  });
+
+  it.each([
+    { voucherType: "Factura", voucherLetter: "Letra A", expectedLetterId: "letter-a" },
+    { voucherType: "Factura", voucherLetter: "Letra B", expectedLetterId: "letter-b" },
+    { voucherType: "Factura", voucherLetter: "Letra C", expectedLetterId: "letter-c" },
+    { voucherType: "Factura", voucherLetter: "Letra M", expectedLetterId: "letter-m" },
+  ])("resolves explicit parsed voucher letters for $voucherLetter", ({ voucherType, voucherLetter, expectedLetterId }) => {
+    const result = VoucherForm.buildParsedPatch(
+      createParsedData({
+        voucherType,
+        voucherLetter,
+      }),
+      createCurrentValues(),
+      "sales",
+      parsedCatalogs,
+      [],
+    );
+
+    expect(result.voucherTypeId).toBe("type-invoice");
+    expect(result.voucherLetterId).toBe(expectedLetterId);
+  });
+
+  it.each([
+    { voucherType: "Factura A", expectedLetterId: "letter-a" },
+    { voucherType: "Factura B", expectedLetterId: "letter-b" },
+    { voucherType: "Factura C", expectedLetterId: "letter-c" },
+    { voucherType: "Factura M", expectedLetterId: "letter-m" },
+    { voucherType: "Nota de Crédito B", expectedLetterId: "letter-b", expectedTypeId: "type-credit-note" },
+    { voucherType: "Factura de Crédito Electrónica MiPyME (FCE) C", expectedLetterId: "letter-c", expectedTypeId: "type-fce" },
+  ])("resolves embedded voucher letters from $voucherType", ({ voucherType, expectedLetterId, expectedTypeId }) => {
+    const result = VoucherForm.buildParsedPatch(
+      createParsedData({
+        voucherType,
+        voucherLetter: null,
+      }),
+      createCurrentValues(),
+      "sales",
+      parsedCatalogs,
+      [],
+    );
+
+    expect(result.voucherTypeId).toBe(expectedTypeId || "type-invoice");
+    expect(result.voucherLetterId).toBe(expectedLetterId);
   });
 });

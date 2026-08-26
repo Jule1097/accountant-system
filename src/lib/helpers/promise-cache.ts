@@ -16,3 +16,7 @@ export function getCachedPromise<T>(key: string, factory: () => Promise<T>): Pro
 
   return promise;
 }
+
+export function clearCachedPromise(key: string): void {
+  promiseCache.delete(key)
+}

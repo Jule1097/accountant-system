@@ -20,7 +20,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from "src/components/ui/dropdown-menu";
-import { LayoutDashboard, ShoppingCart, Store, LineChart, User2, ChevronUp, Building, Scale } from "lucide-react";
+import { LayoutDashboard, ShoppingCart, Store, LineChart, User2, ChevronUp, Building, Scale, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "src/hooks/use-auth";
@@ -52,6 +52,11 @@ const items = [
     url: "/conciliations",
     icon: Scale,
   },
+  {
+    title: "Clientes/Proveedores",
+    url: "/clients",
+    icon: Users,
+  },
 ];
 
 export function AppSidebar() {
@@ -81,7 +86,9 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => {
-                const isActive = pathname === item.url;
+                const isActive = item.url === "/clients"
+                  ? pathname === "/clients" || pathname === "/suppliers"
+                  : pathname === item.url;
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton

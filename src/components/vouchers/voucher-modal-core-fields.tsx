@@ -21,6 +21,7 @@ interface VoucherModalCoreFieldsProps {
   handlePosBlur: (event: React.FocusEvent<HTMLInputElement>) => void;
   handleNumberBlur: (event: React.FocusEvent<HTMLInputElement>) => void;
   taxListsNode?: React.ReactNode;
+  thirdPartyAction?: React.ReactNode;
 }
 
 const fieldContainerClass = "flex min-w-0 flex-col gap-1.5";
@@ -39,6 +40,7 @@ export function VoucherModalCoreFields({
   handlePosBlur,
   handleNumberBlur,
   taxListsNode,
+  thirdPartyAction,
 }: VoucherModalCoreFieldsProps) {
   const {
     register,
@@ -74,6 +76,7 @@ export function VoucherModalCoreFields({
               ))}
             </select>
             {errors.thirdPartyId && <p className={errorClass}>{errors.thirdPartyId.message}</p>}
+            {thirdPartyAction}
           </div>
           <div className={fieldContainerClass}>
             <label className={labelClass}>Fecha</label>
