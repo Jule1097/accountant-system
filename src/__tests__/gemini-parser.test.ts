@@ -76,4 +76,51 @@ describe("GeminiParsedVoucher", () => {
     expect(response.thirdPartyName).toBe("Compañía de Seguros");
     expect(response.concept).toBe("Comisión");
   });
+
+  it("preserves the exact FCE voucher type and normalizes the voucher letter to a single valid letter", () => {
+    const parsedVoucher = new GeminiParsedVoucher({
+      voucherType: "Factura de Crédito Electrónica MiPyME (FCE)",
+      voucherLetter: "Letra A",
+    });
+
+    const response = parsedVoucher.toResponse(
+      {
+        vatRates: [],
+        retentionConcepts: [],
+        perceptionConcepts: [],
+        taxJurisdictions: [],
+      },
+      null,
+    );
+
+    expect(response.voucherType).toBe("Factura de Crédito Electrónica MiPyME (FCE)");
+    expect(response.voucherLetter).toBe("A");
+  });
+
+  it.each([
+    { voucherType: "Factura", voucherLetter: "Letra B", expectedLetter: "B" },
+    { voucherType: "Factura", voucherLetter: "Letra C", expectedLetter: "C" },
+    { voucherType: "Factura", voucherLetter: "Letra M", expectedLetter: "M" },
+    { voucherType: "Factura B", voucherLetter: undefined, expectedLetter: "B" },
+    { voucherType: "Factura C", voucherLetter: undefined, expectedLetter: "C" },
+    { voucherType: "Factura M", voucherLetter: undefined, expectedLetter: "M" },
+    { voucherType: "Factura de Crédito Electrónica MiPyME (FCE) B", voucherLetter: undefined, expectedLetter: "B" },
+  ])("normalizes voucher letters across common parsed formats: $voucherType / $voucherLetter", ({ voucherType, voucherLetter, expectedLetter }) => {
+    const parsedVoucher = new GeminiParsedVoucher({
+      voucherType,
+      voucherLetter,
+    });
+
+    const response = parsedVoucher.toResponse(
+      {
+        vatRates: [],
+        retentionConcepts: [],
+        perceptionConcepts: [],
+        taxJurisdictions: [],
+      },
+      null,
+    );
+
+    expect(response.voucherLetter).toBe(expectedLetter);
+  });
 });

@@ -1,17 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ClientService } from 'src/services/client.service'
-import { clientSchema } from 'src/lib/schemas/voucher-schemas'
+import { shouldUseClientSupplierLegacyList } from 'src/lib/helpers/client-supplier'
+import {
+  parseClientSupplierListQuery,
+  resolveClientSupplierCollectionErrorResponse,
+} from 'src/lib/helpers/client-supplier-api'
+import { clientSupplierSchema } from 'src/lib/schemas/client-supplier-schemas'
 
 export async function GET(request: NextRequest) {
   try {
     const companyId = request.headers.get('x-company-id')!
     const clientService = new ClientService()
-    const clients = await clientService.getAllClients(companyId)
+
+    if (shouldUseClientSupplierLegacyList(request.nextUrl.searchParams)) {
+      const clients = await clientService.getAllClients(companyId)
+      return NextResponse.json(clients)
+    }
+
+    const queryParseResult = parseClientSupplierListQuery(request.nextUrl.searchParams)
+
+    if (!queryParseResult.success) {
+      return NextResponse.json({ error: 'Parámetros de búsqueda inválidos.' }, { status: 400 })
+    }
+
+    const { page, pageSize, ...filters } = queryParseResult.data
+    const clients = await clientService.getClientPage(companyId, page, pageSize, {
+      ...filters,
+    })
 
     return NextResponse.json(clients)
   } catch (error) {
     console.error('Error fetching clients:', error)
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
   }
 }
 
@@ -20,7 +40,7 @@ export async function POST(request: NextRequest) {
     const companyId = request.headers.get('x-company-id')!
     const body = await request.json()
 
-    const parsed = clientSchema.safeParse({ ...body, companyId })
+    const parsed = clientSupplierSchema.safeParse(body)
     if (!parsed.success) {
       return NextResponse.json({ error: 'Datos inválidos', details: parsed.error.format() }, { status: 400 })
     }
@@ -32,9 +52,6 @@ export async function POST(request: NextRequest) {
   } catch (error: unknown) {
     const err = error as Error
     console.error('Error creating client:', err)
-    if (err.message.includes('CUIT del cliente ya se encuentra registrado')) {
-      return NextResponse.json({ error: err.message }, { status: 400 })
-    }
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+    return resolveClientSupplierCollectionErrorResponse(err.message)
   }
 }

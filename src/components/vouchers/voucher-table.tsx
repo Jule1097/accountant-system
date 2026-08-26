@@ -220,21 +220,21 @@ export function VoucherTable({
         <Table className="text-[13px] text-foreground">
           <TableHeader className="bg-muted/30">
             <TableRow className="border-b-border hover:bg-transparent">
-              <TableHead className="text-center text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Fecha</TableHead>
-              <TableHead className="text-center text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Letra</TableHead>
-              <TableHead className="text-center text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Comprobante</TableHead>
-              <TableHead className="text-center text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">{type === "sales" ? "Cliente" : "Proveedor"}</TableHead>
-              <TableHead className="text-center text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">CUIT</TableHead>
-              <TableHead className="text-center text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Concepto</TableHead>
-              <TableHead className="text-center text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Medio Pago</TableHead>
-              <TableHead className="text-center text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Estado</TableHead>
-              <TableHead className="text-center text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">F. Pago</TableHead>
-              <TableHead className="text-center text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">T/C</TableHead>
-              <TableHead className="text-center text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">{type === "sales" ? "Retenciones" : "Percepciones"}</TableHead>
-              <TableHead className="text-center text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Total</TableHead>
-              <TableHead className="text-center text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Pagado</TableHead>
-              <TableHead className="text-center text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Saldo</TableHead>
-              <TableHead className="text-center text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Acciones</TableHead>
+              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Fecha</TableHead>
+              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Letra</TableHead>
+              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Comprobante</TableHead>
+              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">{type === "sales" ? "Cliente" : "Proveedor"}</TableHead>
+              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">CUIT</TableHead>
+              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Concepto</TableHead>
+              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Medio Pago</TableHead>
+              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Estado</TableHead>
+              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">F. Pago</TableHead>
+              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">T/C</TableHead>
+              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">{type === "sales" ? "Retenciones" : "Percepciones"}</TableHead>
+              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Total</TableHead>
+              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Pagado</TableHead>
+              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Saldo</TableHead>
+              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

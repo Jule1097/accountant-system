@@ -103,11 +103,22 @@ export function useVoucherForm({
   const [isParsing, setIsParsing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [previewFile, setPreviewFile] = useState<File | null>(null);
+  const [sessionCycle, setSessionCycle] = useState(0);
+  const [parsedDataOverride, setParsedDataOverride] = useState<{
+    sessionKey: string;
+    data: VoucherParsedData | null;
+  } | null>(null);
   const toastManager = useToastManager();
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastResetKeyRef = useRef<string | null>(null);
+  const lastParsedDataRef = useRef<string | null>(null);
   const previewSourceUrl = useVoucherPreview(previewFile);
+  const activeResetKey = resetKey || (mode === "edit" ? initialVoucher?.id || "edit-pending" : "create");
+  const activeSessionKey = `${sessionCycle}:${activeResetKey}`;
+  const currentParsedData = parsedDataOverride?.sessionKey === activeSessionKey
+    ? parsedDataOverride.data
+    : initialParsedData || null;
   const form = useForm<VoucherFormValues>({
     resolver: zodResolver(voucherFormSchema) as unknown as Resolver<VoucherFormValues>,
     mode: "onChange",
@@ -119,7 +130,6 @@ export function useVoucherForm({
     reset,
     setValue,
     trigger,
-    formState: { errors, isValid },
   } = form;
   const retentionFieldArray = useFieldArray({
     control,
@@ -157,28 +167,47 @@ export function useVoucherForm({
   useEffect(() => {
     if (!isOpen) {
       lastResetKeyRef.current = null;
-      setTimeout(() => setPreviewFile(null), 0);
+      lastParsedDataRef.current = null;
       return;
     }
 
-    const nextResetKey = resetKey || (mode === "edit" ? initialVoucher?.id || "edit-pending" : "create");
+    const parsedDataSignature = initialParsedData ? JSON.stringify(initialParsedData) : null;
 
-    if (lastResetKeyRef.current === nextResetKey) {
+    if (lastResetKeyRef.current !== activeResetKey) {
+      lastResetKeyRef.current = activeResetKey;
+      lastParsedDataRef.current = parsedDataSignature;
+      const nextValues = VoucherForm.buildInitialValues(initialVoucher, user?.id);
+
+      if (initialParsedData) {
+        const patch = VoucherForm.buildParsedPatch(initialParsedData, nextValues, type, catalogs, thirdParties);
+        reset({ ...nextValues, ...patch });
+      } else {
+        reset(nextValues);
+      }
+
+      void trigger();
       return;
     }
 
-    lastResetKeyRef.current = nextResetKey;
-    const nextValues = VoucherForm.buildInitialValues(initialVoucher, user?.id);
-
-    if (initialParsedData) {
-      const patch = VoucherForm.buildParsedPatch(initialParsedData, nextValues, type, catalogs, thirdParties);
-      reset({ ...nextValues, ...patch });
-    } else {
-      reset(nextValues);
+    if (!parsedDataSignature || !initialParsedData || lastParsedDataRef.current === parsedDataSignature) {
+      return;
     }
 
+    lastParsedDataRef.current = parsedDataSignature;
+    const patch = VoucherForm.buildParsedPatch(initialParsedData, getValues(), type, catalogs, thirdParties);
+    reset({ ...getValues(), ...patch }, { keepDirtyValues: true, keepTouched: true });
     void trigger();
-  }, [catalogs, initialParsedData, initialVoucher, isOpen, mode, reset, resetKey, thirdParties, trigger, type, user?.id]);
+  }, [activeResetKey, catalogs, getValues, initialParsedData, initialVoucher, isOpen, reset, thirdParties, trigger, type, user?.id]);
+
+  const handleOpenChange = (open: boolean): void => {
+    if (!open) {
+      setSessionCycle((currentValue) => currentValue + 1);
+      setParsedDataOverride(null);
+      setPreviewFile(null);
+    }
+
+    onOpenChange(open);
+  };
 
   useEffect(() => {
     if (!selectedThirdPartyId) {
@@ -230,14 +259,12 @@ export function useVoucherForm({
     setValue("subtotal", normalizedSubtotal, { shouldValidate: true });
   }, [catalogs, getValues, setValue, type, watchedTotalAmount, watchedVatAmount, watchedVoucherLetterId]);
 
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-  }, [errors, initialVoucher?.id, isOpen, isProcessing, isValid, mode, type]);
-
   const applyParsedVoucherData = async (parsedData: VoucherParsedData): Promise<void> => {
     const patch = VoucherForm.buildParsedPatch(parsedData, getValues(), type, catalogs, thirdParties);
+    setParsedDataOverride({
+      sessionKey: activeSessionKey,
+      data: parsedData,
+    });
     reset({ ...getValues(), ...patch }, { keepDirty: true, keepTouched: true });
   };
 
@@ -247,6 +274,10 @@ export function useVoucherForm({
     }
 
     setPreviewFile(files.length === 1 ? files[0] : null);
+    setParsedDataOverride({
+      sessionKey: activeSessionKey,
+      data: null,
+    });
     reset(buildEmptyVoucherFormValues(user?.id));
     void trigger();
     setIsParsing(true);
@@ -361,7 +392,7 @@ export function useVoucherForm({
       });
 
       if (mode !== "edit") {
-        onOpenChange(false);
+        handleOpenChange(false);
       }
       onSuccess?.(savedVoucher, mode);
     } catch (error: unknown) {
@@ -410,8 +441,10 @@ export function useVoucherForm({
     onDropzoneClick,
     onFileChange,
     onSubmit,
+    handleOpenChange,
     handlePosBlur,
     handleNumberBlur,
     previewDocument,
+    currentParsedData,
   };
 }

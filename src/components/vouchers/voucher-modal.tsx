@@ -1,9 +1,10 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Suspense, use } from "react";
+import { Suspense, use, useState } from "react";
 import { LoaderCircle } from "lucide-react";
 import { Button } from "src/components/ui/button";
+import { DialogLoadingState } from "src/components/ui/dialog-loading-state";
 import {
   Dialog,
   DialogContent,
@@ -17,8 +18,11 @@ import { VoucherModalDropzone } from "src/components/vouchers/voucher-modal-drop
 import { VoucherModalPerceptions } from "src/components/vouchers/voucher-modal-perceptions";
 import { VoucherModalRetentions } from "src/components/vouchers/voucher-modal-retentions";
 import { UseVoucherFormProps, useVoucherForm } from "src/hooks/use-voucher-form";
+import { useVoucherInlineThirdParty } from "src/hooks/use-voucher-inline-third-party";
 import { VoucherFormOptionsData, useVoucherFormOptions } from "src/hooks/use-voucher-form-options";
 import { Voucher } from "src/models/Voucher";
+import { ClientSupplierModal } from "src/components/clients-suppliers/client-supplier-modal";
+import { resolveClientSupplierAddButtonLabel } from "src/lib/helpers/client-supplier-ui";
 import { VoucherParsedData } from "src/types/voucher-form";
 import { VoucherModalMode, VoucherScreenType } from "src/types/voucher";
 
@@ -69,24 +73,6 @@ function resolvePrimaryButtonLabel(
   }
 
   return "Guardando comprobante...";
-}
-
-function VoucherModalLoadingState({
-  title,
-  description,
-}: {
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="flex min-h-[320px] flex-col items-center justify-center gap-3 py-6 text-center">
-      <LoaderCircle className="h-8 w-8 animate-spin text-[#FF5C00]" />
-      <div className="space-y-1">
-        <p className="font-medium text-foreground">{title}</p>
-        <p className="text-xs text-muted-foreground">{description}</p>
-      </div>
-    </div>
-  );
 }
 
 function VoucherModalShell({
@@ -161,6 +147,7 @@ function VoucherModalForm({
   onSuccess,
   options,
 }: VoucherModalFormProps) {
+  const [thirdParties, setThirdParties] = useState(options.thirdParties);
   const {
     form,
     retentionFields,
@@ -176,22 +163,40 @@ function VoucherModalForm({
     onDropzoneClick,
     onFileChange,
     onSubmit,
+    handleOpenChange,
     handlePosBlur,
     handleNumberBlur,
     previewDocument,
+    currentParsedData,
   } = useVoucherForm({
     isOpen,
     onOpenChange,
     type,
     mode,
     catalogs: options.catalogs,
-    thirdParties: options.thirdParties,
+    thirdParties,
     initialVoucher,
     initialParsedData,
     resetKey,
     submitAction,
     submitButtonLabel,
     onSuccess,
+  });
+  const {
+    isInlineModalOpen,
+    inlineModalType,
+    inlineInitialValues,
+    shouldShowInlineAction,
+    openInlineModal,
+    handleInlineModalOpenChange,
+    handleInlineSuccess,
+    resolveDuplicateRecord,
+  } = useVoucherInlineThirdParty({
+    type,
+    form,
+    parsedData: currentParsedData,
+    thirdParties,
+    setThirdParties,
   });
   const {
     handleSubmit,
@@ -222,12 +227,17 @@ function VoucherModalForm({
               form={form}
               isProcessing={isProcessing}
               catalogs={options.catalogs}
-              thirdParties={options.thirdParties}
+              thirdParties={thirdParties}
               type={type}
               mode={mode}
               initialVoucher={initialVoucher}
               handlePosBlur={handlePosBlur}
               handleNumberBlur={handleNumberBlur}
+              thirdPartyAction={!shouldShowInlineAction || mode === "view" ? null : (
+                <Button type="button" variant="outline" className="w-full" onClick={openInlineModal}>
+                  {resolveClientSupplierAddButtonLabel(inlineModalType)}
+                </Button>
+              )}
               taxListsNode={
                 <>
                   {type === "sales" && (
@@ -255,7 +265,7 @@ function VoucherModalForm({
             />
 
             {mode === "view" ? (
-              <Button type="button" onClick={() => onOpenChange(false)} className="w-full h-10 !bg-[#FF5C00] hover:!bg-[#FF5C00]/90 !text-white text-sm font-medium rounded-md">
+              <Button type="button" onClick={() => handleOpenChange(false)} className="w-full h-10 !bg-[#FF5C00] hover:!bg-[#FF5C00]/90 !text-white text-sm font-medium rounded-md">
                 Cerrar
               </Button>
             ) : (
@@ -280,12 +290,17 @@ function VoucherModalForm({
             form={form}
             isProcessing={isProcessing}
             catalogs={options.catalogs}
-            thirdParties={options.thirdParties}
+            thirdParties={thirdParties}
             type={type}
             mode={mode}
             initialVoucher={initialVoucher}
             handlePosBlur={handlePosBlur}
             handleNumberBlur={handleNumberBlur}
+            thirdPartyAction={!shouldShowInlineAction || mode === "view" ? null : (
+              <Button type="button" variant="outline" className="w-full" onClick={openInlineModal}>
+                {resolveClientSupplierAddButtonLabel(inlineModalType)}
+              </Button>
+            )}
             taxListsNode={
               <>
                 {type === "sales" && (
@@ -313,7 +328,7 @@ function VoucherModalForm({
           />
 
           {mode === "view" ? (
-            <Button type="button" onClick={() => onOpenChange(false)} className="w-full h-10 !bg-[#FF5C00] hover:!bg-[#FF5C00]/90 !text-white text-sm font-medium rounded-md">
+            <Button type="button" onClick={() => handleOpenChange(false)} className="w-full h-10 !bg-[#FF5C00] hover:!bg-[#FF5C00]/90 !text-white text-sm font-medium rounded-md">
               Cerrar
             </Button>
           ) : (
@@ -324,6 +339,16 @@ function VoucherModalForm({
           )}
         </>
       )}
+
+      <ClientSupplierModal
+        isOpen={isInlineModalOpen}
+        type={inlineModalType}
+        mode="create"
+        initialValues={inlineInitialValues}
+        onOpenChange={handleInlineModalOpenChange}
+        onSuccess={handleInlineSuccess}
+        onResolveDuplicate={resolveDuplicateRecord}
+      />
     </form>
   );
 }
@@ -366,9 +391,10 @@ export function VoucherModalReady({
       sidePanel={sidePanel}
     >
       {isLoadingDetail ? (
-        <VoucherModalLoadingState
+        <DialogLoadingState
           title="Cargando comprobante"
           description="Estamos trayendo la información para editarla."
+          minHeightClassName="min-h-[320px]"
         />
       ) : (
         <VoucherModalForm
@@ -418,16 +444,18 @@ export function VoucherModal({
       sidePanel={sidePanel}
     >
       {isLoadingDetail ? (
-        <VoucherModalLoadingState
+        <DialogLoadingState
           title="Cargando comprobante"
           description="Estamos trayendo la información para editarla."
+          minHeightClassName="min-h-[320px]"
         />
       ) : (
         <Suspense
           fallback={
-            <VoucherModalLoadingState
+            <DialogLoadingState
               title="Cargando formulario"
               description="Estamos preparando las opciones del comprobante."
+              minHeightClassName="min-h-[320px]"
             />
           }
         >
@@ -467,7 +495,11 @@ export function VoucherModalLoading({
 }) {
   return (
     <VoucherModalShell isOpen={isOpen} onOpenChange={onOpenChange} type={type} mode={mode}>
-      <VoucherModalLoadingState title={title} description={description} />
+      <DialogLoadingState
+        title={title}
+        description={description}
+        minHeightClassName="min-h-[320px]"
+      />
     </VoucherModalShell>
   );
 }

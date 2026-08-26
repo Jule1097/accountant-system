@@ -23,6 +23,10 @@ This file defines the technical foundation. All implementations must adhere to t
 ## Frontend Modularization & Component Rules
 - **Page Mount Constraint (`page.tsx`)**: `page.tsx` files must only be used to mount the corresponding UI components. Do not place complex logic or methods directly in page files. 
 - **Pure HTML Presentation & Strict Separation:** UI components must **only** contain HTML elements and calls to external methods or hooks. They must **never** contain inline business logic implementation. Always separate logic and methods into their respective dedicated folders.
+- **No Network Orchestration In UI Components:** Presentation components must not call `apiRequest`, trigger toasts, decide REST endpoints, or orchestrate persistence side effects. Those responsibilities belong in dedicated hooks, services, or helper layers, and components must receive already-prepared callbacks and view data through props.
+- **Reuse Existing Interaction Patterns:** When a screen introduces tabs, tags, toolbars, tables, dialogs, empty states, or loading states that already exist elsewhere in the product, the implementation must reuse the established visual and interaction pattern instead of inventing a parallel variant unless the user explicitly asks for a redesign.
+- **Mandatory Reuse-First Audit:** Before adding any new component, hook, helper, service, schema, type, constant, test, loader, modal, skeleton, filter, or table behavior, you must search the existing codebase for reusable or adaptable implementations. New artifacts are allowed only when no suitable option exists, and they must be authored with reusable boundaries so future screens can adopt them without feature-specific coupling.
+- **Component Props Typing Rule:** Component prop interfaces and reusable view-model types must live in `src/types/`. Do not define exported or feature-level prop interfaces inside component files.
 - **Component & File Length Limit:** All components, pages, and architectural files must strictly range between **150 to 200 lines maximum**. Break down complex UIs into smaller, single-responsibility sub-components.
 - **Promise Derivation in Hooks:** Custom React hooks representing queries or async fetches should derive the promise during render using `useMemo` based on dependencies (e.g. `activeCompanyId`), instead of invoking `setState` from inside a `useEffect` loop.
 
@@ -35,6 +39,7 @@ This file defines the technical foundation. All implementations must adhere to t
 - Use early returns to reduce nesting.
 - **Zero Nested IFs:** Nested `if` statements (`if` inside an `if`) are strictly prohibited across all codebase layers (frontend and backend). Whenever conditional depth is required, you **must** extract the logic into a modular helper function located in `src/lib/helpers/`.
 - **Reuse First Policy:** Before implementing any new utility, validation, or helper method, you **must** review existing codebase modules to reuse available methods. Only generate a new one if no suitable reusable method exists.
+- **Reuse Includes Tests And Contracts:** The reuse-first rule also applies to test helpers, fixtures, mocks, schemas, DTOs, query-state models, and UI state contracts. Avoid cloning similar artifacts with slight variations when they can be generalized safely.
 - Do not leave dead code, commented-out code, debug logs, temporary TODOs, or unused exports.
 
 ## TypeScript Rules

@@ -1,17 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { SupplierService } from 'src/services/supplier.service'
-import { supplierSchema } from 'src/lib/schemas/voucher-schemas'
+import { shouldUseClientSupplierLegacyList } from 'src/lib/helpers/client-supplier'
+import {
+  parseClientSupplierListQuery,
+  resolveClientSupplierCollectionErrorResponse,
+} from 'src/lib/helpers/client-supplier-api'
+import { clientSupplierSchema } from 'src/lib/schemas/client-supplier-schemas'
 
 export async function GET(request: NextRequest) {
   try {
     const companyId = request.headers.get('x-company-id')!
     const supplierService = new SupplierService()
-    const suppliers = await supplierService.getAllSuppliers(companyId)
+
+    if (shouldUseClientSupplierLegacyList(request.nextUrl.searchParams)) {
+      const suppliers = await supplierService.getAllSuppliers(companyId)
+      return NextResponse.json(suppliers)
+    }
+
+    const queryParseResult = parseClientSupplierListQuery(request.nextUrl.searchParams)
+
+    if (!queryParseResult.success) {
+      return NextResponse.json({ error: 'Parámetros de búsqueda inválidos.' }, { status: 400 })
+    }
+
+    const { page, pageSize, ...filters } = queryParseResult.data
+    const suppliers = await supplierService.getSupplierPage(companyId, page, pageSize, {
+      ...filters,
+    })
 
     return NextResponse.json(suppliers)
   } catch (error) {
     console.error('Error fetching suppliers:', error)
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
   }
 }
 
@@ -20,7 +40,7 @@ export async function POST(request: NextRequest) {
     const companyId = request.headers.get('x-company-id')!
     const body = await request.json()
 
-    const parsed = supplierSchema.safeParse({ ...body, companyId })
+    const parsed = clientSupplierSchema.safeParse(body)
     if (!parsed.success) {
       return NextResponse.json({ error: 'Datos inválidos', details: parsed.error.format() }, { status: 400 })
     }
@@ -32,9 +52,6 @@ export async function POST(request: NextRequest) {
   } catch (error: unknown) {
     const err = error as Error
     console.error('Error creating supplier:', err)
-    if (err.message.includes('CUIT del proveedor ya se encuentra registrado')) {
-      return NextResponse.json({ error: err.message }, { status: 400 })
-    }
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+    return resolveClientSupplierCollectionErrorResponse(err.message)
   }
 }
