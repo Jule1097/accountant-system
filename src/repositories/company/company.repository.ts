@@ -1,4 +1,4 @@
-import prisma from 'src/lib/prisma'
+import prisma from 'src/lib/database/prisma'
 
 export class CompanyRepository {
   async findByUser(userId: string) {

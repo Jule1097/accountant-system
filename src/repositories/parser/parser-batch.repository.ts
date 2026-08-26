@@ -1,6 +1,6 @@
-import prisma from "src/lib/prisma";
+import prisma from "src/lib/database/prisma";
 import { Prisma } from "src/generated/prisma/client";
-import { resolveParserBatchStatus } from "src/lib/helpers/parser-batch";
+import { resolveParserBatchStatus } from "src/lib/helpers/parser/parser-batch";
 import {
   ParserBatchCreateInput,
   ParserBatchItemContextRecord,
@@ -9,9 +9,9 @@ import {
   ParserBatchItemStatus,
   ParserBatchRecord,
   ParserInputStrategy,
-} from "src/types/parser-batch";
-import { GeminiParserResponse } from "src/types/gemini-parser";
-import { VoucherFormPayload } from "src/types/voucher-form";
+} from "src/types/parser/parser-batch";
+import { GeminiParserResponse } from "src/types/parser/gemini-parser";
+import { VoucherFormPayload } from "src/types/voucher/voucher-form";
 
 interface ParserBatchReviewFilter {
   companyId: string;

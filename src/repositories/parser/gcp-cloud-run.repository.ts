@@ -1,6 +1,6 @@
-import { buildGcpJobRunUrl, getGcpWorkflowConfig } from "src/lib/helpers/async-batch-runner";
-import { getGcpWorkflowAccessToken } from "src/lib/helpers/gcp-workflow-auth";
-import { AsyncBatchWorkloadKind } from "src/types/async-batch-runner";
+import { buildGcpJobRunUrl, getGcpWorkflowConfig } from "src/lib/helpers/parser/async-batch-runner";
+import { getGcpWorkflowAccessToken } from "src/lib/helpers/parser/gcp-workflow-auth";
+import { AsyncBatchWorkloadKind } from "src/types/parser/async-batch-runner";
 
 function buildRunRequestBody(batchId: string): string {
   return JSON.stringify({

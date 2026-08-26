@@ -1,7 +1,7 @@
-import prisma from 'src/lib/prisma'
+import prisma from 'src/lib/database/prisma'
 import { Client, Prisma } from 'src/generated/prisma/client'
-import { normalizeClientSupplierName, buildClientSupplierWhereClause, resolveClientSupplierOrderBy } from 'src/lib/helpers/client-supplier'
-import { ClientListResponse, ClientSupplierFilterParams } from 'src/types/client-supplier'
+import { normalizeClientSupplierName, buildClientSupplierWhereClause, resolveClientSupplierOrderBy } from 'src/lib/helpers/client-supplier/client-supplier'
+import { ClientListResponse, ClientSupplierFilterParams } from 'src/types/client-supplier/client-supplier'
 
 export class ClientRepository {
     async findById(companyId: string, id: string): Promise<Client | null> {

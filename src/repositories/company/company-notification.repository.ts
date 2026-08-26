@@ -1,5 +1,5 @@
-import prisma from "src/lib/prisma";
-import { CompanyNotificationRecord } from "src/types/notification";
+import prisma from "src/lib/database/prisma";
+import { CompanyNotificationRecord } from "src/types/notification/notification";
 
 function mapCompanyNotification(record: {
   id: string;

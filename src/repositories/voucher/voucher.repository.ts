@@ -1,7 +1,7 @@
-import prisma from 'src/lib/prisma'
+import prisma from 'src/lib/database/prisma'
 import { Prisma } from 'src/generated/prisma/client'
 import { Voucher } from 'src/models/Voucher'
-import { GeminiParserResponse } from 'src/types/gemini-parser'
+import { GeminiParserResponse } from 'src/types/parser/gemini-parser'
 import {
   VoucherFilterParams,
   VoucherListItem,
@@ -9,7 +9,7 @@ import {
   VoucherRecordType,
   VoucherSortOrder,
   VoucherSummaryResponse,
-} from 'src/types/voucher'
+} from 'src/types/voucher/voucher'
 
 const voucherInclude = {
   retentions: {
