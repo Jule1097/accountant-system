@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import { ParserVoucherType } from "src/types/parser-batch";
+import { ParserVoucherType } from "src/types/parser/parser-batch";
 
 const maxPdfFileSizeBytes = 2 * 1024 * 1024;
 const maxImageFileSizeBytes = 4 * 1024 * 1024;

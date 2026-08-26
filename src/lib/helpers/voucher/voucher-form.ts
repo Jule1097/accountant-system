@@ -3,8 +3,8 @@ import {
   VoucherFormDateValue,
   VoucherFormNullableDateValue,
   VoucherFormPayload,
-} from "src/types/voucher-form";
-import { resolveGeminiCatalogMatch } from "src/lib/helpers/gemini-parser";
+} from "src/types/voucher/voucher-form";
+import { resolveGeminiCatalogMatch } from "src/lib/helpers/parser/gemini-parser";
 
 export function normalizeVoucherCurrency(value?: string | null): "$" | "USD" | null {
   if (!value) {

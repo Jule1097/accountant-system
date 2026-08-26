@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { normalizeCuit } from 'src/lib/cuit'
+import { normalizeCuit } from 'src/lib/domain/cuit'
 
 function isNonZeroVoucherValue(value: string): boolean {
   return Number(value) > 0

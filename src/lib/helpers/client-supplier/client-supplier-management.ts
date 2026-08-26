@@ -1,17 +1,17 @@
-import { ApiRequestError } from 'src/lib/api-client'
+import { ApiRequestError } from 'src/lib/api/api-client'
 import {
   createNormalizedSearchParams,
   readEnumParam,
   readOptionalStringParam,
   readPositiveIntegerParam,
-} from 'src/lib/helpers/query-state'
+} from 'src/lib/helpers/platform/query-state'
 import {
   ClientSupplierEntityType,
   ClientSupplierListQueryState,
   ClientSupplierListResponse,
   ClientSupplierSortBy,
   ClientSupplierSortOrder,
-} from 'src/types/client-supplier'
+} from 'src/types/client-supplier/client-supplier'
 
 export const clientSupplierPageSizeOptions = [10, 20, 50] as const
 

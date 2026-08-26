@@ -1,4 +1,4 @@
-import { AsyncBatchWorkloadKind } from "src/types/async-batch-runner";
+import { AsyncBatchWorkloadKind } from "src/types/parser/async-batch-runner";
 
 const batchExecutionLockSeconds = 900;
 

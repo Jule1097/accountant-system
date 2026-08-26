@@ -1,6 +1,6 @@
-import { ApiRequestError } from "src/lib/api-client";
-import { readOptionalStringParam, readPositiveIntegerParam } from "src/lib/helpers/query-state";
-import { ConciliationsPageData, ConciliationsQueryState } from "src/types/conciliations";
+import { ApiRequestError } from "src/lib/api/api-client";
+import { readOptionalStringParam, readPositiveIntegerParam } from "src/lib/helpers/platform/query-state";
+import { ConciliationsPageData, ConciliationsQueryState } from "src/types/conciliation/conciliations";
 
 export function readConciliationsQuery(searchParams: URLSearchParams): ConciliationsQueryState {
   return {

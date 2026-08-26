@@ -1,8 +1,8 @@
-import { compareCuit } from "src/lib/cuit"
-import { normalizeClientSupplierName } from "src/lib/helpers/client-supplier"
-import { ClientSupplierFormValues, ClientSupplierModalInitialValues, ClientSupplierRecord } from "src/types/client-supplier"
-import { VoucherScreenType } from "src/types/voucher"
-import { VoucherParsedData, VoucherThirdPartyOption } from "src/types/voucher-form"
+import { compareCuit } from "src/lib/domain/cuit"
+import { normalizeClientSupplierName } from "src/lib/helpers/client-supplier/client-supplier"
+import { ClientSupplierFormValues, ClientSupplierModalInitialValues, ClientSupplierRecord } from "src/types/client-supplier/client-supplier"
+import { VoucherScreenType } from "src/types/voucher/voucher"
+import { VoucherParsedData, VoucherThirdPartyOption } from "src/types/voucher/voucher-form"
 
 export function resolveVoucherThirdPartyEndpoint(type: VoucherScreenType): string {
   if (type === "sales") {

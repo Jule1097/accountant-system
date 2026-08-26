@@ -1,4 +1,4 @@
-import { AsyncBatchWorkloadKind, GcpWorkflowConfig, WorkflowDriver } from "src/types/async-batch-runner";
+import { AsyncBatchWorkloadKind, GcpWorkflowConfig, WorkflowDriver } from "src/types/parser/async-batch-runner";
 
 function normalizeWorkflowDriver(value: string | undefined): WorkflowDriver {
   if (value === "gcp") {

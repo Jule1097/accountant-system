@@ -2,8 +2,8 @@ import {
   classifyPdfAsync,
   extractPagesMarkdownAsync,
 } from "@firecrawl/pdf-inspector";
-import { normalizeParserText } from "src/lib/helpers/parser-text";
-import { ParserInputStrategy } from "src/types/parser-batch";
+import { normalizeParserText } from "src/lib/helpers/parser/parser-text";
+import { ParserInputStrategy } from "src/types/parser/parser-batch";
 
 export interface ParserPdfStrategyResult {
   strategy: ParserInputStrategy;

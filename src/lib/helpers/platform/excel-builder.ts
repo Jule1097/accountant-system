@@ -1,5 +1,5 @@
 import ExcelJS from 'exceljs'
-import { ExportColumnDefinition } from 'src/types/voucher-export'
+import { ExportColumnDefinition } from 'src/types/voucher/voucher-export'
 
 export const standardJurisdictions = [
   'Buenos Aires',

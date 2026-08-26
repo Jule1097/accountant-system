@@ -1,4 +1,4 @@
-import { ApiRequestError } from "src/lib/api-client";
+import { ApiRequestError } from "src/lib/api/api-client";
 import {
   createNormalizedSearchParams,
   readEnumParam,
@@ -6,7 +6,7 @@ import {
   readOptionalEnumParam,
   readOptionalStringParam,
   readPositiveIntegerParam,
-} from "src/lib/helpers/query-state";
+} from "src/lib/helpers/platform/query-state";
 import { Voucher } from "src/models/Voucher";
 import {
   VoucherListQueryState,
@@ -16,7 +16,7 @@ import {
   VoucherSortBy,
   VoucherSortOrder,
   VoucherStatus,
-} from "src/types/voucher";
+} from "src/types/voucher/voucher";
 
 export const voucherPageSizeOptions = [10, 20, 50] as const;
 

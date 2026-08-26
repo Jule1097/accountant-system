@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createRequestSupabaseClient } from "src/lib/supabase-server";
+import { createRequestSupabaseClient } from "src/lib/integrations/supabase-server";
 
 export async function getParserAuthenticatedUserId(request: NextRequest): Promise<string> {
   const response = NextResponse.next();

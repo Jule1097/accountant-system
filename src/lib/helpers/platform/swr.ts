@@ -1,5 +1,5 @@
 import { mutate } from "swr";
-import { apiRequest } from "src/lib/api-client";
+import { apiRequest } from "src/lib/api/api-client";
 
 export type CompanyPathKey = readonly [string, string];
 

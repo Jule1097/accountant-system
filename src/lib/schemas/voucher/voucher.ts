@@ -7,4 +7,4 @@ export {
   voucherPerceptionSchema,
   voucherVatDetailSchema,
   voucherSchema,
-} from 'src/lib/schemas/voucher-schemas'
+} from 'src/lib/schemas/voucher/voucher-schemas'

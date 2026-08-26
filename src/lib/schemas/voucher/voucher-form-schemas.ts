@@ -2,7 +2,7 @@ import * as z from "zod";
 import {
   normalizeVoucherExchangeRate,
   shouldRequireVoucherExchangeRate,
-} from "src/lib/helpers/voucher-form";
+} from "src/lib/helpers/voucher/voucher-form";
 
 function normalizeOptionalNumberInput(value: unknown): number {
   if (value === "" || value === null || value === undefined) {

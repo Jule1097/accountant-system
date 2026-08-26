@@ -1,5 +1,5 @@
-import { hasCorruptedParserText } from "src/lib/helpers/parser-text";
-import { GeminiRepairableField, RawGeminiParsedVoucher } from "src/types/gemini-parser";
+import { hasCorruptedParserText } from "src/lib/helpers/parser/parser-text";
+import { GeminiRepairableField, RawGeminiParsedVoucher } from "src/types/parser/gemini-parser";
 
 type GeminiRepairableScalarField =
   | "thirdPartyName"

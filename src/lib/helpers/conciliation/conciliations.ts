@@ -1,4 +1,4 @@
-import { ParserBatchItemContextRecord, ParserBatchRecord, ParserBatchStatus, ParserVoucherType } from "src/types/parser-batch";
+import { ParserBatchItemContextRecord, ParserBatchRecord, ParserBatchStatus, ParserVoucherType } from "src/types/parser/parser-batch";
 import {
   ConciliationItem,
   ConciliationSectionData,
@@ -7,8 +7,8 @@ import {
   ConciliationSectionKey,
   ConciliationTab,
   ConciliationVisibleStatus,
-} from "src/types/conciliations";
-import { GeminiParserResponse } from "src/types/gemini-parser";
+} from "src/types/conciliation/conciliations";
+import { GeminiParserResponse } from "src/types/parser/gemini-parser";
 
 const itemsPerPage = 4;
 

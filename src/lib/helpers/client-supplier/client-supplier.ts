@@ -1,5 +1,5 @@
 import { URLSearchParams } from 'url'
-import { ClientSupplierFilterParams, ClientSupplierWhereInput, ClientSupplierOrderByInput } from 'src/types/client-supplier'
+import { ClientSupplierFilterParams, ClientSupplierWhereInput, ClientSupplierOrderByInput } from 'src/types/client-supplier/client-supplier'
 
 export const clientSupplierSortByOptions = ['name', 'cuit'] as const
 export const clientSupplierSortOrderOptions = ['asc', 'desc'] as const

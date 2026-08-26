@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
-import { buildClientSupplierFilters } from 'src/lib/helpers/client-supplier'
-import { clientSupplierListQuerySchema } from 'src/lib/schemas/client-supplier-schemas'
-import { ClientSupplierFilterParams } from 'src/types/client-supplier'
+import { buildClientSupplierFilters } from 'src/lib/helpers/client-supplier/client-supplier'
+import { clientSupplierListQuerySchema } from 'src/lib/schemas/client-supplier/client-supplier-schemas'
+import { ClientSupplierFilterParams } from 'src/types/client-supplier/client-supplier'
 
 export function parseClientSupplierListQuery(searchParams: URLSearchParams):
   | { success: true; data: ClientSupplierFilterParams & { page: number; pageSize: number } }

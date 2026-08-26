@@ -1,5 +1,5 @@
 import { ContentListUnion, GoogleGenAI } from "@google/genai";
-import { GeminiParseOptions, GeminiRepairableField, RawGeminiParsedVoucher } from "src/types/gemini-parser";
+import { GeminiParseOptions, GeminiRepairableField, RawGeminiParsedVoucher } from "src/types/parser/gemini-parser";
 
 function getGeminiClient(): GoogleGenAI {
   const apiKey = process.env.GEMINI_API_KEY;

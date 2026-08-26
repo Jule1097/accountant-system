@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { cuitSchema } from 'src/lib/schemas/voucher-schemas'
+import { cuitSchema } from 'src/lib/schemas/voucher/voucher-schemas'
 
 const clientSupplierListPageSizes = [10, 20, 50] as const
 

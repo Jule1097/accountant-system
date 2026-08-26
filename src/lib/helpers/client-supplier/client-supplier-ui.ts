@@ -3,7 +3,7 @@ import {
   ClientSupplierModalMode,
   ClientSupplierSortBy,
   ClientSupplierSortOrder,
-} from 'src/types/client-supplier'
+} from 'src/types/client-supplier/client-supplier'
 
 export function resolveClientSupplierEntityLabel(type: ClientSupplierEntityType): string {
   return type === 'clients' ? 'cliente' : 'proveedor'

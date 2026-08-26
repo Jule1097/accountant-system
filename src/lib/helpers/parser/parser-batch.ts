@@ -3,7 +3,7 @@ import {
   ParserBatchItemStatus,
   ParserBatchRecord,
   ParserBatchStatus,
-} from "src/types/parser-batch";
+} from "src/types/parser/parser-batch";
 
 const parserBatchExpirationHours = 24;
 const parserBatchMaxFiles = 20;

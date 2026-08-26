@@ -1,17 +1,17 @@
 import Decimal from 'decimal.js'
 import { Voucher } from 'src/models/Voucher'
-import { getPreviousMonthRangeInArgentina } from './date-timezone'
-import { standardJurisdictions } from './excel-builder'
-import { normalizeCuit } from 'src/lib/cuit'
-import { resolveTaxJurisdictionName } from 'src/lib/tax-jurisdictions'
+import { getPreviousMonthRangeInArgentina } from '../platform/date-timezone'
+import { standardJurisdictions } from 'src/lib/helpers/platform/excel-builder'
+import { normalizeCuit } from 'src/lib/domain/cuit'
+import { resolveTaxJurisdictionName } from 'src/lib/domain/tax-jurisdictions'
 import {
   ExportColumnDefinition,
   ExportQueryParams,
   RetentionConceptLike,
   PerceptionConceptLike,
   VatRateLike,
-} from 'src/types/voucher-export'
-import { VoucherFilterParams } from 'src/types/voucher'
+} from 'src/types/voucher/voucher-export'
+import { VoucherFilterParams } from 'src/types/voucher/voucher'
 
 export function buildExportFilters(params: ExportQueryParams): {
   filters: VoucherFilterParams
