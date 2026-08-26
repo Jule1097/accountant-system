@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { conciliationItemParamsSchema } from "src/lib/schemas/conciliations-schemas";
-import { ConciliationsService } from "src/services/conciliations.service";
+import { conciliationItemParamsSchema } from "src/lib/schemas/conciliation/conciliations-schemas";
+import { ConciliationsService } from "src/services/conciliation/conciliations.service";
 
 export async function POST(
   request: NextRequest,

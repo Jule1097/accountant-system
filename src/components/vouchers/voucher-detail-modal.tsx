@@ -2,9 +2,9 @@
 
 import { Suspense, use, useEffect } from "react";
 import { VoucherModalLoading, VoucherModalReady } from "src/components/vouchers/voucher-modal";
-import { VoucherFormOptionsData, useVoucherFormOptions } from "src/hooks/use-voucher-form-options";
+import { VoucherFormOptionsData, useVoucherFormOptions } from "src/hooks/voucher/use-voucher-form-options";
 import { Voucher } from "src/models/Voucher";
-import { VoucherModalMode, VoucherScreenType } from "src/types/voucher";
+import { VoucherModalMode, VoucherScreenType } from "src/types/voucher/voucher";
 
 interface VoucherDetailModalProps {
   voucherId: string | null;

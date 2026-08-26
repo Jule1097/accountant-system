@@ -7,8 +7,8 @@ import {
 } from 'src/components/clients-suppliers/client-supplier-modal'
 import { ClientSupplierSkeleton } from 'src/components/clients-suppliers/client-supplier-skeleton'
 import { ClientSupplierTable } from 'src/components/clients-suppliers/client-supplier-table'
-import { useClientsSuppliersManagement } from 'src/hooks/use-clients-suppliers-management'
-import { ClientsSuppliersManagementViewProps } from 'src/types/client-supplier'
+import { useClientsSuppliersManagement } from 'src/hooks/client-supplier/use-clients-suppliers-management'
+import { ClientsSuppliersManagementViewProps } from 'src/types/client-supplier/client-supplier'
 
 export function ClientsSuppliersManagementView({
   type,

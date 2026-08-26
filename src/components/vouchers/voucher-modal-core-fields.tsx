@@ -1,11 +1,11 @@
 import { UseFormReturn, useWatch } from "react-hook-form";
 import { Input } from "src/components/ui/input";
-import { VoucherFormValues } from "src/hooks/use-voucher-form";
-import { shouldRequireVoucherExchangeRate } from "src/lib/helpers/voucher-form";
-import { getVoucherFormattedAmount } from "src/lib/helpers/voucher-management";
+import { VoucherFormValues } from "src/hooks/voucher/use-voucher-form";
+import { shouldRequireVoucherExchangeRate } from "src/lib/helpers/voucher/voucher-form";
+import { getVoucherFormattedAmount } from "src/lib/helpers/voucher/voucher-management";
 import { Voucher } from "src/models/Voucher";
-import { VoucherModalMode } from "src/types/voucher";
-import { cn } from "src/lib/utils";
+import { VoucherModalMode } from "src/types/voucher/voucher";
+import { cn } from "src/lib/shared/utils";
 
 interface VoucherModalCoreFieldsProps {
   form: UseFormReturn<VoucherFormValues>;

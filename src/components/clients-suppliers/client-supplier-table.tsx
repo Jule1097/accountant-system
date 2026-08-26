@@ -9,17 +9,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 's
 import {
   buildClientSupplierPageLabel,
   clientSupplierPageSizeOptions,
-} from 'src/lib/helpers/client-supplier-management'
+} from 'src/lib/helpers/client-supplier/client-supplier-management'
 import {
   ClientSupplierTableProps,
-} from 'src/types/client-supplier'
+} from 'src/types/client-supplier/client-supplier'
 import {
   getClientSupplierSortValue,
   resolveClientSupplierAddButtonLabel,
   resolveClientSupplierEntityLabel,
   resolveClientSupplierSearchPlaceholder,
   resolveClientSupplierSortSelection,
-} from 'src/lib/helpers/client-supplier-ui'
+} from 'src/lib/helpers/client-supplier/client-supplier-ui'
 
 export function ClientSupplierTable({
   data,

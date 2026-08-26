@@ -17,14 +17,14 @@ import { VoucherModalCoreFields } from "src/components/vouchers/voucher-modal-co
 import { VoucherModalDropzone } from "src/components/vouchers/voucher-modal-dropzone";
 import { VoucherModalPerceptions } from "src/components/vouchers/voucher-modal-perceptions";
 import { VoucherModalRetentions } from "src/components/vouchers/voucher-modal-retentions";
-import { UseVoucherFormProps, useVoucherForm } from "src/hooks/use-voucher-form";
-import { useVoucherInlineThirdParty } from "src/hooks/use-voucher-inline-third-party";
-import { VoucherFormOptionsData, useVoucherFormOptions } from "src/hooks/use-voucher-form-options";
+import { UseVoucherFormProps, useVoucherForm } from "src/hooks/voucher/use-voucher-form";
+import { useVoucherInlineThirdParty } from "src/hooks/voucher/use-voucher-inline-third-party";
+import { VoucherFormOptionsData, useVoucherFormOptions } from "src/hooks/voucher/use-voucher-form-options";
 import { Voucher } from "src/models/Voucher";
 import { ClientSupplierModal } from "src/components/clients-suppliers/client-supplier-modal";
-import { resolveClientSupplierAddButtonLabel } from "src/lib/helpers/client-supplier-ui";
-import { VoucherParsedData } from "src/types/voucher-form";
-import { VoucherModalMode, VoucherScreenType } from "src/types/voucher";
+import { resolveClientSupplierAddButtonLabel } from "src/lib/helpers/client-supplier/client-supplier-ui";
+import { VoucherParsedData } from "src/types/voucher/voucher-form";
+import { VoucherModalMode, VoucherScreenType } from "src/types/voucher/voucher";
 
 interface VoucherModalProps {
   isOpen: boolean;

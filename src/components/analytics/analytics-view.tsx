@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { AnalyticsSkeleton } from "src/components/analytics/analytics-skeleton";
-import { cn } from "src/lib/utils";
-import { useAnalytics } from "src/hooks/use-analytics";
-import { useAnalyticsChart } from "src/hooks/use-analytics-chart";
-import { AnalyticsData, TrendEntry, ComparisonPeriodData } from "src/types/analytics";
+import { cn } from "src/lib/shared/utils";
+import { useAnalytics } from "src/hooks/analytics/use-analytics";
+import { useAnalyticsChart } from "src/hooks/analytics/use-analytics-chart";
+import { AnalyticsData, TrendEntry, ComparisonPeriodData } from "src/types/analytics/analytics";
 
 function AnalyticsContainer({ data }: { data: AnalyticsData }) {
   const [period, setPeriod] = useState<"6_months" | "year">("6_months");

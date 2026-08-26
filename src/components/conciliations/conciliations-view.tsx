@@ -6,8 +6,8 @@ import { ConciliationSection } from "src/components/conciliations/conciliation-s
 import { ConciliationsPagination } from "src/components/conciliations/conciliations-pagination";
 import { ConciliationsToolbar } from "src/components/conciliations/conciliations-toolbar";
 import { VoucherDeleteDialog } from "src/components/vouchers/voucher-delete-dialog";
-import { useConciliations } from "src/hooks/use-conciliations";
-import { ConciliationSectionData } from "src/types/conciliations";
+import { useConciliations } from "src/hooks/conciliation/use-conciliations";
+import { ConciliationSectionData } from "src/types/conciliation/conciliations";
 
 function ConciliationsLoadingState() {
   return (

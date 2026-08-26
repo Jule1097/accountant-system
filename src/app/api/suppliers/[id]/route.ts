@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { SupplierService } from 'src/services/supplier.service'
-import { resolveClientSupplierItemErrorResponse } from 'src/lib/helpers/client-supplier-api'
-import { clientSupplierSchema } from 'src/lib/schemas/client-supplier-schemas'
+import { SupplierService } from 'src/services/client-supplier/supplier.service'
+import { resolveClientSupplierItemErrorResponse } from 'src/lib/helpers/client-supplier/client-supplier-api'
+import { clientSupplierSchema } from 'src/lib/schemas/client-supplier/client-supplier-schemas'
 
 export async function GET(
   request: NextRequest,

@@ -7,8 +7,8 @@ import { PurchasesKpiCards } from "src/components/vouchers/purchases-kpi-cards";
 import { SalesKpiCards } from "src/components/vouchers/sales-kpi-cards";
 import { VoucherSkeleton } from "src/components/vouchers/voucher-skeleton";
 import { VoucherTable } from "src/components/vouchers/voucher-table";
-import { useVoucherManagement } from "src/hooks/use-voucher-management";
-import { VoucherScreenType } from "src/types/voucher";
+import { useVoucherManagement } from "src/hooks/voucher/use-voucher-management";
+import { VoucherScreenType } from "src/types/voucher/voucher";
 
 interface VoucherManagementViewProps {
   type: VoucherScreenType;

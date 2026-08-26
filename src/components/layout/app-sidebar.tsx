@@ -23,7 +23,7 @@ import {
 import { LayoutDashboard, ShoppingCart, Store, LineChart, User2, ChevronUp, Building, Scale, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useAuth } from "src/hooks/use-auth";
+import { useAuth } from "src/hooks/auth/use-auth";
 import { useCompany } from "src/contexts/company-context";
 
 const items = [

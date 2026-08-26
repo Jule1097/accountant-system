@@ -3,9 +3,9 @@
 import { ChevronLeft, ChevronRight, Minus, Plus } from "lucide-react";
 import { Document, Page, pdfjs } from "react-pdf";
 import { Button } from "src/components/ui/button";
-import { useConciliationPdfPreview } from "src/hooks/use-conciliation-pdf-preview";
-import { buildConciliationPdfWorkerSrc } from "src/lib/helpers/conciliation-pdf-preview";
-import { ConciliationPdfPreviewProps } from "src/types/conciliation-pdf-preview";
+import { useConciliationPdfPreview } from "src/hooks/conciliation/use-conciliation-pdf-preview";
+import { buildConciliationPdfWorkerSrc } from "src/lib/helpers/conciliation/conciliation-pdf-preview";
+import { ConciliationPdfPreviewProps } from "src/types/conciliation/conciliation-pdf-preview";
 
 pdfjs.GlobalWorkerOptions.workerSrc = buildConciliationPdfWorkerSrc(pdfjs.version);
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { CompanyNotificationService } from "src/services/company-notification.service";
+import { CompanyNotificationService } from "src/services/company/company-notification.service";
 
 export async function DELETE(
   request: NextRequest,

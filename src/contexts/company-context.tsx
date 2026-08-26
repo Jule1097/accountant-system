@@ -1,9 +1,9 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { apiRequest } from "src/lib/api-client";
-import { useAuth } from "src/hooks/use-auth";
-import { CompanyType, CompanyContextType } from "src/types/company";
+import { apiRequest } from "src/lib/api/api-client";
+import { useAuth } from "src/hooks/auth/use-auth";
+import { CompanyType, CompanyContextType } from "src/types/company/company";
 
 const CompanyContext = createContext<CompanyContextType | undefined>(undefined);
 
