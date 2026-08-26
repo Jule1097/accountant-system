@@ -5,14 +5,14 @@ import { useCompany } from 'src/contexts/company-context'
 import {
   buildClientSupplierCollectionPath,
   buildClientSupplierDetailPath,
-} from 'src/lib/helpers/client-supplier-management'
-import { buildCompanyPathKey, companyPathFetcher } from 'src/lib/helpers/swr'
+} from 'src/lib/helpers/client-supplier/client-supplier-management'
+import { buildCompanyPathKey, companyPathFetcher } from 'src/lib/helpers/platform/swr'
 import {
   ClientSupplierEntityType,
   ClientSupplierListQueryState,
   ClientSupplierListResponse,
   ClientSupplierRecord,
-} from 'src/types/client-supplier'
+} from 'src/types/client-supplier/client-supplier'
 
 export function useClientsSuppliers(type: ClientSupplierEntityType, query: ClientSupplierListQueryState) {
   const { activeCompanyId } = useCompany()

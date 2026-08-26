@@ -2,20 +2,20 @@
 
 import { useMemo, useState } from "react";
 import { UseFormReturn } from "react-hook-form";
-import { apiRequest } from "src/lib/api-client";
-import { buildClientSupplierCollectionPath } from "src/lib/helpers/client-supplier-management";
+import { apiRequest } from "src/lib/api/api-client";
+import { buildClientSupplierCollectionPath } from "src/lib/helpers/client-supplier/client-supplier-management";
 import {
   mergeVoucherThirdPartyOptions,
   resolveMatchingVoucherThirdPartyRecord,
   resolveVoucherInlineInitialValues,
   resolveVoucherThirdPartyModalType,
   shouldShowVoucherInlineThirdPartyAction,
-} from "src/lib/helpers/voucher-inline-third-party";
-import { fetchVoucherThirdParties, invalidateVoucherFormOptions } from "src/hooks/use-voucher-form-options";
-import { ClientSupplierFormValues, ClientSupplierRecord } from "src/types/client-supplier";
-import { VoucherScreenType } from "src/types/voucher";
-import { VoucherParsedData, VoucherThirdPartyOption } from "src/types/voucher-form";
-import { VoucherFormValues } from "src/lib/schemas/voucher-form-schemas";
+} from "src/lib/helpers/voucher/voucher-inline-third-party";
+import { fetchVoucherThirdParties, invalidateVoucherFormOptions } from "src/hooks/voucher/use-voucher-form-options";
+import { ClientSupplierFormValues, ClientSupplierRecord } from "src/types/client-supplier/client-supplier";
+import { VoucherScreenType } from "src/types/voucher/voucher";
+import { VoucherParsedData, VoucherThirdPartyOption } from "src/types/voucher/voucher-form";
+import { VoucherFormValues } from "src/lib/schemas/voucher/voucher-form-schemas";
 
 interface UseVoucherInlineThirdPartyProps {
   type: VoucherScreenType;

@@ -3,13 +3,13 @@
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useToastManager } from "src/components/ui/toast";
-import { useVoucherById, useVouchers, useVoucherSummary } from "src/hooks/use-vouchers";
-import { buildEffectiveVoucherQuery, buildVoucherMutationQuery, buildVoucherQuery, moveVoucherPageBack, readVoucherListQuery, resetVoucherPage, resolveVoucherManagementError, resolveVoucherRecordType } from "src/lib/helpers/voucher-management";
-import { revalidateCompanyScope } from "src/lib/helpers/swr";
-import { apiRequest } from "src/lib/api-client";
+import { useVoucherById, useVouchers, useVoucherSummary } from "src/hooks/voucher/use-vouchers";
+import { buildEffectiveVoucherQuery, buildVoucherMutationQuery, buildVoucherQuery, moveVoucherPageBack, readVoucherListQuery, resetVoucherPage, resolveVoucherManagementError, resolveVoucherRecordType } from "src/lib/helpers/voucher/voucher-management";
+import { revalidateCompanyScope } from "src/lib/helpers/platform/swr";
+import { apiRequest } from "src/lib/api/api-client";
 import { useCompany } from "src/contexts/company-context";
 import { Voucher } from "src/models/Voucher";
-import { UseVoucherManagementResult, VoucherListQueryState, VoucherModalMode, VoucherScreenType } from "src/types/voucher";
+import { UseVoucherManagementResult, VoucherListQueryState, VoucherModalMode, VoucherScreenType } from "src/types/voucher/voucher";
 
 const emptyQueryState: VoucherListQueryState = {
   page: 1,

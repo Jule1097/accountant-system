@@ -4,8 +4,8 @@ import { startTransition, useCallback, useEffect, useMemo, useRef, useState } fr
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useToastManager } from 'src/components/ui/toast'
 import { useCompany } from 'src/contexts/company-context'
-import { useClientSupplierById, useClientsSuppliers } from 'src/hooks/use-clients-suppliers'
-import { apiRequest } from 'src/lib/api-client'
+import { useClientSupplierById, useClientsSuppliers } from 'src/hooks/client-supplier/use-clients-suppliers'
+import { apiRequest } from 'src/lib/api/api-client'
 import {
   buildClientSupplierMutationQuery,
   buildClientSupplierQuery,
@@ -13,8 +13,8 @@ import {
   readClientSupplierListQuery,
   resetClientSupplierPage,
   resolveClientSupplierManagementError,
-} from 'src/lib/helpers/client-supplier-management'
-import { revalidateCompanyScope } from 'src/lib/helpers/swr'
+} from 'src/lib/helpers/client-supplier/client-supplier-management'
+import { revalidateCompanyScope } from 'src/lib/helpers/platform/swr'
 import {
   ClientSupplierEntityType,
   ClientSupplierListQueryState,
@@ -22,7 +22,7 @@ import {
   ClientSupplierSortBy,
   ClientSupplierSortOrder,
   UseClientsSuppliersManagementResult,
-} from 'src/types/client-supplier'
+} from 'src/types/client-supplier/client-supplier'
 
 const emptyQueryState: ClientSupplierListQueryState = {
   page: 1,

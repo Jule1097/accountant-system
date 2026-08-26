@@ -2,9 +2,9 @@
 
 import useSWR from "swr";
 import { useRouter } from "next/navigation";
-import { buildCompanyPathKey, companyPathFetcher } from "src/lib/helpers/swr";
+import { buildCompanyPathKey, companyPathFetcher } from "src/lib/helpers/platform/swr";
 import { useCompany } from "src/contexts/company-context";
-import { CompanyNotificationRecord } from "src/types/notification";
+import { CompanyNotificationRecord } from "src/types/notification/notification";
 
 export function useNotifications() {
   const router = useRouter();

@@ -4,16 +4,16 @@ import { useEffect } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm, useWatch } from 'react-hook-form'
 import { useToastManager } from 'src/components/ui/toast'
-import { ApiRequestError, apiRequest } from 'src/lib/api-client'
-import { clientSupplierSchema } from 'src/lib/schemas/client-supplier-schemas'
+import { ApiRequestError, apiRequest } from 'src/lib/api/api-client'
+import { clientSupplierSchema } from 'src/lib/schemas/client-supplier/client-supplier-schemas'
 import {
   resolveClientSupplierResolvedDescription,
   resolveClientSupplierResolvedTitle,
   resolveClientSupplierSubmitErrorTitle,
   resolveClientSupplierSuccessDescription,
   resolveClientSupplierSuccessTitle,
-} from 'src/lib/helpers/client-supplier-ui'
-import { ClientSupplierFormValues, ClientSupplierModalProps, ClientSupplierRecord } from 'src/types/client-supplier'
+} from 'src/lib/helpers/client-supplier/client-supplier-ui'
+import { ClientSupplierFormValues, ClientSupplierModalProps, ClientSupplierRecord } from 'src/types/client-supplier/client-supplier'
 
 export function useClientSupplierForm({
   isOpen,

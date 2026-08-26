@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { AnalyticsData, TrendEntry, TaxBreakdownEntry } from "src/types/analytics";
+import { AnalyticsData, TrendEntry, TaxBreakdownEntry } from "src/types/analytics/analytics";
 
 export function useAnalyticsChart(data: AnalyticsData, currency: "ARS" | "USD", period: "6_months" | "year") {
   return useMemo(() => {

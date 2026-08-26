@@ -4,23 +4,23 @@ import { useEffect, useRef, useState } from "react";
 import { useFieldArray, useForm, useWatch, Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToastManager } from "src/components/ui/toast";
-import { useAuth } from "src/hooks/use-auth";
-import { useVoucherPreview } from "src/hooks/use-voucher-preview";
-import { ApiRequestError, apiRequest } from "src/lib/api-client";
-import { voucherFormSchema, VoucherFormValues } from "src/lib/schemas/voucher-form-schemas";
+import { useAuth } from "src/hooks/auth/use-auth";
+import { useVoucherPreview } from "src/hooks/voucher/use-voucher-preview";
+import { ApiRequestError, apiRequest } from "src/lib/api/api-client";
+import { voucherFormSchema, VoucherFormValues } from "src/lib/schemas/voucher/voucher-form-schemas";
 import { VoucherForm } from "src/models/VoucherForm";
 import { Voucher } from "src/models/Voucher";
-import { ParserBatchAsyncResponse } from "src/types/parser-batch";
-import { VoucherModalMode, VoucherScreenType } from "src/types/voucher";
+import { ParserBatchAsyncResponse } from "src/types/parser/parser-batch";
+import { VoucherModalMode, VoucherScreenType } from "src/types/voucher/voucher";
 import {
   VoucherFormCatalogState,
   VoucherFormPayload,
   VoucherParsedData,
   VoucherPreviewDocument,
   VoucherThirdPartyOption,
-} from "src/types/voucher-form";
+} from "src/types/voucher/voucher-form";
 
-export type { VoucherFormValues } from "src/lib/schemas/voucher-form-schemas";
+export type { VoucherFormValues } from "src/lib/schemas/voucher/voucher-form-schemas";
 
 export interface UseVoucherFormProps {
   isOpen: boolean;

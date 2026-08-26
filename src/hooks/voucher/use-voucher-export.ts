@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useToastManager } from "src/components/ui/toast";
-import { VoucherScreenType, VoucherListQueryState } from "src/types/voucher";
+import { VoucherScreenType, VoucherListQueryState } from "src/types/voucher/voucher";
 
 export function useVoucherExport() {
   const [isExporting, setIsExporting] = useState(false);

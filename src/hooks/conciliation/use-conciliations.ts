@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import useSWR from "swr";
 import { useCompany } from "src/contexts/company-context";
-import { apiRequest } from "src/lib/api-client";
+import { apiRequest } from "src/lib/api/api-client";
 import {
   areAllVisibleDiscardableSelected,
   buildConciliationsPath,
@@ -15,8 +15,8 @@ import {
   resolveActionErrorMessage,
   resolveConciliationsRefreshInterval,
   resolveSelectedVisibleItemIds,
-} from "src/lib/helpers/conciliations-state";
-import { buildCompanyPathKey, companyPathFetcher, revalidateCompanyScope } from "src/lib/helpers/swr";
+} from "src/lib/helpers/conciliation/conciliations-state";
+import { buildCompanyPathKey, companyPathFetcher, revalidateCompanyScope } from "src/lib/helpers/platform/swr";
 import { useToastManager } from "src/components/ui/toast";
 import {
   ConciliationBulkDiscardResponse,
@@ -30,9 +30,9 @@ import {
   ConciliationsPageData,
   ConciliationsQueryState,
   ConciliationTab,
-} from "src/types/conciliations";
-import { ParserBatchItemContextRecord } from "src/types/parser-batch";
-import { VoucherFormPayload } from "src/types/voucher-form";
+} from "src/types/conciliation/conciliations";
+import { ParserBatchItemContextRecord } from "src/types/parser/parser-batch";
+import { VoucherFormPayload } from "src/types/voucher/voucher-form";
 
 function flattenSectionItems(sections: ConciliationSectionData[]): ConciliationItem[] {
   return sections.flatMap((section) => section.items);

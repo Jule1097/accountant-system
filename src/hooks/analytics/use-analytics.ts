@@ -2,8 +2,8 @@
 
 import useSWR from 'swr'
 import { useCompany } from 'src/contexts/company-context'
-import { buildCompanyPathKey, companyPathFetcher } from 'src/lib/helpers/swr'
-import { AnalyticsData } from 'src/types/analytics'
+import { buildCompanyPathKey, companyPathFetcher } from 'src/lib/helpers/platform/swr'
+import { AnalyticsData } from 'src/types/analytics/analytics'
 
 export function useAnalytics() {
   const { activeCompanyId } = useCompany()

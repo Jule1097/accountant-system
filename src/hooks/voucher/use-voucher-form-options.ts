@@ -1,11 +1,11 @@
 "use client";
 
 import { useMemo } from "react";
-import { apiRequest } from "src/lib/api-client";
-import { clearCachedPromise, getCachedPromise } from "src/lib/helpers/promise-cache";
-import { resolveVoucherThirdPartyEndpoint } from "src/lib/helpers/voucher-inline-third-party";
-import { VoucherScreenType } from "src/types/voucher";
-import { VoucherFormCatalogState, VoucherThirdPartyOption } from "src/types/voucher-form";
+import { apiRequest } from "src/lib/api/api-client";
+import { clearCachedPromise, getCachedPromise } from "src/lib/helpers/platform/promise-cache";
+import { resolveVoucherThirdPartyEndpoint } from "src/lib/helpers/voucher/voucher-inline-third-party";
+import { VoucherScreenType } from "src/types/voucher/voucher";
+import { VoucherFormCatalogState, VoucherThirdPartyOption } from "src/types/voucher/voucher-form";
 
 interface UseVoucherFormOptionsProps {
   isOpen: boolean;

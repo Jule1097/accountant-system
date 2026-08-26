@@ -6,8 +6,8 @@ import {
   buildVoucherCollectionPath,
   buildVoucherDetailPath,
   buildVoucherSummaryPath,
-} from 'src/lib/helpers/voucher-management'
-import { buildCompanyPathKey, companyPathFetcher } from 'src/lib/helpers/swr'
+} from 'src/lib/helpers/voucher/voucher-management'
+import { buildCompanyPathKey, companyPathFetcher } from 'src/lib/helpers/platform/swr'
 import { Voucher } from 'src/models/Voucher'
 import {
   UseVoucherByIdResult,
@@ -17,7 +17,7 @@ import {
   VoucherListResponse,
   VoucherRecordType,
   VoucherSummaryResponse,
-} from 'src/types/voucher'
+} from 'src/types/voucher/voucher'
 
 function mapVoucherListResponse(response: VoucherListResponse): VoucherListResponse {
   return {

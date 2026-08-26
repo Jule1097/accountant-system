@@ -12,9 +12,9 @@ import {
   getConciliationPdfPageWidth,
   getConciliationPdfPreviousPage,
   getConciliationPdfPreviousZoom,
-} from "src/lib/helpers/conciliation-pdf-preview";
-import { ConciliationPdfLoadSuccessPayload } from "src/types/conciliation-pdf-preview";
-import { useElementWidth } from "src/hooks/use-element-width";
+} from "src/lib/helpers/conciliation/conciliation-pdf-preview";
+import { ConciliationPdfLoadSuccessPayload } from "src/types/conciliation/conciliation-pdf-preview";
+import { useElementWidth } from "src/hooks/shared/use-element-width";
 
 export function useConciliationPdfPreview() {
   const [containerRef, containerWidth] = useElementWidth<HTMLDivElement>();
