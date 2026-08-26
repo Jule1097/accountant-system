@@ -1,5 +1,5 @@
 import { Prisma } from 'src/generated/prisma/client'
-import { useVouchers, useVoucherSummary } from 'src/hooks/use-vouchers'
+import { useVouchers, useVoucherSummary } from 'src/hooks/voucher/use-vouchers'
 import { Voucher } from 'src/models/Voucher'
 
 export type VoucherRecordType = 'sale' | 'purchase'

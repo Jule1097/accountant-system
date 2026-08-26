@@ -1,5 +1,5 @@
-import { GeminiParserResponse } from "src/types/gemini-parser";
-import { VoucherFormPayload } from "src/types/voucher-form";
+import { GeminiParserResponse } from "src/types/parser/gemini-parser";
+import { VoucherFormPayload } from "src/types/voucher/voucher-form";
 
 export type ParserVoucherType = "sale" | "purchase";
 

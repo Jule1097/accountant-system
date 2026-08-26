@@ -1,5 +1,5 @@
-import { GeminiParserResponse } from "src/types/gemini-parser";
-import { VoucherVatDetail } from "src/types/voucher";
+import { GeminiParserResponse } from "src/types/parser/gemini-parser";
+import { VoucherVatDetail } from "src/types/voucher/voucher";
 
 export interface VoucherFormCatalogState {
   voucherTypes: { id: string; name: string }[];
