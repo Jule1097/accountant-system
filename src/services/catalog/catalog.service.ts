@@ -1,4 +1,4 @@
-import { CatalogRepository } from 'src/repositories/catalog.repository'
+import { CatalogRepository } from 'src/repositories/catalog/catalog.repository'
 
 export class CatalogService {
   private repository: CatalogRepository

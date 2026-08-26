@@ -1,10 +1,10 @@
 import { GeminiParsedVoucher } from "src/models/GeminiParsedVoucher";
-import { CatalogRepository } from "src/repositories/catalog.repository";
-import { ClientRepository } from "src/repositories/client.repository";
-import { CompanyRepository } from "src/repositories/company.repository";
-import { SupplierRepository } from "src/repositories/supplier.repository";
-import { ParserVoucherType } from "src/types/parser-batch";
-import { GeminiParserResponse, RawGeminiParsedVoucher } from "src/types/gemini-parser";
+import { CatalogRepository } from "src/repositories/catalog/catalog.repository";
+import { ClientRepository } from "src/repositories/client-supplier/client.repository";
+import { CompanyRepository } from "src/repositories/company/company.repository";
+import { SupplierRepository } from "src/repositories/client-supplier/supplier.repository";
+import { ParserVoucherType } from "src/types/parser/parser-batch";
+import { GeminiParserResponse, RawGeminiParsedVoucher } from "src/types/parser/gemini-parser";
 
 export class ParserResponseService {
   private readonly companyRepository: CompanyRepository;

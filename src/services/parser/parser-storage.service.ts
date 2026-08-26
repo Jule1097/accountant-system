@@ -1,4 +1,4 @@
-import { createSupabaseAdminClient } from "src/lib/supabase-server";
+import { createSupabaseAdminClient } from "src/lib/integrations/supabase-server";
 
 function getParserTempBucket(): string {
   const value = process.env.VOUCHER_PARSER_TEMP_BUCKET;

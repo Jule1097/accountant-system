@@ -1,5 +1,5 @@
-import { VoucherBatchExecutionService } from "src/services/voucher-batch-execution.service";
-import { AsyncBatchRunner, AsyncBatchWorkloadKind } from "src/types/async-batch-runner";
+import { VoucherBatchExecutionService } from "src/services/parser/voucher-batch-execution.service";
+import { AsyncBatchRunner, AsyncBatchWorkloadKind } from "src/types/parser/async-batch-runner";
 
 export class LocalAsyncBatchRunnerService implements AsyncBatchRunner {
   private readonly batchExecutionService: VoucherBatchExecutionService;

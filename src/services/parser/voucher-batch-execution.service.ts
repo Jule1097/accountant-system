@@ -1,9 +1,9 @@
-import { BatchExecutionLockService } from "src/services/batch-execution-lock.service";
-import { ParserBatchRepository } from "src/repositories/parser-batch.repository";
-import { VoucherParserService } from "src/services/voucher-parser.service";
-import { VoucherPersistenceService } from "src/services/voucher-persistence.service";
-import { AsyncBatchWorkloadKind } from "src/types/async-batch-runner";
-import { ParserBatchItemStatus } from "src/types/parser-batch";
+import { BatchExecutionLockService } from "src/services/parser/batch-execution-lock.service";
+import { ParserBatchRepository } from "src/repositories/parser/parser-batch.repository";
+import { VoucherParserService } from "src/services/parser/voucher-parser.service";
+import { VoucherPersistenceService } from "src/services/parser/voucher-persistence.service";
+import { AsyncBatchWorkloadKind } from "src/types/parser/async-batch-runner";
+import { ParserBatchItemStatus } from "src/types/parser/parser-batch";
 
 function getBatchExecutionStatuses(workload: AsyncBatchWorkloadKind): ParserBatchItemStatus[] {
   return workload === "parser" ? ["queued", "processing"] : ["persisting"];

@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { getBatchExecutionLockKey, getBatchExecutionLockSeconds } from "src/lib/helpers/batch-execution-lock";
-import { getRedisClient } from "src/lib/redis";
-import { AsyncBatchWorkloadKind } from "src/types/async-batch-runner";
+import { getBatchExecutionLockKey, getBatchExecutionLockSeconds } from "src/lib/helpers/parser/batch-execution-lock";
+import { getRedisClient } from "src/lib/database/redis";
+import { AsyncBatchWorkloadKind } from "src/types/parser/async-batch-runner";
 
 export class BatchExecutionLockService {
   async acquire(workload: AsyncBatchWorkloadKind, batchId: string): Promise<string | null> {

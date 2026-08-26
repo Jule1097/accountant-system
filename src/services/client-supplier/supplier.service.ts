@@ -1,8 +1,8 @@
-import { SupplierRepository } from 'src/repositories/supplier.repository'
-import { normalizeCuit } from 'src/lib/cuit'
+import { SupplierRepository } from 'src/repositories/client-supplier/supplier.repository'
+import { normalizeCuit } from 'src/lib/domain/cuit'
 import { Supplier } from 'src/generated/prisma/client'
-import { normalizeClientSupplierName } from 'src/lib/helpers/client-supplier'
-import { ClientSupplierFilterParams, SupplierListResponse } from 'src/types/client-supplier'
+import { normalizeClientSupplierName } from 'src/lib/helpers/client-supplier/client-supplier'
+import { ClientSupplierFilterParams, SupplierListResponse } from 'src/types/client-supplier/client-supplier'
 import { supplierDuplicateCuitError, supplierDuplicateNameError, supplierDeleteBlockedError, supplierNotFoundError } from 'src/lib/constants/messages'
 
 export class SupplierService {

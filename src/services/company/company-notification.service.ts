@@ -1,7 +1,7 @@
-import { CompanyNotificationRepository } from "src/repositories/company-notification.repository";
-import { resolveConciliationTab } from "src/lib/helpers/conciliations";
-import { CompanyNotificationRecord } from "src/types/notification";
-import { ParserBatchRecord } from "src/types/parser-batch";
+import { CompanyNotificationRepository } from "src/repositories/company/company-notification.repository";
+import { resolveConciliationTab } from "src/lib/helpers/conciliation/conciliations";
+import { CompanyNotificationRecord } from "src/types/notification/notification";
+import { ParserBatchRecord } from "src/types/parser/parser-batch";
 
 function buildBatchTargetPath(batch: ParserBatchRecord): string {
   return `/conciliations?batchId=${batch.id}&tab=${resolveConciliationTab(batch.voucherType)}&page=1`;

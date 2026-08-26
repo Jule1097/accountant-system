@@ -1,25 +1,25 @@
 import { randomUUID } from "node:crypto";
-import { parseInvoiceImage, parseInvoiceMarkdown, parseInvoiceVisualFieldRepair } from "src/lib/gemini";
+import { parseInvoiceImage, parseInvoiceMarkdown, parseInvoiceVisualFieldRepair } from "src/lib/integrations/gemini";
 import {
   getParserBatchExpirationDate,
   getParserBatchMaxFiles,
   isParserBatchExpired,
-} from "src/lib/helpers/parser-batch";
+} from "src/lib/helpers/parser/parser-batch";
 import {
   buildParserStoragePath,
   isParserImageMimeType,
   isParserPdfMimeType,
   ParserAcceptedFile,
-} from "src/lib/helpers/parser-file";
-import { resolveParserPdfStrategy } from "src/lib/helpers/parser-pdf";
-import { getGeminiRepairFields, mergeGeminiRepairFields } from "src/lib/helpers/parser-repair";
-import { CompanyRepository } from "src/repositories/company.repository";
-import { ParserBatchRepository } from "src/repositories/parser-batch.repository";
-import { AsyncBatchRunner } from "src/types/async-batch-runner";
-import { ParserBatchAsyncResponse, ParserBatchQueueJob, ParserBatchSingleResponse, ParserVoucherType } from "src/types/parser-batch";
-import { RawGeminiParsedVoucher } from "src/types/gemini-parser";
+} from "src/lib/helpers/parser/parser-file";
+import { resolveParserPdfStrategy } from "src/lib/helpers/parser/parser-pdf";
+import { getGeminiRepairFields, mergeGeminiRepairFields } from "src/lib/helpers/parser/parser-repair";
+import { CompanyRepository } from "src/repositories/company/company.repository";
+import { ParserBatchRepository } from "src/repositories/parser/parser-batch.repository";
+import { AsyncBatchRunner } from "src/types/parser/async-batch-runner";
+import { ParserBatchAsyncResponse, ParserBatchQueueJob, ParserBatchSingleResponse, ParserVoucherType } from "src/types/parser/parser-batch";
+import { RawGeminiParsedVoucher } from "src/types/parser/gemini-parser";
 import { AsyncBatchRunnerService } from "./async-batch-runner.service";
-import { CompanyNotificationService } from "./company-notification.service";
+import { CompanyNotificationService } from "src/services/company/company-notification.service";
 import { ParserResponseService } from "./parser-response.service";
 import { ParserStorageService } from "./parser-storage.service";
 

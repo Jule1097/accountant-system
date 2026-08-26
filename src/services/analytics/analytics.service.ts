@@ -1,7 +1,7 @@
 import { Decimal } from 'decimal.js'
-import { VoucherRepository } from 'src/repositories/voucher.repository'
+import { VoucherRepository } from 'src/repositories/voucher/voucher.repository'
 import { Voucher } from 'src/models/Voucher'
-import { AnalyticsData, PeriodMetrics, TrendEntry } from 'src/types/analytics'
+import { AnalyticsData, PeriodMetrics, TrendEntry } from 'src/types/analytics/analytics'
 
 export class AnalyticsService {
   private repository: VoucherRepository

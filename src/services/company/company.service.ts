@@ -1,4 +1,4 @@
-import { CompanyRepository } from 'src/repositories/company.repository'
+import { CompanyRepository } from 'src/repositories/company/company.repository'
 
 export class CompanyService {
   private repository: CompanyRepository

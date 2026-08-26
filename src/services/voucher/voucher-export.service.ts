@@ -1,17 +1,17 @@
-import { CompanyRepository } from 'src/repositories/company.repository'
-import { CatalogRepository } from 'src/repositories/catalog.repository'
+import { CompanyRepository } from 'src/repositories/company/company.repository'
+import { CatalogRepository } from 'src/repositories/catalog/catalog.repository'
 import { VoucherService } from './voucher.service'
-import { buildExcelWorkbook } from 'src/lib/helpers/excel-builder'
-import { normalizeCuit } from 'src/lib/cuit'
+import { buildExcelWorkbook } from 'src/lib/helpers/platform/excel-builder'
+import { normalizeCuit } from 'src/lib/domain/cuit'
 import {
   buildExportFilters,
   prepareExportWorkbookData,
   generateExportFilename,
-} from 'src/lib/helpers/voucher-export'
+} from 'src/lib/helpers/voucher/voucher-export'
 import {
   ExportQueryParams,
   VoucherExportResult,
-} from 'src/types/voucher-export'
+} from 'src/types/voucher/voucher-export'
 
 export class VoucherExportService {
   private companyRepository: CompanyRepository

@@ -1,6 +1,6 @@
-import { VoucherRepository } from 'src/repositories/voucher.repository'
+import { VoucherRepository } from 'src/repositories/voucher/voucher.repository'
 import { Voucher } from 'src/models/Voucher'
-import { VoucherFilterParams, VoucherListResponse, VoucherSummaryResponse } from 'src/types/voucher'
+import { VoucherFilterParams, VoucherListResponse, VoucherSummaryResponse } from 'src/types/voucher/voucher'
 
 function resolveExplicitVoucherStatus(data: unknown): Voucher['status'] | null {
   if (!data || typeof data !== 'object') {

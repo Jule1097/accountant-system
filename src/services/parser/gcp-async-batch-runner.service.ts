@@ -1,5 +1,5 @@
-import { GcpCloudRunRepository } from "src/repositories/gcp-cloud-run.repository";
-import { AsyncBatchRunner } from "src/types/async-batch-runner";
+import { GcpCloudRunRepository } from "src/repositories/parser/gcp-cloud-run.repository";
+import { AsyncBatchRunner } from "src/types/parser/async-batch-runner";
 
 export class GcpAsyncBatchRunnerService implements AsyncBatchRunner {
   private readonly cloudRunRepository: GcpCloudRunRepository;

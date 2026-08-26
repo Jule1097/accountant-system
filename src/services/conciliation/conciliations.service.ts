@@ -1,11 +1,11 @@
-import { buildConciliationsPageData, isDiscardableStatus, resolveVoucherType } from "src/lib/helpers/conciliations";
-import { normalizeVoucherFormPayload } from "src/lib/helpers/voucher-form";
-import { ParserBatchRepository } from "src/repositories/parser-batch.repository";
-import { VoucherRepository } from "src/repositories/voucher.repository";
-import { ConciliationsPageData, ConciliationTab } from "src/types/conciliations";
-import { ParserBatchItemContextRecord } from "src/types/parser-batch";
-import { VoucherFormPayload } from "src/types/voucher-form";
-import { ParserStorageService } from "./parser-storage.service";
+import { buildConciliationsPageData, isDiscardableStatus, resolveVoucherType } from "src/lib/helpers/conciliation/conciliations";
+import { normalizeVoucherFormPayload } from "src/lib/helpers/voucher/voucher-form";
+import { ParserBatchRepository } from "src/repositories/parser/parser-batch.repository";
+import { VoucherRepository } from "src/repositories/voucher/voucher.repository";
+import { ConciliationsPageData, ConciliationTab } from "src/types/conciliation/conciliations";
+import { ParserBatchItemContextRecord } from "src/types/parser/parser-batch";
+import { VoucherFormPayload } from "src/types/voucher/voucher-form";
+import { ParserStorageService } from "src/services/parser/parser-storage.service";
 
 
 export class ConciliationsService {

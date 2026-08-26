@@ -1,12 +1,12 @@
-import { ParserBatchRepository } from "src/repositories/parser-batch.repository";
-import { voucherSchema } from "src/lib/schemas/voucher-schemas";
-import { normalizeVoucherFormPayload } from "src/lib/helpers/voucher-form";
-import { VoucherService } from "src/services/voucher.service";
-import { AsyncBatchRunner } from "src/types/async-batch-runner";
-import { ConciliationPersistResult } from "src/types/conciliations";
-import { GeminiParserResponse } from "src/types/gemini-parser";
-import { ParserBatchItemContextRecord, ParserBatchPersistenceJob } from "src/types/parser-batch";
-import { VoucherFormPayload } from "src/types/voucher-form";
+import { ParserBatchRepository } from "src/repositories/parser/parser-batch.repository";
+import { voucherSchema } from "src/lib/schemas/voucher/voucher-schemas";
+import { normalizeVoucherFormPayload } from "src/lib/helpers/voucher/voucher-form";
+import { VoucherService } from "src/services/voucher/voucher.service";
+import { AsyncBatchRunner } from "src/types/parser/async-batch-runner";
+import { ConciliationPersistResult } from "src/types/conciliation/conciliations";
+import { GeminiParserResponse } from "src/types/parser/gemini-parser";
+import { ParserBatchItemContextRecord, ParserBatchPersistenceJob } from "src/types/parser/parser-batch";
+import { VoucherFormPayload } from "src/types/voucher/voucher-form";
 import { AsyncBatchRunnerService } from "./async-batch-runner.service";
 
 function isDuplicateVoucherError(error: unknown): boolean {

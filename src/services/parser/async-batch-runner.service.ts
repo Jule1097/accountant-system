@@ -1,7 +1,7 @@
-import { getWorkflowDriver, validateWorkflowDriverConfiguration } from "src/lib/helpers/async-batch-runner";
-import { AsyncBatchRunner } from "src/types/async-batch-runner";
-import { GcpAsyncBatchRunnerService } from "src/services/gcp-async-batch-runner.service";
-import { LocalAsyncBatchRunnerService } from "src/services/local-async-batch-runner.service";
+import { getWorkflowDriver, validateWorkflowDriverConfiguration } from "src/lib/helpers/parser/async-batch-runner";
+import { AsyncBatchRunner } from "src/types/parser/async-batch-runner";
+import { GcpAsyncBatchRunnerService } from "src/services/parser/gcp-async-batch-runner.service";
+import { LocalAsyncBatchRunnerService } from "src/services/parser/local-async-batch-runner.service";
 
 function createAsyncBatchRunner(): AsyncBatchRunner {
   validateWorkflowDriverConfiguration();
