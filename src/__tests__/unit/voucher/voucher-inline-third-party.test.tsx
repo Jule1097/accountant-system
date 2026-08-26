@@ -3,7 +3,7 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { ConciliationReviewPreview } from "src/components/conciliations/conciliation-review-preview"
 import { VoucherModalReady } from "src/components/vouchers/voucher-modal"
-import { ApiRequestError } from "src/lib/api-client"
+import { ApiRequestError } from "src/lib/api/api-client"
 
 const toastAdd = jest.fn()
 const apiRequestMock = jest.fn()
@@ -12,7 +12,7 @@ jest.mock("src/components/ui/toast", () => ({
   useToastManager: () => ({ add: toastAdd }),
 }))
 
-jest.mock("src/hooks/use-auth", () => ({
+jest.mock("src/hooks/auth/use-auth", () => ({
   useAuth: () => ({
     user: { id: "123e4567-e89b-12d3-a456-426614174099" },
   }),
@@ -22,7 +22,7 @@ jest.mock("src/components/conciliations/conciliation-review-preview", () => ({
   ConciliationReviewPreview: () => <div data-testid="conciliation-review-preview" />,
 }))
 
-jest.mock("src/lib/api-client", () => ({
+jest.mock("src/lib/api/api-client", () => ({
   ApiRequestError: class ApiRequestError extends Error {
     status: number
     payload: unknown

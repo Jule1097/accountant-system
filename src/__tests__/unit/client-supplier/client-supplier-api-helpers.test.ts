@@ -2,7 +2,7 @@ import {
   parseClientSupplierListQuery,
   resolveClientSupplierCollectionErrorResponse,
   resolveClientSupplierItemErrorResponse,
-} from 'src/lib/helpers/client-supplier-api'
+} from 'src/lib/helpers/client-supplier/client-supplier-api'
 
 describe('client supplier api helpers', () => {
   it('parses paginated list query params', () => {

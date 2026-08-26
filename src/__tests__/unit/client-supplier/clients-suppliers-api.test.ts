@@ -3,11 +3,11 @@ import { GET as getClients, POST as postClient } from 'src/app/api/clients/route
 import { DELETE as deleteClient } from 'src/app/api/clients/[id]/route'
 import { GET as getSuppliers, POST as postSupplier } from 'src/app/api/suppliers/route'
 import { DELETE as deleteSupplier } from 'src/app/api/suppliers/[id]/route'
-import { ClientService } from 'src/services/client.service'
-import { SupplierService } from 'src/services/supplier.service'
+import { ClientService } from 'src/services/client-supplier/client.service'
+import { SupplierService } from 'src/services/client-supplier/supplier.service'
 
-jest.mock('src/services/client.service')
-jest.mock('src/services/supplier.service')
+jest.mock('src/services/client-supplier/client.service')
+jest.mock('src/services/client-supplier/supplier.service')
 
 type ClientServiceMock = jest.MockedClass<typeof ClientService> & {
   prototype: {

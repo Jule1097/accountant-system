@@ -1,5 +1,5 @@
-import { hasCorruptedParserText, normalizeParserText } from "src/lib/helpers/parser-text";
-import { hasParserMarkdownContent } from "src/lib/helpers/parser-pdf";
+import { hasCorruptedParserText, normalizeParserText } from "src/lib/helpers/parser/parser-text";
+import { hasParserMarkdownContent } from "src/lib/helpers/parser/parser-pdf";
 
 describe("parser text normalization", () => {
   it("normalizes composed unicode text to NFC", () => {

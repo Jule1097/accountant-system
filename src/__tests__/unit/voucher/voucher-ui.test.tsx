@@ -5,11 +5,11 @@ import { useEffect } from 'react'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { VoucherManagementView } from 'src/components/vouchers/voucher-management-view'
 import { VoucherModalPerceptions } from 'src/components/vouchers/voucher-modal-perceptions'
-import { useVoucherForm, VoucherFormValues } from 'src/hooks/use-voucher-form'
-import { ApiRequestError } from 'src/lib/api-client'
+import { useVoucherForm, VoucherFormValues } from 'src/hooks/voucher/use-voucher-form'
+import { ApiRequestError } from 'src/lib/api/api-client'
 import { Voucher } from 'src/models/Voucher'
-import { VoucherParsedData } from 'src/types/voucher-form'
-import { VoucherListResponse, VoucherModalMode, VoucherSummaryResponse } from 'src/types/voucher'
+import { VoucherParsedData } from 'src/types/voucher/voucher-form'
+import { VoucherListResponse, VoucherModalMode, VoucherSummaryResponse } from 'src/types/voucher/voucher'
 
 const toastAdd = jest.fn()
 const apiRequestMock = jest.fn()
@@ -35,7 +35,7 @@ jest.mock('src/components/ui/toast', () => ({
   useToastManager: () => ({ add: toastAdd }),
 }))
 
-jest.mock('src/lib/api-client', () => ({
+jest.mock('src/lib/api/api-client', () => ({
   ApiRequestError: class ApiRequestError extends Error {
     status: number
     payload: unknown
@@ -49,7 +49,7 @@ jest.mock('src/lib/api-client', () => ({
   apiRequest: (...args: unknown[]) => apiRequestMock(...args),
 }))
 
-jest.mock('src/hooks/use-auth', () => ({
+jest.mock('src/hooks/auth/use-auth', () => ({
   useAuth: () => ({
     user: { id: '123e4567-e89b-12d3-a456-426614174099' },
   }),
@@ -61,7 +61,7 @@ jest.mock('src/contexts/company-context', () => ({
   }),
 }))
 
-jest.mock('src/hooks/use-vouchers', () => ({
+jest.mock('src/hooks/voucher/use-vouchers', () => ({
   useVouchers: (...args: unknown[]) => useVouchersMock(...args),
   useVoucherSummary: (...args: unknown[]) => useVoucherSummaryMock(...args),
   useVoucherById: (...args: unknown[]) => useVoucherByIdMock(...args),

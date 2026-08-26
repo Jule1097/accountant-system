@@ -1,4 +1,4 @@
-import { buildClientSupplierCollectionPath } from 'src/lib/helpers/client-supplier-management'
+import { buildClientSupplierCollectionPath } from 'src/lib/helpers/client-supplier/client-supplier-management'
 
 describe('client supplier management helpers', () => {
   it('always sends pagination params for management collection requests', () => {

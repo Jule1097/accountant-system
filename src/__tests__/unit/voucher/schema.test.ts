@@ -1,4 +1,4 @@
-import { cuitSchema, voucherSchema } from '../lib/schemas/voucher-schemas'
+import { cuitSchema, voucherSchema } from 'src/lib/schemas/voucher/voucher-schemas'
 
 describe('Zod Validation Schemas', () => {
   const validUuid = 'f47ac10b-58cc-4372-a567-0e02b2c3d479'

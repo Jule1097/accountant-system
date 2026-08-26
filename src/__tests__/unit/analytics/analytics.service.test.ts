@@ -1,7 +1,7 @@
-import { AnalyticsService } from '../services/analytics.service'
-import { VoucherRepository } from '../repositories/voucher.repository'
+import { AnalyticsService } from 'src/services/analytics/analytics.service'
+import { VoucherRepository } from 'src/repositories/voucher/voucher.repository'
 
-jest.mock('../repositories/voucher.repository')
+jest.mock('src/repositories/voucher/voucher.repository')
 
 describe('AnalyticsService', () => {
   let service: AnalyticsService

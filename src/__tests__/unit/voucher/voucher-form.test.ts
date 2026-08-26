@@ -1,8 +1,8 @@
 import { VoucherForm } from "src/models/VoucherForm";
-import { normalizeVoucherFormPayload } from "src/lib/helpers/voucher-form";
-import { VoucherFormValues } from "src/lib/schemas/voucher-form-schemas";
-import { VoucherFormPayload } from "src/types/voucher-form";
-import { VoucherParsedData } from "src/types/voucher-form";
+import { normalizeVoucherFormPayload } from "src/lib/helpers/voucher/voucher-form";
+import { VoucherFormValues } from "src/lib/schemas/voucher/voucher-form-schemas";
+import { VoucherFormPayload } from "src/types/voucher/voucher-form";
+import { VoucherParsedData } from "src/types/voucher/voucher-form";
 
 const basePayload: VoucherFormPayload = {
   type: "sale",

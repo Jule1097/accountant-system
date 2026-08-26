@@ -1,13 +1,13 @@
-import { ParserBatchRepository } from "src/repositories/parser-batch.repository";
-import { BatchExecutionLockService } from "src/services/batch-execution-lock.service";
-import { VoucherBatchExecutionService } from "src/services/voucher-batch-execution.service";
-import { VoucherParserService } from "src/services/voucher-parser.service";
-import { VoucherPersistenceService } from "src/services/voucher-persistence.service";
+import { ParserBatchRepository } from "src/repositories/parser/parser-batch.repository";
+import { BatchExecutionLockService } from "src/services/parser/batch-execution-lock.service";
+import { VoucherBatchExecutionService } from "src/services/parser/voucher-batch-execution.service";
+import { VoucherParserService } from "src/services/parser/voucher-parser.service";
+import { VoucherPersistenceService } from "src/services/parser/voucher-persistence.service";
 
-jest.mock("src/repositories/parser-batch.repository");
-jest.mock("src/services/batch-execution-lock.service");
-jest.mock("src/services/voucher-parser.service");
-jest.mock("src/services/voucher-persistence.service");
+jest.mock("src/repositories/parser/parser-batch.repository");
+jest.mock("src/services/parser/batch-execution-lock.service");
+jest.mock("src/services/parser/voucher-parser.service");
+jest.mock("src/services/parser/voucher-persistence.service");
 
 describe("VoucherBatchExecutionService", () => {
   let batchRepositoryMock: jest.Mocked<ParserBatchRepository>;

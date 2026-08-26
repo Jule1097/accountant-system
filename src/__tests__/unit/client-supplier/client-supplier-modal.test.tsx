@@ -10,7 +10,7 @@ jest.mock('src/components/ui/toast', () => ({
   useToastManager: () => ({ add: toastAdd }),
 }))
 
-jest.mock('src/lib/api-client', () => ({
+jest.mock('src/lib/api/api-client', () => ({
   apiRequest: (...args: unknown[]) => apiRequestMock(...args),
 }))
 

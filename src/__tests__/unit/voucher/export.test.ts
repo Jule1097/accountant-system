@@ -1,8 +1,8 @@
 import { NextRequest } from 'next/server'
 import { GET } from 'src/app/api/vouchers/export/route'
-import { VoucherExportService } from 'src/services/voucher-export.service'
+import { VoucherExportService } from 'src/services/voucher/voucher-export.service'
 
-jest.mock('src/services/voucher-export.service')
+jest.mock('src/services/voucher/voucher-export.service')
 
 function createRequest(companyId: string | null, queryParams: Record<string, string>) {
   const headers = new Map()

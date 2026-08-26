@@ -1,12 +1,12 @@
-import { ParserBatchRepository } from "src/repositories/parser-batch.repository";
-import { VoucherService } from "src/services/voucher.service";
-import { VoucherPersistenceService } from "src/services/voucher-persistence.service";
-import { AsyncBatchRunner } from "src/types/async-batch-runner";
-import { ParserBatchItemContextRecord } from "src/types/parser-batch";
-import { VoucherFormPayload } from "src/types/voucher-form";
+import { ParserBatchRepository } from "src/repositories/parser/parser-batch.repository";
+import { VoucherService } from "src/services/voucher/voucher.service";
+import { VoucherPersistenceService } from "src/services/parser/voucher-persistence.service";
+import { AsyncBatchRunner } from "src/types/parser/async-batch-runner";
+import { ParserBatchItemContextRecord } from "src/types/parser/parser-batch";
+import { VoucherFormPayload } from "src/types/voucher/voucher-form";
 
-jest.mock("src/repositories/parser-batch.repository");
-jest.mock("src/services/voucher.service");
+jest.mock("src/repositories/parser/parser-batch.repository");
+jest.mock("src/services/voucher/voucher.service");
 
 const companyId = "123e4567-e89b-12d3-a456-426614174001";
 const supplierId = "123e4567-e89b-12d3-a456-426614174002";

@@ -26,7 +26,7 @@ jest.mock("next/navigation", () => ({
   }),
 }));
 
-jest.mock("src/hooks/use-conciliations", () => ({
+jest.mock("src/hooks/conciliation/use-conciliations", () => ({
   useConciliations: () => ({
     batchId: "batch-42",
     activeTab: "sales",

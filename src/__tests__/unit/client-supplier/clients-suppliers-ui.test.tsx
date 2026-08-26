@@ -14,7 +14,7 @@ jest.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams('page=1&pageSize=10'),
 }))
 
-jest.mock('src/hooks/use-clients-suppliers-management', () => ({
+jest.mock('src/hooks/client-supplier/use-clients-suppliers-management', () => ({
   useClientsSuppliersManagement: () => ({
     isCreateModalOpen: false,
     isDeleting: false,

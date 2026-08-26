@@ -1,13 +1,13 @@
-import { VoucherExportService } from 'src/services/voucher-export.service'
-import { CompanyRepository } from 'src/repositories/company.repository'
-import { CatalogRepository } from 'src/repositories/catalog.repository'
-import { VoucherService } from 'src/services/voucher.service'
+import { VoucherExportService } from 'src/services/voucher/voucher-export.service'
+import { CompanyRepository } from 'src/repositories/company/company.repository'
+import { CatalogRepository } from 'src/repositories/catalog/catalog.repository'
+import { VoucherService } from 'src/services/voucher/voucher.service'
 import { Voucher } from 'src/models/Voucher'
 import Decimal from 'decimal.js'
 
-jest.mock('src/repositories/company.repository')
-jest.mock('src/repositories/catalog.repository')
-jest.mock('src/services/voucher.service')
+jest.mock('src/repositories/company/company.repository')
+jest.mock('src/repositories/catalog/catalog.repository')
+jest.mock('src/services/voucher/voucher.service')
 
 describe('VoucherExportService', () => {
   let exportService: VoucherExportService

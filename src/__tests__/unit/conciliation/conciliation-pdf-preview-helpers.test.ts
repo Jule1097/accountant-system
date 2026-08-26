@@ -5,7 +5,7 @@ import {
   getConciliationPdfDefaultZoom,
   getConciliationPdfNextZoom,
   getConciliationPdfPreviousZoom,
-} from "src/lib/helpers/conciliation-pdf-preview";
+} from "src/lib/helpers/conciliation/conciliation-pdf-preview";
 
 describe("conciliation pdf preview helpers", () => {
   it("builds the default zoom label", () => {

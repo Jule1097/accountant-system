@@ -1,23 +1,23 @@
 import { NextRequest } from 'next/server'
-import { POST } from '../app/api/vouchers/parse/route'
-import { parseInvoiceImage, parseInvoiceMarkdown, parseInvoiceVisualFieldRepair } from '../lib/gemini'
-import * as parserAuthHelpers from '../lib/helpers/parser-auth'
-import { resolveParserPdfStrategy } from '../lib/helpers/parser-pdf'
-import { CatalogRepository } from '../repositories/catalog.repository'
-import { ClientRepository } from '../repositories/client.repository'
-import { CompanyRepository } from '../repositories/company.repository'
-import { SupplierRepository } from '../repositories/supplier.repository'
-import { VoucherParserService } from '../services/voucher-parser.service'
+import { POST } from 'src/app/api/vouchers/parse/route'
+import { parseInvoiceImage, parseInvoiceMarkdown, parseInvoiceVisualFieldRepair } from 'src/lib/integrations/gemini'
+import * as parserAuthHelpers from 'src/lib/helpers/parser/parser-auth'
+import { resolveParserPdfStrategy } from 'src/lib/helpers/parser/parser-pdf'
+import { CatalogRepository } from 'src/repositories/catalog/catalog.repository'
+import { ClientRepository } from 'src/repositories/client-supplier/client.repository'
+import { CompanyRepository } from 'src/repositories/company/company.repository'
+import { SupplierRepository } from 'src/repositories/client-supplier/supplier.repository'
+import { VoucherParserService } from 'src/services/parser/voucher-parser.service'
 
-jest.mock('../lib/gemini')
-jest.mock('../repositories/client.repository')
-jest.mock('../repositories/supplier.repository')
-jest.mock('../repositories/company.repository')
-jest.mock('../repositories/catalog.repository')
-jest.mock('../lib/helpers/parser-pdf', () => ({
+jest.mock('src/lib/integrations/gemini')
+jest.mock('src/repositories/client-supplier/client.repository')
+jest.mock('src/repositories/client-supplier/supplier.repository')
+jest.mock('src/repositories/company/company.repository')
+jest.mock('src/repositories/catalog/catalog.repository')
+jest.mock('src/lib/helpers/parser/parser-pdf', () => ({
   resolveParserPdfStrategy: jest.fn(),
 }))
-jest.mock('../lib/helpers/parser-auth', () => ({
+jest.mock('src/lib/helpers/parser/parser-auth', () => ({
   getParserAuthenticatedUserId: jest.fn(),
 }))
 

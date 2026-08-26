@@ -1,9 +1,9 @@
 import { NextRequest } from 'next/server'
 import { DELETE, GET, PUT } from 'src/app/api/vouchers/[id]/route'
 import { POST } from 'src/app/api/vouchers/route'
-import { VoucherService } from 'src/services/voucher.service'
+import { VoucherService } from 'src/services/voucher/voucher.service'
 
-jest.mock('src/services/voucher.service')
+jest.mock('src/services/voucher/voucher.service')
 
 function createRequest(overrides: Partial<NextRequest> = {}) {
   return {

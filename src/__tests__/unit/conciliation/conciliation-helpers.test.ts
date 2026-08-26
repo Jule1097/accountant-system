@@ -1,5 +1,5 @@
-import { buildConciliationsPageData } from "src/lib/helpers/conciliations";
-import { ParserBatchItemContextRecord } from "src/types/parser-batch";
+import { buildConciliationsPageData } from "src/lib/helpers/conciliation/conciliations";
+import { ParserBatchItemContextRecord } from "src/types/parser/parser-batch";
 
 function flattenPageItems(data: ReturnType<typeof buildConciliationsPageData>) {
   return data.sections.flatMap((section) => section.items);

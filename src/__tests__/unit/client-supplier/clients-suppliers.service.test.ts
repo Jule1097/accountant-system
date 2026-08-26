@@ -1,10 +1,10 @@
-import { ClientRepository } from 'src/repositories/client.repository'
-import { SupplierRepository } from 'src/repositories/supplier.repository'
-import { ClientService } from 'src/services/client.service'
-import { SupplierService } from 'src/services/supplier.service'
+import { ClientRepository } from 'src/repositories/client-supplier/client.repository'
+import { SupplierRepository } from 'src/repositories/client-supplier/supplier.repository'
+import { ClientService } from 'src/services/client-supplier/client.service'
+import { SupplierService } from 'src/services/client-supplier/supplier.service'
 
-jest.mock('src/repositories/client.repository')
-jest.mock('src/repositories/supplier.repository')
+jest.mock('src/repositories/client-supplier/client.repository')
+jest.mock('src/repositories/client-supplier/supplier.repository')
 
 const createdAt = new Date('2026-08-25T00:00:00.000Z')
 const updatedAt = new Date('2026-08-25T00:00:00.000Z')

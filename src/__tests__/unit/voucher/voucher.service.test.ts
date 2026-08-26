@@ -1,9 +1,9 @@
 import { Decimal } from 'decimal.js'
-import { Voucher } from '../models/Voucher'
-import { VoucherRepository } from '../repositories/voucher.repository'
-import { VoucherService } from '../services/voucher.service'
+import { Voucher } from 'src/models/Voucher'
+import { VoucherRepository } from 'src/repositories/voucher/voucher.repository'
+import { VoucherService } from 'src/services/voucher/voucher.service'
 
-jest.mock('../repositories/voucher.repository')
+jest.mock('src/repositories/voucher/voucher.repository')
 
 describe('VoucherService', () => {
   let service: VoucherService

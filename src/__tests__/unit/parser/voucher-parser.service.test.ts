@@ -1,21 +1,21 @@
-import { CompanyRepository } from "src/repositories/company.repository";
-import { ParserBatchRepository } from "src/repositories/parser-batch.repository";
-import { CatalogRepository } from "src/repositories/catalog.repository";
-import { ClientRepository } from "src/repositories/client.repository";
-import { SupplierRepository } from "src/repositories/supplier.repository";
-import { VoucherParserService } from "src/services/voucher-parser.service";
-import { ParserStorageService } from "src/services/parser-storage.service";
-import { AsyncBatchRunner } from "src/types/async-batch-runner";
-import { ParserAcceptedFile } from "src/lib/helpers/parser-file";
-import { parseInvoiceImage } from "src/lib/gemini";
+import { CompanyRepository } from "src/repositories/company/company.repository";
+import { ParserBatchRepository } from "src/repositories/parser/parser-batch.repository";
+import { CatalogRepository } from "src/repositories/catalog/catalog.repository";
+import { ClientRepository } from "src/repositories/client-supplier/client.repository";
+import { SupplierRepository } from "src/repositories/client-supplier/supplier.repository";
+import { VoucherParserService } from "src/services/parser/voucher-parser.service";
+import { ParserStorageService } from "src/services/parser/parser-storage.service";
+import { AsyncBatchRunner } from "src/types/parser/async-batch-runner";
+import { ParserAcceptedFile } from "src/lib/helpers/parser/parser-file";
+import { parseInvoiceImage } from "src/lib/integrations/gemini";
 
-jest.mock("src/repositories/company.repository");
-jest.mock("src/repositories/parser-batch.repository");
-jest.mock("src/repositories/catalog.repository");
-jest.mock("src/repositories/client.repository");
-jest.mock("src/repositories/supplier.repository");
-jest.mock("src/services/parser-storage.service");
-jest.mock("src/lib/gemini");
+jest.mock("src/repositories/company/company.repository");
+jest.mock("src/repositories/parser/parser-batch.repository");
+jest.mock("src/repositories/catalog/catalog.repository");
+jest.mock("src/repositories/client-supplier/client.repository");
+jest.mock("src/repositories/client-supplier/supplier.repository");
+jest.mock("src/services/parser/parser-storage.service");
+jest.mock("src/lib/integrations/gemini");
 
 const companyId = "123e4567-e89b-12d3-a456-426614174001";
 const userId = "123e4567-e89b-12d3-a456-426614174002";
