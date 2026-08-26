@@ -8,8 +8,8 @@ import {
   DropdownMenuTrigger,
 } from "src/components/ui/dropdown-menu";
 import { buttonVariants } from "src/components/ui/button";
-import { useNotifications } from "src/hooks/use-notifications";
-import { cn } from "src/lib/utils";
+import { useNotifications } from "src/hooks/shared/use-notifications";
+import { cn } from "src/lib/shared/utils";
 
 export function NotificationBell() {
   const { notifications, isLoading, handleOpenNotification } = useNotifications();

@@ -5,7 +5,7 @@ import { ThemeProvider } from "src/components/theme-provider";
 import { Toaster } from "src/components/ui/toast";
 import { TooltipProvider } from "src/components/ui/tooltip";
 import { SwrProvider } from "src/components/providers/swr-provider";
-import { cn } from "src/lib/utils";
+import { cn } from "src/lib/shared/utils";
 
 const inter = Inter({
   subsets: ["latin"],

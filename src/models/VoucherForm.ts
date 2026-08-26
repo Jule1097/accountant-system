@@ -1,22 +1,22 @@
-import { VoucherFormValues } from "src/lib/schemas/voucher-form-schemas";
+import { VoucherFormValues } from "src/lib/schemas/voucher/voucher-form-schemas";
 import { Voucher } from "src/models/Voucher";
 import {
   GeminiParserResolvedPerception,
   GeminiParserResolvedRetention,
-} from "src/types/gemini-parser";
-import { VoucherPerception, VoucherRetention, VoucherScreenType } from "src/types/voucher";
+} from "src/types/parser/gemini-parser";
+import { VoucherPerception, VoucherRetention, VoucherScreenType } from "src/types/voucher/voucher";
 import {
   VoucherFormCatalogState,
   VoucherFormPayload,
   VoucherParsedData,
   VoucherThirdPartyOption,
-} from "src/types/voucher-form";
+} from "src/types/voucher/voucher-form";
 import {
   normalizeVoucherCurrency,
   normalizeVoucherExchangeRate,
   resolveParsedVoucherLetterId,
   resolveParsedVoucherTypeId,
-} from "src/lib/helpers/voucher-form";
+} from "src/lib/helpers/voucher/voucher-form";
 
 const defaultFormValues: VoucherFormValues = {
   date: "",

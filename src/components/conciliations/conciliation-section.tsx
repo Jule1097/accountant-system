@@ -1,7 +1,7 @@
 "use client";
 
 import { ConciliationCard } from "src/components/conciliations/conciliation-card";
-import { ConciliationSectionData } from "src/types/conciliations";
+import { ConciliationSectionData } from "src/types/conciliation/conciliations";
 
 interface ConciliationSectionProps {
   section: ConciliationSectionData;

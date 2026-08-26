@@ -9,7 +9,7 @@ import { useState } from "react";
 import { Button } from "src/components/ui/button";
 import { Input } from "src/components/ui/input";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "src/components/ui/card";
-import { useAuth } from "src/hooks/use-auth";
+import { useAuth } from "src/hooks/auth/use-auth";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Email inválido" }),

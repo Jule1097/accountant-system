@@ -4,8 +4,8 @@ import { KpiCards } from "src/components/dashboard/kpi-cards";
 import { KpiCardsSkeleton } from "src/components/dashboard/kpi-skeleton";
 import { RecentActivity } from "src/components/dashboard/recent-activity";
 import { RecentActivitySkeleton } from "src/components/dashboard/recent-activity-skeleton";
-import { useAnalytics } from "src/hooks/use-analytics";
-import { useVouchers } from "src/hooks/use-vouchers";
+import { useAnalytics } from "src/hooks/analytics/use-analytics";
+import { useVouchers } from "src/hooks/voucher/use-vouchers";
 
 const salesQuery = {
   page: 1,

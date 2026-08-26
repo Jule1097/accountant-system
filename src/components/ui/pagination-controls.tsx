@@ -3,7 +3,7 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Button } from "src/components/ui/button";
-import { buildPaginationItems } from "src/lib/helpers/pagination";
+import { buildPaginationItems } from "src/lib/helpers/platform/pagination";
 
 type PaginationControlsProps = {
   currentPage: number;

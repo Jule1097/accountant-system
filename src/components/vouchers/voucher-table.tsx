@@ -26,7 +26,7 @@ import {
   getVoucherStatusLabel,
   getVoucherTaxTotal,
   voucherPageSizeOptions,
-} from "src/lib/helpers/voucher-management";
+} from "src/lib/helpers/voucher/voucher-management";
 import type { Voucher } from "src/models/Voucher";
 import type {
   VoucherListItem,
@@ -36,7 +36,7 @@ import type {
   VoucherSortOrder,
   VoucherScreenType,
   VoucherStatus,
-} from "src/types/voucher";
+} from "src/types/voucher/voucher";
 
 type VoucherTableProps = {
   data?: VoucherListResponse;

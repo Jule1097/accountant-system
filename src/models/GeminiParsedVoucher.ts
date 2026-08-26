@@ -1,15 +1,15 @@
-import { compareCuit, normalizeCuit } from 'src/lib/cuit'
-import { normalizeParserText } from 'src/lib/helpers/parser-text'
-import { normalizeVoucherCurrency } from 'src/lib/helpers/voucher-form'
-import { resolveGeminiCatalogMatch } from 'src/lib/helpers/gemini-parser'
-import { resolveTaxJurisdictionName } from 'src/lib/tax-jurisdictions'
+import { compareCuit, normalizeCuit } from 'src/lib/domain/cuit'
+import { normalizeParserText } from 'src/lib/helpers/parser/parser-text'
+import { normalizeVoucherCurrency } from 'src/lib/helpers/voucher/voucher-form'
+import { resolveGeminiCatalogMatch } from 'src/lib/helpers/parser/gemini-parser'
+import { resolveTaxJurisdictionName } from 'src/lib/domain/tax-jurisdictions'
 import {
   GeminiParserCatalogs,
   GeminiParserResponse,
   RawGeminiParsedVoucher,
   RawGeminiTaxItem,
   RawGeminiVatDetail,
-} from 'src/types/gemini-parser'
+} from 'src/types/parser/gemini-parser'
 
 export class GeminiParsedVoucher {
   private readonly extractedData: RawGeminiParsedVoucher

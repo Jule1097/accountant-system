@@ -2,7 +2,7 @@ import { PrismaClient } from '../src/generated/prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import pg from 'pg'
 import 'dotenv/config'
-import { getCurrentTaxJurisdictionNames } from '../src/lib/tax-jurisdictions'
+import { getCurrentTaxJurisdictionNames } from '../src/lib/domain/tax-jurisdictions'
 
 const connectionString = process.env.DIRECT_URL || process.env.DATABASE_URL
 const pool = new pg.Pool({ connectionString })

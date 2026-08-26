@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { conciliationItemParamsSchema } from "src/lib/schemas/conciliations-schemas";
-import { voucherSchema } from "src/lib/schemas/voucher-schemas";
-import { ConciliationsService } from "src/services/conciliations.service";
-import { VoucherFormPayload } from "src/types/voucher-form";
+import { conciliationItemParamsSchema } from "src/lib/schemas/conciliation/conciliations-schemas";
+import { voucherSchema } from "src/lib/schemas/voucher/voucher-schemas";
+import { ConciliationsService } from "src/services/conciliation/conciliations.service";
+import { VoucherFormPayload } from "src/types/voucher/voucher-form";
 
 export async function POST(
   request: NextRequest,

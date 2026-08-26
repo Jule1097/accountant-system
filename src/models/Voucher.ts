@@ -1,5 +1,5 @@
 import { Decimal } from 'decimal.js'
-import { VoucherPerception, VoucherRetention, VoucherVatDetail } from 'src/types/voucher'
+import { VoucherPerception, VoucherRetention, VoucherVatDetail } from 'src/types/voucher/voucher'
 
 function toValidDate(value: unknown): Date | null {
   if (!value) {

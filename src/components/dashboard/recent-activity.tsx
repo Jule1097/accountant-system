@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "src/components/ui/card";
-import { VoucherListResponse } from "src/types/voucher";
+import { VoucherListResponse } from "src/types/voucher/voucher";
 
 interface RecentActivityProps {
   sales: VoucherListResponse;

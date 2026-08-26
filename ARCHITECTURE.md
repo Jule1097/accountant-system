@@ -16,9 +16,22 @@ This file defines the technical foundation. All implementations must adhere to t
 - **Application Layer (`src/services/`)**: Use case orchestration, transaction boundaries, and business rules execution.
 - **Domain Layer (`src/models/`)**: Rich domain models. Entities must encapsulate their own business rules and state mutations as methods rather than acting as anemic data structures.
 - **Infrastructure Layer (`src/repositories/`)**: All Prisma queries must be abstracted behind repositories or data-access services to decouple the application from the ORM. **Important**: When using `@prisma/adapter-pg`, avoid using `Promise.all` for multiple concurrent Prisma queries (e.g. `findMany`), as it can trigger `pg` driver deprecation warnings (concurrent queries on a single client). Use sequential `await`s` instead.
-- **Helpers & Utilities (`src/lib/helpers/*`)**: All helper functions and utility methods must be placed in `src/lib/helpers/`. Do not create new folders for helpers, always create them in the nearest parent folder.
-- **Types & Schemas (`src/lib/types/*`) and (`src/lib/schemas/*`)**: All type definitions and Zod schemas must be placed in `src/lib/types/` and `src/lib/schemas/` respectively. Do not create new folders for types or schemas.
-- **Constants (`src/lib/constants/*`)**: All constants must be placed in `src/lib/constants/`. Do not create new folders for constants, always create them in the nearest parent folder.
+- **Helpers & Utilities (`src/lib/helpers/*`)**: Helper functions must be placed in `src/lib/helpers/`.
+- **Types & Schemas (`src/types/*`) and (`src/lib/schemas/*`)**: Type definitions must be in `src/types/` and Zod schemas in `src/lib/schemas/`.
+- **Constants (`src/lib/constants/*`)**: Constants must be placed in `src/lib/constants/`.
+
+## Domain-Based File Organization (Source of Truth)
+
+To ensure clarity, scalability, and maintainability, the codebase enforces **Domain-Based File Organization**.
+
+- **Organization by Domain**: The contents of `hooks`, `services`, `repositories`, `types`, `helpers`, `schemas`, and modules within `lib` **must** be organized into subfolders by domain or responsibility (e.g., `voucher/`, `client-supplier/`, `parser/`, `auth/`).
+- **Subfolders Allowed**: Subfolders are allowed and encouraged when they improve architectural clarity. Do not create ambiguous generic folders if the file belongs to an existing clear domain.
+- **Choosing the Right Folder**:
+  - `shared/`: For elements reused across completely unrelated domains (e.g., `use-mobile.ts`, `utils.ts`).
+  - `platform/`: For core infrastructure utilities (e.g., `date-timezone.ts`, `promise-cache.ts`).
+  - `integrations/`: For external service configurations (e.g., `gemini.ts`, `supabase-client.ts`).
+  - Domain Folders (e.g. `voucher/`): For logic tied strictly to a specific business domain.
+- **Future Movements Rule**: Before creating a new file, it must be located within the corresponding existing domain subfolder. Do not create loose files in the root of `hooks`, `services`, `repositories`, `types`, or `lib` unless they are truly transversal modules.
 
 ## Frontend Modularization & Component Rules
 - **Page Mount Constraint (`page.tsx`)**: `page.tsx` files must only be used to mount the corresponding UI components. Do not place complex logic or methods directly in page files. 
@@ -51,7 +64,14 @@ This file defines the technical foundation. All implementations must adhere to t
 - Use discriminated unions for workflow states, async states, and approval states.
 - **Strict File Organization:**
   - Whenever creating types or interfaces, they MUST be modularized into a folder named `types` inside `src` (e.g., `src/types/`). Do not define them inline within models, services, or controllers.
-  - Whenever creating Zod schemas, they must be placed in a file named `<prefix>schemas.ts` inside `src/lib/schemas/` (e.g., `src/lib/schemas/voucher-schemas.ts`).
+  - Whenever creating Zod schemas, they must be placed in a file named `<prefix>schemas.ts` inside `src/lib/schemas/` (e.g., `src/lib/schemas/voucher/voucher-schemas.ts`).
+  - **Both must be placed inside their corresponding domain subfolders** following the Domain-Based File Organization rules.
+
+## Testing Rules
+- **Domain-Based Testing:** Tests must be organized by type (`unit` or `integration`) and then by domain. All tests must reside in `src/__tests__/<type>/<domain>/...`.
+- **Unit vs Integration:** 
+  - Unit tests use `jest.mock` for dependencies (e.g., Repositories, external APIs) or test pure functions without I/O side effects. 
+  - Integration tests verify the interaction with real databases (Prisma) or external services without mocks.
 
 ## Security Baseline & Business Constraints
 - Treat all client input as untrusted.

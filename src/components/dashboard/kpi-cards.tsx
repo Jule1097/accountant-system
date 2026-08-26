@@ -2,8 +2,8 @@
 
 import { CreditCard, DollarSign } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "src/components/ui/card";
-import { cn } from "src/lib/utils";
-import { AnalyticsData } from "src/types/analytics";
+import { cn } from "src/lib/shared/utils";
+import { AnalyticsData } from "src/types/analytics/analytics";
 
 interface KpiCardsProps {
   data: AnalyticsData;

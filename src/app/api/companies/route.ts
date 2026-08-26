@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
-import { CompanyService } from 'src/services/company.service'
+import { CompanyService } from 'src/services/company/company.service'
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
