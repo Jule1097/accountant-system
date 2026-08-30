@@ -1,7 +1,7 @@
 /** @jest-environment jsdom */
 
 import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { VoucherManagementView } from 'src/components/vouchers/voucher-management-view'
 import { VoucherModalPerceptions } from 'src/components/vouchers/voucher-modal-perceptions'
@@ -47,6 +47,11 @@ jest.mock('src/lib/api/api-client', () => ({
     }
   },
   apiRequest: (...args: unknown[]) => apiRequestMock(...args),
+}))
+
+jest.mock('src/lib/helpers/platform/history-navigation', () => ({
+  replaceUrlState: (url: string) => replaceMock(url, { scroll: false }),
+  pushUrlState: jest.fn(),
 }))
 
 jest.mock('src/hooks/auth/use-auth', () => ({
@@ -135,12 +140,14 @@ jest.mock('src/components/vouchers/voucher-detail-modal', () => ({
     mode: VoucherModalMode
     onLoadError: (error: unknown) => void
   }) => {
+    const [lastReportedId, setLastReportedId] = useState<string | null>(null)
     useEffect(() => {
-      if (!error) {
+      if (!voucherId || !error || lastReportedId === voucherId) {
         return
       }
+      setLastReportedId(voucherId)
       onLoadError(error)
-    }, [error, onLoadError])
+    }, [voucherId, error, onLoadError, lastReportedId])
 
     if (!voucherId) {
       return null

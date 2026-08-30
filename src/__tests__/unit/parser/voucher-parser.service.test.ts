@@ -167,7 +167,7 @@ describe("VoucherParserService", () => {
         currentAttempt: 0,
         queuedAt: null,
         processedAt: null,
-        expiresAt: "2026-08-30T00:00:00.000Z",
+        expiresAt: "2026-09-30T00:00:00.000Z",
         createdAt: "2026-08-20T00:00:00.000Z",
         updatedAt: "2026-08-20T00:00:00.000Z",
         batch: {
@@ -176,7 +176,7 @@ describe("VoucherParserService", () => {
           createdByUserId: userId,
           voucherType: "sale",
           status: "queued",
-          expiresAt: "2026-08-30T00:00:00.000Z",
+          expiresAt: "2026-09-30T00:00:00.000Z",
         },
       })
       .mockResolvedValueOnce({
@@ -188,14 +188,14 @@ describe("VoucherParserService", () => {
         fileHash: "hash-1",
         storagePath: "path",
         inputStrategy: "image-visual",
-        status: "parsed",
+        status: "processing",
         parsedPayload: null,
         validatedPayload: null,
         currentError: null,
         currentAttempt: 1,
         queuedAt: null,
         processedAt: "2026-08-20T00:00:00.000Z",
-        expiresAt: "2026-08-30T00:00:00.000Z",
+        expiresAt: "2026-09-30T00:00:00.000Z",
         createdAt: "2026-08-20T00:00:00.000Z",
         updatedAt: "2026-08-20T00:00:00.000Z",
         batch: {
@@ -204,7 +204,7 @@ describe("VoucherParserService", () => {
           createdByUserId: userId,
           voucherType: "sale",
           status: "partial",
-          expiresAt: "2026-08-30T00:00:00.000Z",
+          expiresAt: "2026-09-30T00:00:00.000Z",
         },
       });
     storageServiceMock.downloadFile.mockResolvedValue(Buffer.from("content"));
@@ -216,7 +216,6 @@ describe("VoucherParserService", () => {
     });
 
     await service.processItem(itemId);
-
     expect(batchRepositoryMock.markItemParsed).toHaveBeenCalledWith(
       itemId,
       expect.objectContaining({
