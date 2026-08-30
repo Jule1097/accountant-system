@@ -1,6 +1,7 @@
 import { CompanyNotificationRepository } from "src/repositories/company/company-notification.repository";
+import { ParserBatchRepository } from "src/repositories/parser/parser-batch.repository";
 import { resolveConciliationTab } from "src/lib/helpers/conciliation/conciliations";
-import { CompanyNotificationRecord } from "src/types/notification/notification";
+import { CompanyNotificationsResponse } from "src/types/notification/notification";
 import { ParserBatchRecord } from "src/types/parser/parser-batch";
 
 function buildBatchTargetPath(batch: ParserBatchRecord): string {
@@ -13,9 +14,11 @@ function isBatchCompletionStatus(status: ParserBatchRecord["status"]): boolean {
 
 export class CompanyNotificationService {
   private readonly repository: CompanyNotificationRepository;
+  private readonly parserBatchRepository: ParserBatchRepository;
 
   constructor() {
     this.repository = new CompanyNotificationRepository();
+    this.parserBatchRepository = new ParserBatchRepository();
   }
 
   async notifyBatchCompleted(batch: ParserBatchRecord): Promise<void> {
@@ -33,8 +36,14 @@ export class CompanyNotificationService {
     );
   }
 
-  async listByCompany(companyId: string): Promise<CompanyNotificationRecord[]> {
-    return this.repository.listByCompany(companyId);
+  async listByCompany(companyId: string): Promise<CompanyNotificationsResponse> {
+    const notifications = await this.repository.listByCompany(companyId);
+    const hasActiveParserBatch = await this.parserBatchRepository.hasActiveBatch(companyId);
+
+    return {
+      notifications,
+      hasActiveParserBatch,
+    };
   }
 
   async deleteById(companyId: string, notificationId: string): Promise<void> {

@@ -52,18 +52,9 @@ export function buildClientSupplierSearchParams(query: ClientSupplierListQuerySt
 }
 
 export function buildClientSupplierQuery(searchParams: URLSearchParams, nextQuery: ClientSupplierListQueryState): string {
-  const mergedParams = new URLSearchParams(searchParams.toString())
   const normalizedParams = buildClientSupplierSearchParams(nextQuery)
-
-  mergedParams.forEach((_value, key) => {
-    mergedParams.delete(key)
-  })
-
-  normalizedParams.forEach((value, key) => {
-    mergedParams.set(key, value)
-  })
-
-  const queryString = mergedParams.toString()
+  void searchParams
+  const queryString = normalizedParams.toString()
 
   if (!queryString) {
     return ''
@@ -74,6 +65,7 @@ export function buildClientSupplierQuery(searchParams: URLSearchParams, nextQuer
 
 export function buildClientSupplierCollectionPath(type: ClientSupplierEntityType, query: ClientSupplierListQueryState): string {
   const params = buildClientSupplierSearchParams(query)
+  params.delete('recordId')
   params.set('page', String(query.page))
   params.set('pageSize', String(query.pageSize))
 

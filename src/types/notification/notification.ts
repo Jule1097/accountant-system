@@ -10,3 +10,8 @@ export interface CompanyNotificationRecord {
   sourceId: string;
   createdAt: string;
 }
+
+export interface CompanyNotificationsResponse {
+  notifications: CompanyNotificationRecord[];
+  hasActiveParserBatch: boolean;
+}

@@ -3,6 +3,11 @@ import { Prisma } from 'src/generated/prisma/client'
 import { Voucher } from 'src/models/Voucher'
 import { GeminiParserResponse } from 'src/types/parser/gemini-parser'
 import {
+  DashboardRecentActivityData,
+  DashboardRecentPurchaseEntry,
+  DashboardWeeklySalesEntry,
+} from "src/types/dashboard/dashboard"
+import {
   VoucherFilterParams,
   VoucherListItem,
   VoucherListResponse,
@@ -39,6 +44,23 @@ interface VoucherSummaryRawRecord {
   totalAmount: Prisma.Decimal
   client: { name: string; cuit: string } | null
   supplier: { name: string; cuit: string } | null
+}
+
+interface DashboardRecentSaleRawRecord {
+  date: Date
+  totalAmount: Prisma.Decimal
+}
+
+interface DashboardRecentPurchaseRawRecord {
+  id: string
+  date: Date
+  totalAmount: Prisma.Decimal
+  supplier: {
+    name: string
+  } | null
+  voucherType: {
+    name: string
+  } | null
 }
 
 function resolveVoucherDateFilter(filters: VoucherFilterParams): Prisma.DateTimeFilter<'Voucher'> | undefined {
@@ -184,6 +206,53 @@ function buildVoucherWhereClause(companyId: string, filters: VoucherFilterParams
   }
 
   return whereClause
+}
+
+function buildDashboardWeeklySales(
+  sales: DashboardRecentSaleRawRecord[],
+  now: Date
+): DashboardWeeklySalesEntry[] {
+  const weeklySales = [
+    { week: "Semana 1", amount: 0 },
+    { week: "Semana 2", amount: 0 },
+    { week: "Semana 3", amount: 0 },
+    { week: "Semana 4", amount: 0 },
+    { week: "Semana 5", amount: 0 },
+  ]
+  const days35Ago = new Date(now.getTime() - 35 * 24 * 60 * 60 * 1000)
+
+  sales
+    .slice()
+    .sort((left, right) => left.date.getTime() - right.date.getTime())
+    .forEach((sale) => {
+      if (sale.date < days35Ago) {
+        return
+      }
+
+      const diffTime = now.getTime() - sale.date.getTime()
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+      const weekIndex = 4 - Math.floor(diffDays / 7)
+
+      if (weekIndex < 0 || weekIndex >= weeklySales.length) {
+        return
+      }
+
+      weeklySales[weekIndex].amount += Number(sale.totalAmount)
+    })
+
+  return weeklySales
+}
+
+function mapDashboardRecentPurchases(
+  purchases: DashboardRecentPurchaseRawRecord[]
+): DashboardRecentPurchaseEntry[] {
+  return purchases.map((purchase) => ({
+    id: purchase.id,
+    supplierName: purchase.supplier?.name || null,
+    date: purchase.date.toISOString(),
+    voucherTypeName: purchase.voucherType?.name || null,
+    totalAmount: Number(purchase.totalAmount),
+  }))
 }
 
 export class VoucherRepository {
@@ -502,5 +571,56 @@ export class VoucherRepository {
     })
 
     return rawVouchers.map((voucher) => new Voucher(voucher))
+  }
+
+  async findDashboardRecentActivity(companyId: string): Promise<DashboardRecentActivityData> {
+    const now = new Date()
+    const salesCutoff = new Date(now.getTime() - 35 * 24 * 60 * 60 * 1000)
+    const sales = await prisma.voucher.findMany({
+      where: {
+        companyId,
+        type: "sale",
+        date: {
+          gte: salesCutoff,
+        },
+      },
+      select: {
+        date: true,
+        totalAmount: true,
+      },
+      orderBy: {
+        date: "desc",
+      },
+    })
+    const purchases = await prisma.voucher.findMany({
+      where: {
+        companyId,
+        type: "purchase",
+      },
+      select: {
+        id: true,
+        date: true,
+        totalAmount: true,
+        supplier: {
+          select: {
+            name: true,
+          },
+        },
+        voucherType: {
+          select: {
+            name: true,
+          },
+        },
+      },
+      orderBy: {
+        date: "desc",
+      },
+      take: 3,
+    })
+
+    return {
+      weeklySales: buildDashboardWeeklySales(sales as DashboardRecentSaleRawRecord[], now),
+      recentPurchases: mapDashboardRecentPurchases(purchases as DashboardRecentPurchaseRawRecord[]),
+    }
   }
 }
