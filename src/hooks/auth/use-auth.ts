@@ -1,50 +1,50 @@
-import { useEffect, useState } from "react";
-import { User, AuthResponse } from "@supabase/supabase-js";
-import { getSupabaseBrowserClient } from "src/lib/integrations/supabase-client";
-import { UseAuthResult } from "src/types/auth/auth";
+import { Dispatch, SetStateAction, useContext } from "react";
+import { AuthContext } from "src/contexts/auth-context";
+import { apiRequest } from "src/lib/api/api-client";
+import { AuthContextType, AuthLoginResponse, UseAuthResult } from "src/types/auth/auth";
 
 export function useAuth(): UseAuthResult {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const context = useContext(AuthContext);
 
-  useEffect(() => {
-    const supabase = getSupabaseBrowserClient();
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
 
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUser(user);
-      setLoading(false);
+  return context;
+}
+
+export function useAuthActions(
+  setUser: Dispatch<SetStateAction<AuthContextType["user"]>>,
+  setLoading: Dispatch<SetStateAction<boolean>>
+): Pick<UseAuthResult, "login" | "logout"> {
+  const login = async (email: string, password: string): Promise<void> => {
+    const response = await apiRequest("/api/auth/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email,
+        password,
+      }),
     });
+    const data = await response.json() as AuthLoginResponse;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  const login = async (email: string, password: string): Promise<AuthResponse['data']> => {
-    const supabase = getSupabaseBrowserClient();
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
-    if (error) throw error;
-    return data;
+    setUser(data.user);
+    setLoading(false);
   };
 
   const logout = async (): Promise<void> => {
-    const supabase = getSupabaseBrowserClient();
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
+    await apiRequest("/api/auth/logout", {
+      method: "POST",
+    });
+
+    setUser(null);
+    setLoading(false);
   };
 
   return {
-    user,
-    loading,
     login,
-    logout
+    logout,
   };
 }

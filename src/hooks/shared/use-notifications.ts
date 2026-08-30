@@ -4,18 +4,20 @@ import useSWR from "swr";
 import { useRouter } from "next/navigation";
 import { buildCompanyPathKey, companyPathFetcher } from "src/lib/helpers/platform/swr";
 import { useCompany } from "src/contexts/company-context";
-import { CompanyNotificationRecord } from "src/types/notification/notification";
+import { CompanyNotificationRecord, CompanyNotificationsResponse } from "src/types/notification/notification";
 
 export function useNotifications() {
   const router = useRouter();
-  const { activeCompanyId } = useCompany();
-  const key = buildCompanyPathKey(activeCompanyId, "/api/notifications");
+  const { activeCompanyId, loading: isCompanyLoading } = useCompany();
+  const key = buildCompanyPathKey(activeCompanyId, "/api/notifications", !isCompanyLoading);
   const { data, isLoading } = useSWR(
     key,
-    ([companyId, requestPath]) => companyPathFetcher<CompanyNotificationRecord[]>(companyId, requestPath),
+    ([companyId, requestPath]) => companyPathFetcher<CompanyNotificationsResponse>(companyId, requestPath),
     {
-      refreshInterval: 0,
-      revalidateOnFocus: true,
+      refreshInterval: (currentData: CompanyNotificationsResponse | undefined) =>
+        currentData?.hasActiveParserBatch ? 30000 : 0,
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
       refreshWhenHidden: false,
     }
   );
@@ -25,7 +27,7 @@ export function useNotifications() {
   };
 
   return {
-    notifications: data || [],
+    notifications: data?.notifications || [],
     isLoading,
     handleOpenNotification,
   };

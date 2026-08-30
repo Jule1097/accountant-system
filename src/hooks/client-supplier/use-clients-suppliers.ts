@@ -15,13 +15,16 @@ import {
 } from 'src/types/client-supplier/client-supplier'
 
 export function useClientsSuppliers(type: ClientSupplierEntityType, query: ClientSupplierListQueryState) {
-  const { activeCompanyId } = useCompany()
-  const key = buildCompanyPathKey(activeCompanyId, buildClientSupplierCollectionPath(type, query))
+  const { activeCompanyId, loading: isCompanyLoading } = useCompany()
+  const key = buildCompanyPathKey(activeCompanyId, buildClientSupplierCollectionPath(type, query), !isCompanyLoading)
   const { data, isLoading, mutate } = useSWR(
     key,
     ([companyId, path]) => companyPathFetcher<ClientSupplierListResponse<ClientSupplierRecord>>(companyId, path),
     {
       keepPreviousData: true,
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      suspense: true,
     }
   )
 
@@ -33,14 +36,15 @@ export function useClientsSuppliers(type: ClientSupplierEntityType, query: Clien
 }
 
 export function useClientSupplierById(type: ClientSupplierEntityType, id: string) {
-  const { activeCompanyId } = useCompany()
+  const { activeCompanyId, loading: isCompanyLoading } = useCompany()
   const path = id ? buildClientSupplierDetailPath(type, id) : null
-  const key = buildCompanyPathKey(activeCompanyId, path)
+  const key = buildCompanyPathKey(activeCompanyId, path, !isCompanyLoading)
   const { data, error, isLoading, mutate } = useSWR(
     key,
     ([companyId, requestPath]) => companyPathFetcher<ClientSupplierRecord>(companyId, requestPath),
     {
       keepPreviousData: true,
+      revalidateOnFocus: false,
     }
   )
 
