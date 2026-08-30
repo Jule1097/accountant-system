@@ -1,14 +1,33 @@
 "use client"
 
-import { ClientSupplierDeleteDialog } from 'src/components/clients-suppliers/client-supplier-delete-dialog'
-import {
-  ClientSupplierDetailModal,
-  ClientSupplierModal,
-} from 'src/components/clients-suppliers/client-supplier-modal'
-import { ClientSupplierSkeleton } from 'src/components/clients-suppliers/client-supplier-skeleton'
+import dynamic from "next/dynamic"
 import { ClientSupplierTable } from 'src/components/clients-suppliers/client-supplier-table'
 import { useClientsSuppliersManagement } from 'src/hooks/client-supplier/use-clients-suppliers-management'
 import { ClientsSuppliersManagementViewProps } from 'src/types/client-supplier/client-supplier'
+
+const ClientSupplierDeleteDialog = dynamic(
+  () => import("src/components/clients-suppliers/client-supplier-delete-dialog").then((module) => module.ClientSupplierDeleteDialog),
+  {
+    ssr: false,
+    loading: () => null,
+  }
+)
+
+const ClientSupplierDetailModal = dynamic(
+  () => import("src/components/clients-suppliers/client-supplier-modal").then((module) => module.ClientSupplierDetailModal),
+  {
+    ssr: false,
+    loading: () => null,
+  }
+)
+
+const ClientSupplierModal = dynamic(
+  () => import("src/components/clients-suppliers/client-supplier-modal").then((module) => module.ClientSupplierModal),
+  {
+    ssr: false,
+    loading: () => null,
+  }
+)
 
 export function ClientsSuppliersManagementView({
   type,
@@ -23,7 +42,6 @@ export function ClientsSuppliersManagementView({
     recordPendingDelete,
     query,
     searchValue,
-    isTableLoading,
     data,
     recordDetail,
     recordDetailError,
@@ -81,61 +99,65 @@ export function ClientsSuppliersManagementView({
         </button>
       </div>
 
-      {isTableLoading || !data ? (
-        <ClientSupplierSkeleton />
-      ) : (
-        <ClientSupplierTable
-          data={data}
-          query={query}
-          searchValue={searchValue}
+      <ClientSupplierTable
+        data={data}
+        query={query}
+        searchValue={searchValue}
+        type={type}
+        onAdd={openCreateModal}
+        onSelectRecord={handleSelectRecord}
+        onDeleteRecord={handleDeleteRecord}
+        onSearchChange={handleSearchChange}
+        onClearFilters={handleClearFilters}
+        onSortChange={handleSortChange}
+        onPageChange={handlePageChange}
+        onPageSizeChange={handlePageSizeChange}
+      />
+
+      {isCreateModalOpen ? (
+        <ClientSupplierModal
+          isOpen
           type={type}
-          onAdd={openCreateModal}
-          onSelectRecord={handleSelectRecord}
-          onDeleteRecord={handleDeleteRecord}
-          onSearchChange={handleSearchChange}
-          onClearFilters={handleClearFilters}
-          onSortChange={handleSortChange}
-          onPageChange={handlePageChange}
-          onPageSizeChange={handlePageSizeChange}
+          mode="create"
+          onOpenChange={handleCreateModalOpenChange}
+          onSuccess={handleCreateSuccess}
         />
-      )}
+      ) : null}
 
-      <ClientSupplierModal
-        isOpen={isCreateModalOpen}
-        type={type}
-        mode="create"
-        onOpenChange={handleCreateModalOpenChange}
-        onSuccess={handleCreateSuccess}
-      />
+      {recordId ? (
+        <ClientSupplierModal
+          isOpen
+          type={type}
+          mode="edit"
+          isLoading={isRecordDetailLoading}
+          record={recordDetail}
+          onOpenChange={handleEditModalOpenChange}
+          onSuccess={handleEditSuccess}
+        />
+      ) : null}
 
-      <ClientSupplierModal
-        isOpen={Boolean(recordId)}
-        type={type}
-        mode="edit"
-        isLoading={isRecordDetailLoading}
-        record={recordDetail}
-        onOpenChange={handleEditModalOpenChange}
-        onSuccess={handleEditSuccess}
-      />
+      {viewRecordId ? (
+        <ClientSupplierDetailModal
+          isOpen
+          type={type}
+          record={recordDetail}
+          error={recordDetailError}
+          isLoading={isRecordDetailLoading}
+          onOpenChange={handleEditModalOpenChange}
+          onLoadError={handleRecordDetailError}
+        />
+      ) : null}
 
-      <ClientSupplierDetailModal
-        isOpen={Boolean(viewRecordId)}
-        type={type}
-        record={recordDetail}
-        error={recordDetailError}
-        isLoading={isRecordDetailLoading}
-        onOpenChange={handleEditModalOpenChange}
-        onLoadError={handleRecordDetailError}
-      />
-
-      <ClientSupplierDeleteDialog
-        isOpen={Boolean(recordPendingDelete)}
-        type={type}
-        record={recordPendingDelete}
-        isDeleting={isDeleting}
-        onOpenChange={handleDeleteDialogOpenChange}
-        onConfirm={confirmRecordDelete}
-      />
+      {recordPendingDelete ? (
+        <ClientSupplierDeleteDialog
+          isOpen
+          type={type}
+          record={recordPendingDelete}
+          isDeleting={isDeleting}
+          onOpenChange={handleDeleteDialogOpenChange}
+          onConfirm={confirmRecordDelete}
+        />
+      ) : null}
     </div>
   )
 }

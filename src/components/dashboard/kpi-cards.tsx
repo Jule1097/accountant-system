@@ -3,14 +3,10 @@
 import { CreditCard, DollarSign } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "src/components/ui/card";
 import { cn } from "src/lib/shared/utils";
-import { AnalyticsData } from "src/types/analytics/analytics";
+import { DashboardKpiCardsProps } from "src/types/dashboard/dashboard";
 
-interface KpiCardsProps {
-  data: AnalyticsData;
-}
-
-export function KpiCards({ data }: KpiCardsProps) {
-  const trend = data.trend?.ARS || [];
+export function KpiCards({ data }: DashboardKpiCardsProps) {
+  const trend = data?.trend?.ARS || [];
   const currentMonthIdx = trend.length - 1;
   const currentMonthData = currentMonthIdx >= 0 ? trend[currentMonthIdx] : { income: 0, expenses: 0 };
   const prevMonthData = currentMonthIdx > 0 ? trend[currentMonthIdx - 1] : { income: 0, expenses: 0 };

@@ -2,9 +2,7 @@ import type { Metadata } from "next";
 import { Inter, DM_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "src/components/theme-provider";
-import { Toaster } from "src/components/ui/toast";
-import { TooltipProvider } from "src/components/ui/tooltip";
-import { SwrProvider } from "src/components/providers/swr-provider";
+import { AppProviders } from "src/components/providers/app-providers";
 import { cn } from "src/lib/shared/utils";
 
 const inter = Inter({
@@ -22,9 +20,6 @@ export const metadata: Metadata = {
   title: "Accountant System",
   description: "Contabilidad para PYMES",
 };
-
-import { CompanyProvider } from "src/contexts/company-context";
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -48,13 +43,7 @@ export default function RootLayout({
           enableSystem={false}
           disableTransitionOnChange
         >
-          <SwrProvider>
-            <CompanyProvider>
-              <TooltipProvider>
-                <Toaster>{children}</Toaster>
-              </TooltipProvider>
-            </CompanyProvider>
-          </SwrProvider>
+          <AppProviders>{children}</AppProviders>
         </ThemeProvider>
       </body>
     </html>
