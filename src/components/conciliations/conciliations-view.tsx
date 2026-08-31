@@ -6,8 +6,8 @@ import { ConciliationSection } from "src/components/conciliations/conciliation-s
 import { ConciliationsPagination } from "src/components/conciliations/conciliations-pagination";
 import { ConciliationsToolbar } from "src/components/conciliations/conciliations-toolbar";
 import { VoucherDeleteDialog } from "src/components/vouchers/voucher-delete-dialog";
-import { useConciliations } from "src/hooks/use-conciliations";
-import { ConciliationSectionData } from "src/types/conciliations";
+import { useConciliations } from "src/hooks/conciliation/use-conciliations";
+import { ConciliationSectionData } from "src/types/conciliation/conciliations";
 
 function ConciliationsLoadingState() {
   return (
@@ -46,7 +46,6 @@ export function ConciliationsView() {
     currentPage,
     totalPages,
     readyCount,
-    persistBatchAction,
     startIndex,
     isPageLoading,
     isDeleting,
@@ -79,13 +78,7 @@ export function ConciliationsView() {
 
   return (
     <div className="flex-1 space-y-6">
-      <ConciliationsToolbar
-        canPersistBatch={persistBatchAction.canPersist}
-        persistLabel={`Guardar seleccionadas (${persistBatchAction.selectedValidatedCount})`}
-        onPersistBatch={() => {
-          void handlePersistBatch();
-        }}
-      />
+      <ConciliationsToolbar />
 
       <div className="flex w-full gap-4 border-b border-border/40">
         <button
@@ -149,32 +142,36 @@ export function ConciliationsView() {
         onPageChange={handlePageChange}
       />
 
-      <ConciliationReviewModal
-        isOpen={isReviewModalOpen}
-        type={activeTab}
-        item={reviewItem}
-        isLoading={isReviewItemLoading}
-        sourceUrl={reviewSourceUrl}
-        onOpenChange={handleReviewModalOpenChange}
-        onSubmit={handleReviewSubmit}
-      />
+      {isReviewModalOpen ? (
+        <ConciliationReviewModal
+          isOpen
+          type={activeTab}
+          item={reviewItem}
+          isLoading={isReviewItemLoading}
+          sourceUrl={reviewSourceUrl}
+          onOpenChange={handleReviewModalOpenChange}
+          onSubmit={handleReviewSubmit}
+        />
+      ) : null}
 
-      <VoucherDeleteDialog
-        isOpen={deleteDialogState.isOpen}
-        voucher={null}
-        isDeleting={isDeleting}
-        title={deleteDialogState.title}
-        description={deleteDialogState.description}
-        onOpenChange={handleDeleteDialogOpenChange}
-        onConfirm={() => {
-          if (deleteDialogState.mode === "bulk") {
-            void confirmDeleteSelected();
-            return;
-          }
+      {deleteDialogState.isOpen ? (
+        <VoucherDeleteDialog
+          isOpen
+          voucher={null}
+          isDeleting={isDeleting}
+          title={deleteDialogState.title}
+          description={deleteDialogState.description}
+          onOpenChange={handleDeleteDialogOpenChange}
+          onConfirm={() => {
+            if (deleteDialogState.mode === "bulk") {
+              void confirmDeleteSelected();
+              return;
+            }
 
-          void confirmDelete();
-        }}
-      />
+            void confirmDelete();
+          }}
+        />
+      ) : null}
     </div>
   );
 }

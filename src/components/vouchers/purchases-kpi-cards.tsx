@@ -1,6 +1,6 @@
 "use client";
 
-import { VoucherSummaryResponse } from "src/types/voucher";
+import { VoucherSummaryResponse } from "src/types/voucher/voucher";
 
 export function PurchasesKpiCards({ summary }: { summary: VoucherSummaryResponse }) {
   return (

@@ -9,6 +9,7 @@
 
 ## Skill Integration Policy
 - **Always check installed skills first:** Before implementing any new code, feature, or tool integration, you must scan and verify the installed skills/extensions to leverage the appropriate ones when applicable.
+- **Mandatory Reuse Audit Before Coding:** Before creating any new component, hook, helper, service, test, schema, type, constant, loader, modal, table, filter, or UI pattern, you must first inspect the existing codebase to verify whether an equivalent or adaptable implementation already exists. Only if no suitable option exists may you create a new artifact, and in that case it must be designed as reusable by default instead of being hard-wired to a single screen or flow.
 
 ## Next.js: ALWAYS read docs before coding
 Before any Next.js work, find and read the relevant doc in `node_modules/next/dist/docs/`. Your training data is outdated — the docs are the source of truth.
@@ -22,7 +23,9 @@ Whenever the user requests a new feature, module, or structural change, **never 
 3. **User Validation & Approval:** Present the proposal, specs, and design to the user and wait for explicit approval. Do not write code or apply tasks without approval.
 4. **Execution & Testing (Apply Phase):** 
    - Retrieve apply instructions with `openspec instructions apply --change "<change-name>"`.
-   - Implement the feature following the technical stack and ensuring all business rules are met. Run Jest tests.
+   - Implement the feature following the technical stack and ensuring all business rules are met.
+   - **TDD is mandatory:** before writing or changing production code, first create or update the automated tests that describe the expected behavior and make them fail for the intended change.
+   - Only after the failing tests exist, write the production code until those tests pass, then run the relevant Jest suites.
    - Mark tasks complete in the change's `tasks.md` file (updating `[ ]` to `[x]`).
 5. **Archiving & Merging:** Once all tasks are completed, run `openspec archive <change-name>` to merge and update the main project specifications.
 
@@ -65,6 +68,7 @@ Whenever the user requests a new feature, module, or structural change, **never 
   - Use incremental commits corresponding to OpenSpec phases.
 
 ## Testing Standards
+- **TDD First:** For every feature, bug fix, or behavior change, the first implementation step must be writing or updating automated tests that fail against the current behavior before modifying production code. Documentation-only or spec-only changes are the only exception.
 - Every new feature or backend endpoint must include automated tests using Jest.
 - Minimum test requirements per feature:
   - Unit tests for validation schemas (Zod) and core business logic.

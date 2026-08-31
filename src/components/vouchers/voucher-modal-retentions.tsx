@@ -1,8 +1,8 @@
 import { UseFieldArrayReturn, UseFormReturn } from "react-hook-form";
 import { Button } from "src/components/ui/button";
 import { Input } from "src/components/ui/input";
-import { VoucherFormValues } from "src/hooks/use-voucher-form";
-import { cn } from "src/lib/utils";
+import { VoucherFormValues } from "src/hooks/voucher/use-voucher-form";
+import { cn } from "src/lib/shared/utils";
 
 interface VoucherModalRetentionsProps {
   form: UseFormReturn<VoucherFormValues>;

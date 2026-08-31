@@ -2,45 +2,12 @@
 
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "src/components/ui/card";
-import { VoucherListResponse } from "src/types/voucher";
+import { DashboardRecentActivityProps } from "src/types/dashboard/dashboard";
 
-interface RecentActivityProps {
-  sales: VoucherListResponse;
-  purchases: VoucherListResponse;
-}
-
-export function RecentActivity({ sales, purchases }: RecentActivityProps) {
+export function RecentActivity({ data }: DashboardRecentActivityProps) {
   const [hoveredBar, setHoveredBar] = useState<number | null>(null);
-  const weeklySales = [
-    { week: "Semana 1", amount: 0 },
-    { week: "Semana 2", amount: 0 },
-    { week: "Semana 3", amount: 0 },
-    { week: "Semana 4", amount: 0 },
-    { week: "Semana 5", amount: 0 },
-  ];
-  const now = new Date();
-  const days35Ago = new Date(now.getTime() - 35 * 24 * 60 * 60 * 1000);
-
-  sales.items
-    .map((item) => item.voucher)
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    .forEach((voucher) => {
-      const voucherDate = new Date(voucher.date);
-
-      if (voucherDate < days35Ago) {
-        return;
-      }
-
-      const diffTime = now.getTime() - voucherDate.getTime();
-      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-      const weekIndex = 4 - Math.floor(diffDays / 7);
-
-      if (weekIndex >= 0 && weekIndex < 5) {
-        weeklySales[weekIndex].amount += Number(voucher.totalAmount);
-      }
-    });
-
-  const recentPurchases = purchases.items.map((item) => item.voucher).slice(0, 3);
+  const weeklySales = data?.weeklySales || [];
+  const recentPurchases = data?.recentPurchases || [];
   const maxVal = Math.max(...weeklySales.map((item) => item.amount)) * 1.2 || 25000;
 
   return (
@@ -95,20 +62,20 @@ export function RecentActivity({ sales, purchases }: RecentActivityProps) {
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-accent border border-border flex items-center justify-center flex-shrink-0">
                     <span className="text-xs font-semibold text-muted-foreground">
-                      {item.supplier?.name.substring(0, 2).toUpperCase() || "SC"}
+                      {item.supplierName?.substring(0, 2).toUpperCase() || "SC"}
                     </span>
                   </div>
                   <div className="space-y-1">
-                    <div className="text-sm font-medium leading-none text-foreground">{item.supplier?.name}</div>
+                    <div className="text-sm font-medium leading-none text-foreground">{item.supplierName}</div>
                     <div className="text-[11px] text-muted-foreground">{new Date(item.date).toLocaleDateString("es-AR")}</div>
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-1">
                   <span className="bg-red-500/10 text-red-500 text-[10px] font-medium px-2 py-0.5 rounded-full">
-                    {item.voucherType?.name || "Factura"}
+                    {item.voucherTypeName || "Factura"}
                   </span>
                   <div className="text-sm font-mono font-medium text-red-500">
-                    -${Number(item.totalAmount).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    -${item.totalAmount.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
                 </div>
               </div>

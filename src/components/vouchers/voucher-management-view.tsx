@@ -1,14 +1,36 @@
 "use client";
 
-import { VoucherDeleteDialog } from "src/components/vouchers/voucher-delete-dialog";
-import { VoucherDetailModal } from "src/components/vouchers/voucher-detail-modal";
-import { VoucherModal } from "src/components/vouchers/voucher-modal";
+import dynamic from "next/dynamic";
 import { PurchasesKpiCards } from "src/components/vouchers/purchases-kpi-cards";
 import { SalesKpiCards } from "src/components/vouchers/sales-kpi-cards";
 import { VoucherSkeleton } from "src/components/vouchers/voucher-skeleton";
 import { VoucherTable } from "src/components/vouchers/voucher-table";
-import { useVoucherManagement } from "src/hooks/use-voucher-management";
-import { VoucherScreenType } from "src/types/voucher";
+import { useVoucherManagement } from "src/hooks/voucher/use-voucher-management";
+import { VoucherScreenType } from "src/types/voucher/voucher";
+
+const VoucherDeleteDialog = dynamic(
+  () => import("src/components/vouchers/voucher-delete-dialog").then((module) => module.VoucherDeleteDialog),
+  {
+    ssr: false,
+    loading: () => null,
+  }
+)
+
+const VoucherDetailModal = dynamic(
+  () => import("src/components/vouchers/voucher-detail-modal").then((module) => module.VoucherDetailModal),
+  {
+    ssr: false,
+    loading: () => null,
+  }
+)
+
+const VoucherModal = dynamic(
+  () => import("src/components/vouchers/voucher-modal").then((module) => module.VoucherModal),
+  {
+    ssr: false,
+    loading: () => null,
+  }
+)
 
 interface VoucherManagementViewProps {
   type: VoucherScreenType;
@@ -93,33 +115,39 @@ export function VoucherManagementView({ type, title, description }: VoucherManag
         />
       )}
 
-      <VoucherModal
-        isOpen={isCreateModalOpen}
-        onOpenChange={handleCreateModalOpenChange}
-        type={type}
-        mode="create"
-        onSuccess={handleCreateSuccess}
-      />
+      {isCreateModalOpen ? (
+        <VoucherModal
+          isOpen
+          onOpenChange={handleCreateModalOpenChange}
+          type={type}
+          mode="create"
+          onSuccess={handleCreateSuccess}
+        />
+      ) : null}
 
-      <VoucherDetailModal
-        voucherId={voucherId || viewVoucherId}
-        voucher={voucherDetail}
-        error={voucherDetailError}
-        isLoading={isVoucherDetailLoading}
-        type={type}
-        mode={voucherId ? "edit" : "view"}
-        onOpenChange={handleEditModalOpenChange}
-        onSuccess={handleEditSuccess}
-        onLoadError={handleVoucherDetailError}
-      />
+      {voucherId || viewVoucherId ? (
+        <VoucherDetailModal
+          voucherId={voucherId || viewVoucherId}
+          voucher={voucherDetail}
+          error={voucherDetailError}
+          isLoading={isVoucherDetailLoading}
+          type={type}
+          mode={voucherId ? "edit" : "view"}
+          onOpenChange={handleEditModalOpenChange}
+          onSuccess={handleEditSuccess}
+          onLoadError={handleVoucherDetailError}
+        />
+      ) : null}
 
-      <VoucherDeleteDialog
-        isOpen={Boolean(voucherPendingDelete)}
-        voucher={voucherPendingDelete}
-        isDeleting={isDeleting}
-        onOpenChange={handleDeleteDialogOpenChange}
-        onConfirm={confirmVoucherDelete}
-      />
+      {voucherPendingDelete ? (
+        <VoucherDeleteDialog
+          isOpen
+          voucher={voucherPendingDelete}
+          isDeleting={isDeleting}
+          onOpenChange={handleDeleteDialogOpenChange}
+          onConfirm={confirmVoucherDelete}
+        />
+      ) : null}
     </div>
   );
 }

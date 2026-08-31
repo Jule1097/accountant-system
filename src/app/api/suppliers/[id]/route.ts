@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { SupplierService } from 'src/services/supplier.service'
-import { z } from 'zod'
-
-const supplierUpdateSchema = z.object({
-  name: z.string().optional(),
-  cuit: z.string().optional(),
-})
+import { SupplierService } from 'src/services/client-supplier/supplier.service'
+import { resolveClientSupplierItemErrorResponse } from 'src/lib/helpers/client-supplier/client-supplier-api'
+import { clientSupplierSchema } from 'src/lib/schemas/client-supplier/client-supplier-schemas'
 
 export async function GET(
   request: NextRequest,
@@ -24,7 +20,7 @@ export async function GET(
     return NextResponse.json(supplier)
   } catch (error) {
     console.error('Error fetching supplier:', error)
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
   }
 }
 
@@ -37,7 +33,7 @@ export async function PUT(
     const companyId = request.headers.get('x-company-id')!
     const body = await request.json()
 
-    const parsed = supplierUpdateSchema.safeParse(body)
+    const parsed = clientSupplierSchema.safeParse(body)
     if (!parsed.success) {
       return NextResponse.json({ error: 'Datos inválidos', details: parsed.error.format() }, { status: 400 })
     }
@@ -49,10 +45,7 @@ export async function PUT(
   } catch (error: unknown) {
     const err = error as Error
     console.error('Error updating supplier:', err)
-    if (err.message.includes('CUIT del proveedor ya se encuentra registrado')) {
-      return NextResponse.json({ error: err.message }, { status: 400 })
-    }
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+    return resolveClientSupplierItemErrorResponse(err.message)
   }
 }
 
@@ -69,6 +62,6 @@ export async function DELETE(
     return new NextResponse(null, { status: 204 })
   } catch (error) {
     console.error('Error deleting supplier:', error)
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+    return resolveClientSupplierItemErrorResponse((error as Error).message)
   }
 }

@@ -2,9 +2,9 @@
 
 import { VoucherModal } from "src/components/vouchers/voucher-modal";
 import { ConciliationReviewPreview } from "src/components/conciliations/conciliation-review-preview";
-import { ParserBatchItemContextRecord } from "src/types/parser-batch";
-import { VoucherFormPayload } from "src/types/voucher-form";
-import { VoucherScreenType } from "src/types/voucher";
+import { ParserBatchItemContextRecord } from "src/types/parser/parser-batch";
+import { VoucherFormPayload } from "src/types/voucher/voucher-form";
+import { VoucherScreenType } from "src/types/voucher/voucher";
 
 interface ConciliationReviewModalProps {
   isOpen: boolean;

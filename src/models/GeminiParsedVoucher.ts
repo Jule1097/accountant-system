@@ -1,15 +1,15 @@
-import { compareCuit, normalizeCuit } from 'src/lib/cuit'
-import { normalizeParserText } from 'src/lib/helpers/parser-text'
-import { normalizeVoucherCurrency } from 'src/lib/helpers/voucher-form'
-import { resolveGeminiCatalogMatch } from 'src/lib/helpers/gemini-parser'
-import { resolveTaxJurisdictionName } from 'src/lib/tax-jurisdictions'
+import { compareCuit, normalizeCuit } from 'src/lib/domain/cuit'
+import { normalizeParserText } from 'src/lib/helpers/parser/parser-text'
+import { normalizeVoucherCurrency } from 'src/lib/helpers/voucher/voucher-form'
+import { resolveGeminiCatalogMatch } from 'src/lib/helpers/parser/gemini-parser'
+import { resolveTaxJurisdictionName } from 'src/lib/domain/tax-jurisdictions'
 import {
   GeminiParserCatalogs,
   GeminiParserResponse,
   RawGeminiParsedVoucher,
   RawGeminiTaxItem,
   RawGeminiVatDetail,
-} from 'src/types/gemini-parser'
+} from 'src/types/parser/gemini-parser'
 
 export class GeminiParsedVoucher {
   private readonly extractedData: RawGeminiParsedVoucher
@@ -116,6 +116,24 @@ export class GeminiParsedVoucher {
     return this.normalizeTextValue(this.extractedData.thirdPartyName)
   }
 
+  private normalizeVoucherLetterValue(value?: string | null, fallbackVoucherType?: string | null): string | null {
+    const normalizedValue = this.normalizeTextValue(value)
+    const directMatch = normalizedValue?.match(/\b([ABCM])\b/i)
+
+    if (directMatch) {
+      return directMatch[1].toUpperCase()
+    }
+
+    const normalizedVoucherType = this.normalizeTextValue(fallbackVoucherType)
+    const trailingLetterMatch = normalizedVoucherType?.match(/\b([ABCM])$/i)
+
+    if (trailingLetterMatch) {
+      return trailingLetterMatch[1].toUpperCase()
+    }
+
+    return null
+  }
+
   private resolveVatDetail(detail: RawGeminiVatDetail, catalogs: GeminiParserCatalogs) {
     const matchedVatRate = resolveGeminiCatalogMatch(detail.vatRateName, catalogs.vatRates)
 
@@ -189,7 +207,7 @@ export class GeminiParsedVoucher {
       thirdPartyCuit,
       thirdPartyName,
       voucherType: this.normalizeTextValue(this.extractedData.voucherType),
-      voucherLetter: this.normalizeTextValue(this.extractedData.voucherLetter),
+      voucherLetter: this.normalizeVoucherLetterValue(this.extractedData.voucherLetter, this.extractedData.voucherType),
       vatDetails: (this.extractedData.vatDetails || []).map((detail) => this.resolveVatDetail(detail, catalogs)),
       retentions: (this.extractedData.retentions || []).map((retention) => this.resolveRetention(retention, catalogs)),
       perceptions: (this.extractedData.perceptions || []).map((perception) => this.resolvePerception(perception, catalogs)),

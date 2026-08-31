@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { AnalyticsSkeleton } from "src/components/analytics/analytics-skeleton";
-import { cn } from "src/lib/utils";
-import { useAnalytics } from "src/hooks/use-analytics";
-import { useAnalyticsChart } from "src/hooks/use-analytics-chart";
-import { AnalyticsData, TrendEntry, ComparisonPeriodData } from "src/types/analytics";
+import { useCompany } from "src/contexts/company-context";
+import { useAnalytics } from "src/hooks/analytics/use-analytics";
+import { useAnalyticsChart } from "src/hooks/analytics/use-analytics-chart";
+import { cn } from "src/lib/shared/utils";
+import { AnalyticsData, ComparisonPeriodData, TrendEntry } from "src/types/analytics/analytics";
 
 function AnalyticsContainer({ data }: { data: AnalyticsData }) {
   const [period, setPeriod] = useState<"6_months" | "year">("6_months");
@@ -24,7 +25,6 @@ function AnalyticsContainer({ data }: { data: AnalyticsData }) {
 
   return (
     <div className="flex-1 space-y-6 overflow-hidden box-border">
-      {/* Page Header */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-[38px] font-mono font-normal tracking-[-1px] text-foreground leading-none">
@@ -34,8 +34,7 @@ function AnalyticsContainer({ data }: { data: AnalyticsData }) {
             Métricas de proyección y tendencias de ingresos y egresos.
           </p>
         </div>
-        
-        {/* Toggle Controls */}
+
         <div className="flex flex-wrap items-center gap-4 mt-2 sm:mt-0">
           <div className="flex items-center gap-1 border border-border rounded-lg p-1 bg-card">
             <button
@@ -68,9 +67,7 @@ function AnalyticsContainer({ data }: { data: AnalyticsData }) {
         </div>
       </div>
 
-      {/* Summary Cards */}
       <div className="flex flex-col md:flex-row gap-4 w-full">
-        {/* Facturación */}
         <div className="flex-1 flex flex-col gap-4 p-5 bg-card rounded-xl border border-border/50">
           <div className="flex w-full items-center justify-between">
             <div className="text-xs font-medium text-muted-foreground tracking-[0.5px]">
@@ -84,8 +81,6 @@ function AnalyticsContainer({ data }: { data: AnalyticsData }) {
             Total de ventas netas registradas en los últimos 30 días.
           </div>
         </div>
-
-        {/* Egresos */}
         <div className="flex-1 flex flex-col gap-4 p-5 bg-card rounded-xl border border-border/50">
           <div className="flex w-full items-center justify-between">
             <div className="text-xs font-medium text-muted-foreground tracking-[0.5px]">
@@ -99,8 +94,6 @@ function AnalyticsContainer({ data }: { data: AnalyticsData }) {
             Compras netas, percepciones e IVA de los últimos 30 días.
           </div>
         </div>
-
-        {/* Margen Neto */}
         <div className="flex-1 flex flex-col gap-4 p-5 bg-card rounded-xl border border-border/50">
           <div className="flex w-full items-center justify-between">
             <div className="text-xs font-medium text-muted-foreground tracking-[0.5px]">
@@ -115,8 +108,6 @@ function AnalyticsContainer({ data }: { data: AnalyticsData }) {
           </div>
         </div>
       </div>
-
-      {/* Chart Section */}
       <div className="flex flex-col gap-5 p-6 bg-card rounded-xl border border-border/50 w-full">
         <div className="flex flex-row justify-between items-center w-full">
           <div className="text-sm font-semibold text-foreground">
@@ -126,8 +117,6 @@ function AnalyticsContainer({ data }: { data: AnalyticsData }) {
             Representación de la facturación y gastos mensuales del período seleccionado.
           </div>
         </div>
-        
-        {/* Chart Area */}
         <div className="w-full h-[180px] flex flex-row gap-3 items-end justify-start mt-2">
           {activeData.length === 0 ? (
             <p className="text-xs text-muted-foreground w-full text-center">No hay datos suficientes para graficar.</p>
@@ -135,9 +124,9 @@ function AnalyticsContainer({ data }: { data: AnalyticsData }) {
             activeData.map((d: TrendEntry, idx: number) => {
               const incomePct = maxVal > 0 ? (d.income / maxVal) * 100 : 0;
               const expensesPct = maxVal > 0 ? (d.expenses / maxVal) * 100 : 0;
+
               return (
                 <div key={idx} className="flex-1 h-full flex flex-col gap-2 justify-end items-center group relative">
-                  {/* Tooltip */}
                   <div className="absolute bottom-[105%] opacity-0 group-hover:opacity-100 transition-opacity bg-popover border border-border text-popover-foreground text-xs rounded-md p-3 shadow-lg whitespace-nowrap z-10 pointer-events-none flex flex-col gap-1.5">
                     <div className="font-bold mb-1 border-b border-border pb-1">{d.month}</div>
                     <div className="flex gap-4 justify-between">
@@ -151,12 +140,12 @@ function AnalyticsContainer({ data }: { data: AnalyticsData }) {
                   </div>
 
                   <div className="w-full h-full flex flex-row gap-1 items-end justify-center group-hover:opacity-80 transition-opacity">
-                    <div 
-                      className="flex-1 max-w-[40px] bg-emerald-500 rounded-t-sm" 
+                    <div
+                      className="flex-1 max-w-[40px] bg-emerald-500 rounded-t-sm"
                       style={{ height: `${incomePct}%` }}
                     />
-                    <div 
-                      className="flex-1 max-w-[40px] bg-rose-500 rounded-t-sm" 
+                    <div
+                      className="flex-1 max-w-[40px] bg-rose-500 rounded-t-sm"
                       style={{ height: `${expensesPct}%` }}
                     />
                   </div>
@@ -169,18 +158,15 @@ function AnalyticsContainer({ data }: { data: AnalyticsData }) {
           )}
         </div>
       </div>
-
-      {/* Analytics Bottom Row 1 */}
       <div className="flex flex-col lg:flex-row gap-4 w-full items-stretch pb-10">
-        {/* Donut Card */}
         <div className="w-full lg:w-[380px] flex flex-col gap-6 p-5 bg-card rounded-xl border border-border/50 flex-shrink-0">
           <div className="text-sm font-semibold text-foreground">
             Distribución de Egresos
           </div>
-          
+
           <div className="w-full h-[120px] relative flex justify-center items-center">
             {expenseCategories.length === 0 ? (
-               <span className="text-xs text-muted-foreground">Sin egresos este mes</span>
+              <span className="text-xs text-muted-foreground">Sin egresos este mes</span>
             ) : (
               <>
                 <svg viewBox="0 0 120 120" className="w-[120px] h-[120px] transform -rotate-90">
@@ -228,22 +214,18 @@ function AnalyticsContainer({ data }: { data: AnalyticsData }) {
           </div>
         </div>
 
-        {/* Table Card */}
         <div className="flex-1 flex flex-col gap-4 p-5 bg-card rounded-xl border border-border/50 overflow-hidden">
           <div className="text-sm font-semibold text-foreground">
             Comparación Mensual vs Período Anterior
           </div>
           <div className="w-full overflow-auto">
             <div className="w-full flex flex-col">
-              {/* Table Head */}
               <div className="flex flex-row border-b border-border/60 py-2.5 min-w-[500px]">
                 <div className="flex-1 text-[11px] font-semibold text-muted-foreground">Período</div>
                 <div className="flex-1 text-[11px] font-semibold text-muted-foreground">Ingresos</div>
                 <div className="flex-1 text-[11px] font-semibold text-muted-foreground">Egresos</div>
                 <div className="flex-1 text-[11px] font-semibold text-muted-foreground">Margen</div>
               </div>
-              
-              {/* Table Rows */}
               <div className="flex flex-col min-w-[500px]">
                 {comparisons.length === 0 ? (
                   <div className="py-4 text-center text-xs text-muted-foreground border-b border-border/60">
@@ -260,10 +242,12 @@ function AnalyticsContainer({ data }: { data: AnalyticsData }) {
                         {currency === "USD" ? "USD" : "$"} {c.expenses.toLocaleString("es-AR")}
                       </div>
                       <div className="flex-1">
-                        <div className={cn(
-                          "w-fit px-2.5 py-1 rounded-full text-[11px] font-medium",
-                          c.margin >= 0 ? "bg-emerald-500/15 text-emerald-500" : "bg-rose-500/15 text-rose-500"
-                        )}>
+                        <div
+                          className={cn(
+                            "w-fit px-2.5 py-1 rounded-full text-[11px] font-medium",
+                            c.margin >= 0 ? "bg-emerald-500/15 text-emerald-500" : "bg-rose-500/15 text-rose-500"
+                          )}
+                        >
                           {c.margin}%
                         </div>
                       </div>
@@ -279,12 +263,39 @@ function AnalyticsContainer({ data }: { data: AnalyticsData }) {
   );
 }
 
-export function AnalyticsView() {
-  const { data, isLoading } = useAnalytics();
+function AnalyticsDataSections() {
+  const { data, isLoading } = useAnalytics({ suspense: false });
 
   if (isLoading || !data) {
     return <AnalyticsSkeleton />;
   }
 
   return <AnalyticsContainer data={data} />;
+}
+
+export function AnalyticsView() {
+  const { activeCompanyId, loading } = useCompany();
+
+  if (loading) {
+    return <AnalyticsSkeleton />;
+  }
+
+  if (!activeCompanyId) {
+    return (
+      <div className="flex-1 space-y-6 overflow-hidden box-border">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-[38px] font-mono font-normal tracking-[-1px] text-foreground leading-none">
+              Analíticas
+            </h2>
+            <p className="text-sm text-muted-foreground mt-2">
+              Métricas de proyección y tendencias de ingresos y egresos.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return <AnalyticsDataSections />;
 }

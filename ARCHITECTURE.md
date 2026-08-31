@@ -16,13 +16,41 @@ This file defines the technical foundation. All implementations must adhere to t
 - **Application Layer (`src/services/`)**: Use case orchestration, transaction boundaries, and business rules execution.
 - **Domain Layer (`src/models/`)**: Rich domain models. Entities must encapsulate their own business rules and state mutations as methods rather than acting as anemic data structures.
 - **Infrastructure Layer (`src/repositories/`)**: All Prisma queries must be abstracted behind repositories or data-access services to decouple the application from the ORM. **Important**: When using `@prisma/adapter-pg`, avoid using `Promise.all` for multiple concurrent Prisma queries (e.g. `findMany`), as it can trigger `pg` driver deprecation warnings (concurrent queries on a single client). Use sequential `await`s` instead.
-- **Helpers & Utilities (`src/lib/helpers/*`)**: All helper functions and utility methods must be placed in `src/lib/helpers/`. Do not create new folders for helpers, always create them in the nearest parent folder.
-- **Types & Schemas (`src/lib/types/*`) and (`src/lib/schemas/*`)**: All type definitions and Zod schemas must be placed in `src/lib/types/` and `src/lib/schemas/` respectively. Do not create new folders for types or schemas.
-- **Constants (`src/lib/constants/*`)**: All constants must be placed in `src/lib/constants/`. Do not create new folders for constants, always create them in the nearest parent folder.
+- **Helpers & Utilities (`src/lib/helpers/*`)**: Helper functions must be placed in `src/lib/helpers/`.
+- **Types & Schemas (`src/types/*`) and (`src/lib/schemas/*`)**: Type definitions must be in `src/types/` and Zod schemas in `src/lib/schemas/`.
+- **Constants (`src/lib/constants/*`)**: Constants must be placed in `src/lib/constants/`.
+
+## Domain-Based File Organization (Source of Truth)
+
+To ensure clarity, scalability, and maintainability, the codebase enforces **Domain-Based File Organization**.
+
+- **Organization by Domain**: The contents of `hooks`, `services`, `repositories`, `types`, `helpers`, `schemas`, and modules within `lib` **must** be organized into subfolders by domain or responsibility (e.g., `voucher/`, `client-supplier/`, `parser/`, `auth/`).
+- **Subfolders Allowed**: Subfolders are allowed and encouraged when they improve architectural clarity. Do not create ambiguous generic folders if the file belongs to an existing clear domain.
+- **Choosing the Right Folder**:
+  - `shared/`: For elements reused across completely unrelated domains (e.g., `use-mobile.ts`, `utils.ts`).
+  - `platform/`: For core infrastructure utilities (e.g., `date-timezone.ts`, `promise-cache.ts`).
+  - `integrations/`: For external service configurations (e.g., `gemini.ts`, `supabase-client.ts`).
+  - Domain Folders (e.g. `voucher/`): For logic tied strictly to a specific business domain.
+- **Future Movements Rule**: Before creating a new file, it must be located within the corresponding existing domain subfolder. Do not create loose files in the root of `hooks`, `services`, `repositories`, `types`, or `lib` unless they are truly transversal modules.
 
 ## Frontend Modularization & Component Rules
 - **Page Mount Constraint (`page.tsx`)**: `page.tsx` files must only be used to mount the corresponding UI components. Do not place complex logic or methods directly in page files. 
 - **Pure HTML Presentation & Strict Separation:** UI components must **only** contain HTML elements and calls to external methods or hooks. They must **never** contain inline business logic implementation. Always separate logic and methods into their respective dedicated folders.
+- **No Network Orchestration In UI Components:** Presentation components must not call `apiRequest`, trigger toasts, decide REST endpoints, or orchestrate persistence side effects. Those responsibilities belong in dedicated hooks, services, or helper layers, and components must receive already-prepared callbacks and view data through props.
+- **Route Data Ownership:** Each route may request only the data required by its current visible UI state. A screen must not preload, refetch, or keep mounted requests for unrelated modules just because a shared provider, layout, or high-level hook exists in the tree.
+- **Lazy Loading For Non-Critical Client UI:** Heavy client-only subtrees such as modals, dialogs, previews, and interaction-only panels must be deferred with `next/dynamic` when they are not needed for the initial visible route content.
+- **Closed Optional UI Must Not Mount:** Inactive tabs, closed modals, hidden drawers, unopened detail panes, and route-local optional sections must not mount their UI subtree, hooks, or fetch logic until the user activates them.
+- **Detail Fetches Must Follow UI State:** Record-detail and review-detail requests must only activate when the exact identifier exists and the corresponding detail UI is actually open. Query params or dormant local state alone are not enough reason to fetch.
+- **Scoped Loading States:** Suspense and loading fallbacks must be placed so that loading one optional subtree does not replace or remount already-visible route content. Deferred overlays must keep page-level tables and primary content stable while their own bundle loads.
+- **Skeleton Reuse Rule:** Loading placeholders must reuse the existing skeleton system and established loading patterns by default. Do not introduce a new skeleton strategy, library, or visual loading pattern unless the user explicitly approves that architectural change.
+- **Shared Session Data Scope:** Session-scoped identity data such as authenticated user info and company membership must be loaded once and reused across internal navigation. These shared sources must not refetch on ordinary page changes.
+- **Company-Scoped Business Data:** Business modules such as vouchers, analytics, clients, suppliers, conciliations, and notifications must derive their requests from `activeCompanyId` and remain isolated per company cache scope.
+- **Controlled Revalidation Only:** SWR or equivalent client caches must disable automatic focus/reconnect revalidation by default unless the resource explicitly requires it. Polling is opt-in and must be justified by the business behavior of that resource.
+- **Mutation Invalidation Must Be Narrow:** After create, update, delete, validate, persist, or discard actions, only the smallest safe cache scope may be invalidated. Never refresh unrelated route data or hidden sections when a narrower key-level refresh is sufficient.
+- **URL State Must Not Trigger Route Reloads:** Route-local query state for tables, tabs, search, sorting, filtering, pagination, and local detail selection should update through the smallest safe navigation mechanism so the route does not remount or re-request unrelated data.
+- **Reuse Existing Interaction Patterns:** When a screen introduces tabs, tags, toolbars, tables, dialogs, empty states, or loading states that already exist elsewhere in the product, the implementation must reuse the established visual and interaction pattern instead of inventing a parallel variant unless the user explicitly asks for a redesign.
+- **Mandatory Reuse-First Audit:** Before adding any new component, hook, helper, service, schema, type, constant, test, loader, modal, skeleton, filter, or table behavior, you must search the existing codebase for reusable or adaptable implementations. New artifacts are allowed only when no suitable option exists, and they must be authored with reusable boundaries so future screens can adopt them without feature-specific coupling.
+- **Component Props Typing Rule:** Component prop interfaces and reusable view-model types must live in `src/types/`. Do not define exported or feature-level prop interfaces inside component files.
 - **Component & File Length Limit:** All components, pages, and architectural files must strictly range between **150 to 200 lines maximum**. Break down complex UIs into smaller, single-responsibility sub-components.
 - **Promise Derivation in Hooks:** Custom React hooks representing queries or async fetches should derive the promise during render using `useMemo` based on dependencies (e.g. `activeCompanyId`), instead of invoking `setState` from inside a `useEffect` loop.
 
@@ -35,6 +63,7 @@ This file defines the technical foundation. All implementations must adhere to t
 - Use early returns to reduce nesting.
 - **Zero Nested IFs:** Nested `if` statements (`if` inside an `if`) are strictly prohibited across all codebase layers (frontend and backend). Whenever conditional depth is required, you **must** extract the logic into a modular helper function located in `src/lib/helpers/`.
 - **Reuse First Policy:** Before implementing any new utility, validation, or helper method, you **must** review existing codebase modules to reuse available methods. Only generate a new one if no suitable reusable method exists.
+- **Reuse Includes Tests And Contracts:** The reuse-first rule also applies to test helpers, fixtures, mocks, schemas, DTOs, query-state models, and UI state contracts. Avoid cloning similar artifacts with slight variations when they can be generalized safely.
 - Do not leave dead code, commented-out code, debug logs, temporary TODOs, or unused exports.
 
 ## TypeScript Rules
@@ -46,7 +75,14 @@ This file defines the technical foundation. All implementations must adhere to t
 - Use discriminated unions for workflow states, async states, and approval states.
 - **Strict File Organization:**
   - Whenever creating types or interfaces, they MUST be modularized into a folder named `types` inside `src` (e.g., `src/types/`). Do not define them inline within models, services, or controllers.
-  - Whenever creating Zod schemas, they must be placed in a file named `<prefix>schemas.ts` inside `src/lib/schemas/` (e.g., `src/lib/schemas/voucher-schemas.ts`).
+  - Whenever creating Zod schemas, they must be placed in a file named `<prefix>schemas.ts` inside `src/lib/schemas/` (e.g., `src/lib/schemas/voucher/voucher-schemas.ts`).
+  - **Both must be placed inside their corresponding domain subfolders** following the Domain-Based File Organization rules.
+
+## Testing Rules
+- **Domain-Based Testing:** Tests must be organized by type (`unit` or `integration`) and then by domain. All tests must reside in `src/__tests__/<type>/<domain>/...`.
+- **Unit vs Integration:** 
+  - Unit tests use `jest.mock` for dependencies (e.g., Repositories, external APIs) or test pure functions without I/O side effects. 
+  - Integration tests verify the interaction with real databases (Prisma) or external services without mocks.
 
 ## Security Baseline & Business Constraints
 - Treat all client input as untrusted.

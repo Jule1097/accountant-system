@@ -7,9 +7,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "src/components/ui/dropdown-menu";
-import { VoucherScreenType, VoucherListQueryState } from "src/types/voucher";
+import { VoucherScreenType, VoucherListQueryState } from "src/types/voucher/voucher";
 import { useCompany } from "src/contexts/company-context";
-import { useVoucherExport } from "src/hooks/use-voucher-export";
+import { useVoucherExport } from "src/hooks/voucher/use-voucher-export";
 
 interface VoucherExportButtonProps {
   type: VoucherScreenType;

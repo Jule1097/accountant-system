@@ -1,0 +1,9 @@
+export const clientDuplicateNameError = 'El cliente ya existe'
+export const clientDuplicateCuitError = 'El CUIT ya existe'
+export const clientNotFoundError = 'Cliente no encontrado'
+export const clientDeleteBlockedError = 'No se puede eliminar el cliente porque tiene comprobantes asociados.'
+
+export const supplierDuplicateNameError = 'El proveedor ya existe'
+export const supplierDuplicateCuitError = 'El CUIT ya existe'
+export const supplierNotFoundError = 'Proveedor no encontrado'
+export const supplierDeleteBlockedError = 'No se puede eliminar el proveedor porque tiene comprobantes asociados.'

@@ -1,11 +1,11 @@
 import { UseFormReturn, useWatch } from "react-hook-form";
 import { Input } from "src/components/ui/input";
-import { VoucherFormValues } from "src/hooks/use-voucher-form";
-import { shouldRequireVoucherExchangeRate } from "src/lib/helpers/voucher-form";
-import { getVoucherFormattedAmount } from "src/lib/helpers/voucher-management";
+import { VoucherFormValues } from "src/hooks/voucher/use-voucher-form";
+import { shouldRequireVoucherExchangeRate } from "src/lib/helpers/voucher/voucher-form";
+import { getVoucherFormattedAmount } from "src/lib/helpers/voucher/voucher-management";
 import { Voucher } from "src/models/Voucher";
-import { VoucherModalMode } from "src/types/voucher";
-import { cn } from "src/lib/utils";
+import { VoucherModalMode } from "src/types/voucher/voucher";
+import { cn } from "src/lib/shared/utils";
 
 interface VoucherModalCoreFieldsProps {
   form: UseFormReturn<VoucherFormValues>;
@@ -21,6 +21,7 @@ interface VoucherModalCoreFieldsProps {
   handlePosBlur: (event: React.FocusEvent<HTMLInputElement>) => void;
   handleNumberBlur: (event: React.FocusEvent<HTMLInputElement>) => void;
   taxListsNode?: React.ReactNode;
+  thirdPartyAction?: React.ReactNode;
 }
 
 const fieldContainerClass = "flex min-w-0 flex-col gap-1.5";
@@ -39,6 +40,7 @@ export function VoucherModalCoreFields({
   handlePosBlur,
   handleNumberBlur,
   taxListsNode,
+  thirdPartyAction,
 }: VoucherModalCoreFieldsProps) {
   const {
     register,
@@ -74,6 +76,7 @@ export function VoucherModalCoreFields({
               ))}
             </select>
             {errors.thirdPartyId && <p className={errorClass}>{errors.thirdPartyId.message}</p>}
+            {thirdPartyAction}
           </div>
           <div className={fieldContainerClass}>
             <label className={labelClass}>Fecha</label>

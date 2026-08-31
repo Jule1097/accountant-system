@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { VoucherExportService } from 'src/services/voucher-export.service'
-import { voucherExportQuerySchema } from 'src/lib/schemas/voucher-export-schemas'
-import { ExportQueryParams } from 'src/types/voucher-export'
+import { VoucherExportService } from 'src/services/voucher/voucher-export.service'
+import { voucherExportQuerySchema } from 'src/lib/schemas/voucher/voucher-export-schemas'
+import { ExportQueryParams } from 'src/types/voucher/voucher-export'
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {

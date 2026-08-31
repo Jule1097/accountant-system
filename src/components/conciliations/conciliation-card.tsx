@@ -2,8 +2,8 @@ import type { ReactNode } from "react";
 import { Button } from "src/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "src/components/ui/tooltip";
 import { CheckCircle, Eye, Loader2, RefreshCw, Save, Trash2, TriangleAlert, XCircle } from "lucide-react";
-import { ConciliationItem, ConciliationItemAction } from "src/types/conciliations";
-import { getFormattedAmount, getFormattedDate } from "src/lib/helpers/formatting";
+import { ConciliationItem, ConciliationItemAction } from "src/types/conciliation/conciliations";
+import { getFormattedAmount, getFormattedDate } from "src/lib/helpers/platform/formatting";
 
 interface ConciliationCardProps {
   voucher: ConciliationItem;
@@ -159,7 +159,7 @@ export function ConciliationCard({
               </div>
 
               <p className="truncate text-sm font-semibold text-foreground">
-                {voucher.thirdParty || "Sin tercero identificado"}
+                {voucher.thirdParty}
               </p>
               <p className="text-xs leading-relaxed text-muted-foreground">{voucher.message}</p>
 
