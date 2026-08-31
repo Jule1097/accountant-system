@@ -20,50 +20,21 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from "src/components/ui/dropdown-menu";
-import { LayoutDashboard, ShoppingCart, Store, LineChart, User2, ChevronUp, Building, Scale, Users } from "lucide-react";
+import { User2, ChevronUp, Building } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "src/hooks/auth/use-auth";
 import { useCompany } from "src/contexts/company-context";
-
-const items = [
-  {
-    title: "Dashboard",
-    url: "/dashboard",
-    icon: LayoutDashboard,
-  },
-  {
-    title: "Ventas",
-    url: "/sales",
-    icon: Store,
-  },
-  {
-    title: "Compras",
-    url: "/purchases",
-    icon: ShoppingCart,
-  },
-  {
-    title: "Analíticas",
-    url: "/analytics",
-    icon: LineChart,
-  },
-  {
-    title: "Conciliaciones",
-    url: "/conciliations",
-    icon: Scale,
-  },
-  {
-    title: "Clientes/Proveedores",
-    url: "/clients",
-    icon: Users,
-  },
-];
+import { Skeleton } from "src/components/ui/skeleton";
+import { routes } from "src/lib/constants/sidebar-routes";
 
 export function AppSidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, logout } = useAuth();
-  const { companies, activeCompany, activeCompanyId, setActiveCompanyId } = useCompany();
+  const { user, logout, loading: isAuthLoading } = useAuth();
+  const { companies, activeCompany, activeCompanyId, setActiveCompanyId, loading: isCompanyLoading } = useCompany();
+  const isIdentityLoading = isAuthLoading || isCompanyLoading;
+
 
   const handleLogout = async (): Promise<void> => {
     try {
@@ -85,19 +56,19 @@ export function AppSidebar() {
           <SidebarGroupLabel>Navegación</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((item) => {
-                const isActive = item.url === "/clients"
+              {routes.map((route) => {
+                const isActive = route.url === "/clients"
                   ? pathname === "/clients" || pathname === "/suppliers"
-                  : pathname === item.url;
+                  : pathname === route.url;
                 return (
-                  <SidebarMenuItem key={item.title}>
+                  <SidebarMenuItem key={route.title}>
                     <SidebarMenuButton
                       isActive={isActive}
                       className={isActive ? "bg-transparent text-[#FF5C00] dark:bg-[#1A1A1D] dark:text-white font-medium rounded-lg [&_svg]:text-[#FF5C00] [&>span]:text-[#FF5C00] dark:[&>span]:text-white" : "text-muted-foreground hover:bg-muted/50"}
                       render={
-                        <Link href={item.url} className="flex items-center gap-2">
-                          <item.icon />
-                          <span>{item.title}</span>
+                        <Link href={route.url} className="flex items-center gap-2">
+                          <route.icon />
+                          <span>{route.title}</span>
                         </Link>
                       }
                     />
@@ -117,12 +88,21 @@ export function AppSidebar() {
                   <SidebarMenuButton className="h-12 py-2">
                     <User2 className="h-5 w-5" />
                     <div className="flex flex-col items-start text-left leading-normal">
-                      <span className="text-2xs font-medium truncate max-w-[120px]">
-                        {user?.email || "Usuario"}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">
-                        {activeCompany?.name || "Sin empresa"}
-                      </span>
+                      {isIdentityLoading ? (
+                        <div className="flex w-[120px] flex-col gap-1">
+                          <Skeleton className="h-3 w-24" />
+                          <Skeleton className="h-[10px] w-16" />
+                        </div>
+                      ) : (
+                        <>
+                          <span className="text-2xs font-medium truncate max-w-[120px]">
+                            {user?.email || "Usuario"}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">
+                            {activeCompany?.name || "Sin empresa"}
+                          </span>
+                        </>
+                      )}
                     </div>
                     <ChevronUp className="ml-auto h-4 w-4" />
                   </SidebarMenuButton>

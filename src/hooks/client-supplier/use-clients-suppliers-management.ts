@@ -1,11 +1,12 @@
 "use client"
 
-import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useToastManager } from 'src/components/ui/toast'
 import { useCompany } from 'src/contexts/company-context'
 import { useClientSupplierById, useClientsSuppliers } from 'src/hooks/client-supplier/use-clients-suppliers'
 import { apiRequest } from 'src/lib/api/api-client'
+import { replaceUrlState } from 'src/lib/helpers/platform/history-navigation'
 import {
   buildClientSupplierMutationQuery,
   buildClientSupplierQuery,
@@ -14,7 +15,6 @@ import {
   resetClientSupplierPage,
   resolveClientSupplierManagementError,
 } from 'src/lib/helpers/client-supplier/client-supplier-management'
-import { revalidateCompanyScope } from 'src/lib/helpers/platform/swr'
 import {
   ClientSupplierEntityType,
   ClientSupplierListQueryState,
@@ -36,28 +36,40 @@ export function useClientsSuppliersManagement(type: ClientSupplierEntityType): U
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [recordPendingDelete, setRecordPendingDelete] = useState<ClientSupplierRecord | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
-  const [viewRecordId, setViewRecordId] = useState<string | null>(null)
+  const [viewRecordState, setViewRecordState] = useState<{ id: string | null; companyId: string | null }>({
+    id: null,
+    companyId: null,
+  })
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
   const toastManager = useToastManager()
   const { activeCompanyId } = useCompany()
-  const previousCompanyIdRef = useRef<string | null>(activeCompanyId)
   const currentQueryString = useMemo(() => searchParams.toString(), [searchParams])
   const query = useMemo(() => readClientSupplierListQuery(searchParams), [searchParams])
-  const querySearchValue = query.search || ''
+  const [companyScopeId, setCompanyScopeId] = useState(activeCompanyId)
+  const isCompanyChanging = companyScopeId !== activeCompanyId
+  const activeQuery = isCompanyChanging ? emptyQueryState : query
+  const emptyQueryString = useMemo(() => buildClientSupplierQuery(new URLSearchParams(), emptyQueryState), [])
+  const viewRecordId = viewRecordState.companyId === activeCompanyId ? viewRecordState.id : null
+  const querySearchValue = activeQuery.search || ''
   const [searchState, setSearchState] = useState({
     sourceQuery: querySearchValue,
     value: querySearchValue,
   })
+  const searchSyncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const searchValue = searchState.sourceQuery === querySearchValue ? searchState.value : querySearchValue
-  const { data, isLoading: isTableLoading, mutate } = useClientsSuppliers(type, query)
+  const listQuery = useMemo(() => ({
+    ...activeQuery,
+    recordId: null,
+  }), [activeQuery])
+  const { data, isLoading: isTableLoading, mutate } = useClientsSuppliers(type, listQuery)
   const {
     data: recordDetail,
     error: recordDetailError,
     isLoading: isRecordDetailLoading,
     mutate: mutateRecordDetail,
-  } = useClientSupplierById(type, query.recordId || '')
+  } = useClientSupplierById(type, activeQuery.recordId || '')
   const selectedRecordFromList = useMemo(() => {
     if (!viewRecordId) {
       return undefined
@@ -68,49 +80,68 @@ export function useClientsSuppliersManagement(type: ClientSupplierEntityType): U
 
   const replaceQuery = useCallback((nextQuery: ClientSupplierListQueryState): void => {
     const nextUrl = `${pathname}${buildClientSupplierQuery(new URLSearchParams(currentQueryString), nextQuery)}`
+    replaceUrlState(nextUrl)
+  }, [currentQueryString, pathname])
 
-    startTransition(() => {
-      router.replace(nextUrl, { scroll: false })
+  const syncCompanyScopeId = useCallback((nextCompanyId: string | null): void => {
+    setCompanyScopeId(nextCompanyId)
+  }, [])
+
+  const setViewRecordId = useCallback((id: string | null): void => {
+    setViewRecordState({
+      id,
+      companyId: activeCompanyId,
     })
-  }, [currentQueryString, pathname, router])
+  }, [activeCompanyId])
 
   useEffect(() => {
+    if (isCompanyChanging) {
+      return
+    }
+
     if (searchValue === querySearchValue) {
       return
     }
 
-    const timeoutId = setTimeout(() => {
+    searchSyncTimeoutRef.current = setTimeout(() => {
       replaceQuery(
         resetClientSupplierPage(
-          buildClientSupplierMutationQuery(query, {
+          buildClientSupplierMutationQuery(activeQuery, {
             search: searchValue || undefined,
           })
         )
       )
     }, 1000)
 
-    return () => clearTimeout(timeoutId)
-  }, [query, querySearchValue, replaceQuery, searchValue])
+    return () => {
+      if (!searchSyncTimeoutRef.current) {
+        return
+      }
+
+      clearTimeout(searchSyncTimeoutRef.current)
+      searchSyncTimeoutRef.current = null
+    }
+  }, [activeQuery, isCompanyChanging, querySearchValue, replaceQuery, searchValue])
 
   useEffect(() => {
-    if (previousCompanyIdRef.current === activeCompanyId) {
+    if (!isCompanyChanging) {
       return
     }
 
-    previousCompanyIdRef.current = activeCompanyId
-    setViewRecordId(null)
-    replaceQuery(emptyQueryState)
-  }, [activeCompanyId, replaceQuery])
+    if (emptyQueryString !== `?${currentQueryString}` && currentQueryString !== '') {
+      replaceQuery(emptyQueryState)
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      syncCompanyScopeId(activeCompanyId)
+    }, 0)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [activeCompanyId, currentQueryString, emptyQueryString, isCompanyChanging, replaceQuery, syncCompanyScopeId])
 
   const revalidateScope = async (): Promise<void> => {
-    if (!activeCompanyId) {
-      return
-    }
-
-    await Promise.all([
-      mutate(),
-      revalidateCompanyScope(activeCompanyId, ['/api/clients', '/api/suppliers']),
-    ])
+    await mutate()
   }
 
   const openCreateModal = (): void => {
@@ -126,7 +157,7 @@ export function useClientsSuppliersManagement(type: ClientSupplierEntityType): U
       return
     }
 
-    replaceQuery(buildClientSupplierMutationQuery(query, { recordId: null }))
+    replaceQuery(buildClientSupplierMutationQuery(activeQuery, { recordId: null }))
     setViewRecordId(null)
   }
 
@@ -136,7 +167,7 @@ export function useClientsSuppliersManagement(type: ClientSupplierEntityType): U
     }
 
     if (action === 'edit') {
-      replaceQuery(buildClientSupplierMutationQuery(query, { recordId: record.id }))
+      replaceQuery(buildClientSupplierMutationQuery(activeQuery, { recordId: record.id }))
       return
     }
 
@@ -174,7 +205,7 @@ export function useClientsSuppliersManagement(type: ClientSupplierEntityType): U
           : 'No se pudo cargar el proveedor seleccionado.'
       ),
     })
-    replaceQuery(buildClientSupplierMutationQuery(query, { recordId: null }))
+    replaceQuery(buildClientSupplierMutationQuery(activeQuery, { recordId: null }))
     setViewRecordId(null)
   }
 
@@ -186,23 +217,32 @@ export function useClientsSuppliersManagement(type: ClientSupplierEntityType): U
   }
 
   const handleClearFilters = (): void => {
+    if (searchSyncTimeoutRef.current) {
+      clearTimeout(searchSyncTimeoutRef.current)
+      searchSyncTimeoutRef.current = null
+    }
+
+    setSearchState({
+      sourceQuery: '',
+      value: '',
+    })
     replaceQuery({
       ...emptyQueryState,
-      recordId: query.recordId,
+      recordId: activeQuery.recordId,
     })
   }
 
   const handleSortChange = (sortBy: ClientSupplierSortBy, sortOrder: ClientSupplierSortOrder): void => {
-    replaceQuery(buildClientSupplierMutationQuery(query, { sortBy, sortOrder }))
+    replaceQuery(buildClientSupplierMutationQuery(activeQuery, { sortBy, sortOrder }))
   }
 
   const handlePageChange = (page: number): void => {
-    replaceQuery(buildClientSupplierMutationQuery(query, { page }))
+    replaceQuery(buildClientSupplierMutationQuery(activeQuery, { page }))
   }
 
   const handlePageSizeChange = (pageSize: number): void => {
     replaceQuery({
-      ...buildClientSupplierMutationQuery(query, { pageSize }),
+      ...buildClientSupplierMutationQuery(activeQuery, { pageSize }),
       page: 1,
     })
   }
@@ -227,10 +267,10 @@ export function useClientsSuppliersManagement(type: ClientSupplierEntityType): U
         method: 'DELETE',
       })
 
-      const shouldMoveBack = query.page > 1 && data?.items.length === 1
-      const nextQuery = shouldMoveBack ? moveClientSupplierPageBack(query) : query
+      const shouldMoveBack = activeQuery.page > 1 && data?.items.length === 1
+      const nextQuery = shouldMoveBack ? moveClientSupplierPageBack(activeQuery) : activeQuery
       const normalizedQuery =
-        query.recordId === recordPendingDelete.id
+        activeQuery.recordId === recordPendingDelete.id
           ? buildClientSupplierMutationQuery(nextQuery, { recordId: null })
           : nextQuery
 
@@ -267,13 +307,13 @@ export function useClientsSuppliersManagement(type: ClientSupplierEntityType): U
     recordId: query.recordId || null,
     viewRecordId,
     recordPendingDelete,
-    query,
+    query: activeQuery,
     searchValue,
     isTableLoading,
     data,
-    recordDetail: query.recordId ? recordDetail : selectedRecordFromList,
+    recordDetail: activeQuery.recordId ? recordDetail : selectedRecordFromList,
     recordDetailError,
-    isRecordDetailLoading: query.recordId ? isRecordDetailLoading : false,
+    isRecordDetailLoading: activeQuery.recordId ? isRecordDetailLoading : false,
     openCreateModal,
     handleCreateModalOpenChange,
     handleEditModalOpenChange,

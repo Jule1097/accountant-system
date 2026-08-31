@@ -78,12 +78,32 @@ jest.mock('src/components/clients-suppliers/client-supplier-table', () => ({
 }))
 
 jest.mock('src/components/clients-suppliers/client-supplier-modal', () => ({
-  ClientSupplierModal: () => null,
-  ClientSupplierDetailModal: () => null,
+  ClientSupplierModal: ({
+    isOpen,
+    mode,
+  }: {
+    isOpen: boolean
+    mode: 'create' | 'edit'
+  }) => (
+    isOpen ? <div data-testid={`${mode}-client-supplier-modal`}>open</div> : null
+  ),
+  ClientSupplierDetailModal: ({
+    isOpen,
+  }: {
+    isOpen: boolean
+  }) => (
+    isOpen ? <div data-testid="view-client-supplier-modal">open</div> : null
+  ),
 }))
 
 jest.mock('src/components/clients-suppliers/client-supplier-delete-dialog', () => ({
-  ClientSupplierDeleteDialog: () => null,
+  ClientSupplierDeleteDialog: ({
+    isOpen,
+  }: {
+    isOpen: boolean
+  }) => (
+    isOpen ? <div data-testid="delete-client-supplier-dialog">open</div> : null
+  ),
 }))
 
 describe('ClientsSuppliersManagementView', () => {
@@ -125,5 +145,20 @@ describe('ClientsSuppliersManagementView', () => {
 
     expect(screen.getByRole('button', { name: 'Clientes' })).toHaveAttribute('data-active', 'false')
     expect(screen.getByRole('button', { name: 'Proveedores' })).toHaveAttribute('data-active', 'true')
+  })
+
+  it('does not mount closed overlays while the list screen is idle', () => {
+    render(
+      <ClientsSuppliersManagementView
+        type="clients"
+        title="Clientes y Proveedores"
+        description="Gestioná clientes y proveedores desde un módulo compartido."
+      />
+    )
+
+    expect(screen.queryByTestId('create-client-supplier-modal')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('edit-client-supplier-modal')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('view-client-supplier-modal')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('delete-client-supplier-dialog')).not.toBeInTheDocument()
   })
 })

@@ -1,4 +1,5 @@
 import { VoucherForm } from "src/models/VoucherForm";
+import { Voucher } from "src/models/Voucher";
 import { normalizeVoucherFormPayload } from "src/lib/helpers/voucher/voucher-form";
 import { VoucherFormValues } from "src/lib/schemas/voucher/voucher-form-schemas";
 import { VoucherFormPayload } from "src/types/voucher/voucher-form";
@@ -307,3 +308,52 @@ describe("VoucherForm.buildParsedPatch", () => {
     expect(result.voucherLetterId).toBe(expectedLetterId);
   });
 });
+
+describe("VoucherForm decimal rounding TDD", () => {
+  it("should round the resolved subtotal to 2 decimals when total and vat amounts have float precision quirks", () => {
+    const subtotal = VoucherForm.resolveSalesSubtotal(
+      "sales",
+      "letter-b",
+      10.1,
+      10,
+      {
+        voucherTypes: [],
+        voucherLetters: [{ id: "letter-b", letter: "B" }],
+        retentionConcepts: [],
+        perceptionConcepts: [],
+        taxJurisdictions: [],
+      }
+    );
+    expect(subtotal).toBe(0.1);
+  });
+
+  it("rounds float precision numbers to 2 decimal places in buildInitialValues", () => {
+    const initialVoucher = {
+      subtotal: 10.1234,
+      vatAmount: 2.126,
+      nonTaxableAmount: 1.0005,
+      exemptAmount: 0.1234,
+      otherTaxesAmount: 0.126,
+      totalAmount: 13.501,
+      currency: "ARS",
+      exchangeRate: 1,
+      retentions: [
+        { retentionConceptId: "ret-1", amount: 1.1234 }
+      ],
+      perceptions: [
+        { perceptionConceptId: "per-1", amount: 2.126 }
+      ],
+    } as unknown as Voucher;
+    
+    const result = VoucherForm.buildInitialValues(initialVoucher, "user-1");
+    expect(result.subtotal).toBe(10.12);
+    expect(result.vatAmount).toBe(2.13);
+    expect(result.nonTaxableAmount).toBe(1.00);
+    expect(result.exemptAmount).toBe(0.12);
+    expect(result.otherTaxesAmount).toBe(0.13);
+    expect(result.totalAmount).toBe(13.50);
+    expect(result.retentions[0].amount).toBe(1.12);
+    expect(result.perceptions[0].amount).toBe(2.13);
+  });
+});
+

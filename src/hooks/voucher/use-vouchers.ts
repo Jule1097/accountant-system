@@ -30,13 +30,14 @@ function mapVoucherListResponse(response: VoucherListResponse): VoucherListRespo
 }
 
 export function useVouchers(type: VoucherRecordType, query: VoucherListQueryState): UseVouchersResult {
-  const { activeCompanyId } = useCompany()
-  const key = buildCompanyPathKey(activeCompanyId, buildVoucherCollectionPath(type, query))
+  const { activeCompanyId, loading: isCompanyLoading } = useCompany()
+  const key = buildCompanyPathKey(activeCompanyId, buildVoucherCollectionPath(type, query), !isCompanyLoading)
   const { data, isLoading, mutate } = useSWR(
     key,
     ([companyId, path]) => companyPathFetcher<VoucherListResponse>(companyId, path).then(mapVoucherListResponse),
     {
       keepPreviousData: true,
+      revalidateOnFocus: false,
     }
   )
 
@@ -48,11 +49,14 @@ export function useVouchers(type: VoucherRecordType, query: VoucherListQueryStat
 }
 
 export function useVoucherSummary(type: VoucherRecordType, query: VoucherListQueryState): UseVoucherSummaryResult {
-  const { activeCompanyId } = useCompany()
-  const key = buildCompanyPathKey(activeCompanyId, buildVoucherSummaryPath(type, query))
+  const { activeCompanyId, loading: isCompanyLoading } = useCompany()
+  const key = buildCompanyPathKey(activeCompanyId, buildVoucherSummaryPath(type, query), !isCompanyLoading)
   const { data, isLoading, mutate } = useSWR(
     key,
-    ([companyId, path]) => companyPathFetcher<VoucherSummaryResponse>(companyId, path)
+    ([companyId, path]) => companyPathFetcher<VoucherSummaryResponse>(companyId, path),
+    {
+      revalidateOnFocus: false,
+    }
   )
 
   return {
@@ -63,14 +67,15 @@ export function useVoucherSummary(type: VoucherRecordType, query: VoucherListQue
 }
 
 export function useVoucherById(id: string): UseVoucherByIdResult {
-  const { activeCompanyId } = useCompany()
+  const { activeCompanyId, loading: isCompanyLoading } = useCompany()
   const path = id ? buildVoucherDetailPath(id) : null
-  const key = buildCompanyPathKey(activeCompanyId, path)
+  const key = buildCompanyPathKey(activeCompanyId, path, !isCompanyLoading)
   const { data, error, isLoading, mutate } = useSWR(
     key,
     ([companyId, requestPath]) => companyPathFetcher<unknown>(companyId, requestPath).then((response) => new Voucher(response)),
     {
       keepPreviousData: true,
+      revalidateOnFocus: false,
     }
   )
 

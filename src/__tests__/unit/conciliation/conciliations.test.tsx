@@ -26,6 +26,15 @@ jest.mock("next/navigation", () => ({
   }),
 }));
 
+jest.mock("src/hooks/auth/use-auth", () => ({
+  useAuth: () => ({
+    login: jest.fn(),
+    logout: jest.fn(),
+    user: null,
+    loading: false,
+  }),
+}))
+
 jest.mock("src/hooks/conciliation/use-conciliations", () => ({
   useConciliations: () => ({
     batchId: "batch-42",
@@ -171,6 +180,22 @@ jest.mock("src/hooks/conciliation/use-conciliations", () => ({
   }),
 }));
 
+jest.mock("src/components/conciliations/conciliation-review-modal", () => ({
+  ConciliationReviewModal: ({
+    isOpen,
+  }: {
+    isOpen: boolean
+  }) => (isOpen ? <div data-testid="conciliation-review-modal">open</div> : null),
+}))
+
+jest.mock("src/components/vouchers/voucher-delete-dialog", () => ({
+  VoucherDeleteDialog: ({
+    isOpen,
+  }: {
+    isOpen: boolean
+  }) => (isOpen ? <div data-testid="conciliation-delete-dialog">open</div> : null),
+}))
+
 describe("Login Theme & Conciliations UI", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -200,7 +225,7 @@ describe("Login Theme & Conciliations UI", () => {
     expect(screen.getByRole("button", { name: "Guardar factura A 00001-00000076" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Regenerar factura A 00001-00000077" })).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /Eliminar factura/ })).toHaveLength(4);
-    expect(screen.getAllByRole("button", { name: "Guardar seleccionadas (1)" })).toHaveLength(2);
+    expect(screen.getAllByRole("button", { name: "Guardar seleccionadas (1)" })).toHaveLength(1);
     expect(screen.getAllByRole("button", { name: "Eliminar seleccionadas (1)" })).toHaveLength(2);
     expect(screen.getByLabelText("Seleccionar facturas de Listas para revisar")).toBeInTheDocument();
   });
@@ -253,5 +278,13 @@ describe("Login Theme & Conciliations UI", () => {
 
     fireEvent.click((await screen.findAllByRole("button", { name: "Guardar seleccionadas (1)" }))[0]);
     expect(handlePersistBatchMock).toHaveBeenCalled();
+  });
+
+  it("does not mount closed overlays while conciliations is idle", async () => {
+    render(<ConciliationsPage />);
+
+    expect(await screen.findByText("Acme Corp S.A.")).toBeInTheDocument();
+    expect(screen.queryByTestId("conciliation-review-modal")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("conciliation-delete-dialog")).not.toBeInTheDocument();
   });
 });

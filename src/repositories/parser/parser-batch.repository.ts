@@ -194,6 +194,25 @@ export class ParserBatchRepository {
     return mapParserBatch(record);
   }
 
+  async hasActiveBatch(companyId: string): Promise<boolean> {
+    const batch = await prisma.parserBatch.findFirst({
+      where: {
+        companyId,
+        status: {
+          in: ["queued", "processing"],
+        },
+        expiresAt: {
+          gt: new Date(),
+        },
+      },
+      select: {
+        id: true,
+      },
+    })
+
+    return Boolean(batch)
+  }
+
   async findItemById(itemId: string): Promise<ParserBatchItemContextRecord | null> {
     const record = await prisma.parserBatchItem.findUnique({
       where: {

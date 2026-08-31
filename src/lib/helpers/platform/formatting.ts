@@ -9,3 +9,7 @@ export function getFormattedDate(value?: string | null): string {
   }
   return new Date(value).toLocaleDateString("es-AR", { timeZone: "UTC" });
 }
+
+export function roundToTwoDecimals(value: number): number {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}

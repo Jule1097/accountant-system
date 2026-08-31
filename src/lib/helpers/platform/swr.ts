@@ -3,16 +3,24 @@ import { apiRequest } from "src/lib/api/api-client";
 
 export type CompanyPathKey = readonly [string, string];
 
-export function buildCompanyPathKey(companyId: string | null, path: string | null): CompanyPathKey | null {
-  if (!companyId || !path) {
+export function buildCompanyPathKey(
+  companyId: string | null,
+  path: string | null,
+  enabled = true
+): CompanyPathKey | null {
+  if (!enabled || !companyId || !path) {
     return null;
   }
 
   return [companyId, path] as const;
 }
 
-export async function companyPathFetcher<T>(_companyId: string, path: string): Promise<T> {
-  const response = await apiRequest(path);
+export async function companyPathFetcher<T>(companyId: string, path: string): Promise<T> {
+  const response = await apiRequest(path, {
+    headers: {
+      "x-company-id": companyId,
+    },
+  });
   return response.json() as Promise<T>;
 }
 

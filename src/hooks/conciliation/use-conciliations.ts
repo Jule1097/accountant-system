@@ -16,7 +16,8 @@ import {
   resolveConciliationsRefreshInterval,
   resolveSelectedVisibleItemIds,
 } from "src/lib/helpers/conciliation/conciliations-state";
-import { buildCompanyPathKey, companyPathFetcher, revalidateCompanyScope } from "src/lib/helpers/platform/swr";
+import { pushUrlState, replaceUrlState } from "src/lib/helpers/platform/history-navigation";
+import { buildCompanyPathKey, companyPathFetcher } from "src/lib/helpers/platform/swr";
 import { useToastManager } from "src/components/ui/toast";
 import {
   ConciliationBulkDiscardResponse,
@@ -64,7 +65,7 @@ export function useConciliations() {
   const query = useMemo(() => readConciliationsQuery(searchParams), [searchParams]);
   const notificationId = searchParams.get("notificationId");
   const path = buildConciliationsPath(query);
-  const key = buildCompanyPathKey(activeCompanyId, path);
+  const key = buildCompanyPathKey(activeCompanyId, path, !isCompanyLoading);
   const { data, mutate, isLoading } = useSWR<ConciliationsPageData>(
     key,
     ([companyId, requestPath]: readonly [string, string]) =>
@@ -72,18 +73,22 @@ export function useConciliations() {
     {
       refreshInterval: (currentData: ConciliationsPageData | undefined) =>
         resolveConciliationsRefreshInterval(currentData),
-      revalidateOnFocus: true,
+      revalidateOnFocus: false,
       refreshWhenHidden: false,
     }
   );
   const reviewItemKey = buildCompanyPathKey(
     activeCompanyId,
-    reviewItemId ? `/api/vouchers/parse/items/${reviewItemId}` : null
+    reviewItemId ? `/api/vouchers/parse/items/${reviewItemId}` : null,
+    !isCompanyLoading
   );
   const { data: reviewItem, isLoading: isReviewItemLoading } = useSWR(
     reviewItemKey,
     ([companyId, requestPath]: readonly [string, string]) =>
-      companyPathFetcher<ParserBatchItemContextRecord>(companyId, requestPath)
+      companyPathFetcher<ParserBatchItemContextRecord>(companyId, requestPath),
+    {
+      revalidateOnFocus: false,
+    }
   );
   const sections = useMemo(() => data?.sections || [], [data?.sections]);
   const visibleItems = useMemo(() => flattenSectionItems(sections), [sections]);
@@ -132,20 +137,12 @@ export function useConciliations() {
   }, [deleteDialogMode, pendingBulkDeleteItemIds.length, pendingDeleteItem]);
 
   useEffect(() => {
-    if (searchParams.has("tab") && searchParams.has("page")) {
-      return;
-    }
-
-    router.replace(`${pathname}?${buildConciliationsQueryString(query)}`, { scroll: false });
-  }, [pathname, query, router, searchParams]);
-
-  useEffect(() => {
     if (!data || query.page <= data.totalPages) {
       return;
     }
 
-    router.push(`${pathname}?${buildConciliationsQueryString({ ...query, page: data.totalPages })}`, { scroll: false });
-  }, [data, pathname, query, router]);
+    replaceUrlState(`${pathname}?${buildConciliationsQueryString({ ...query, page: data.totalPages })}`);
+  }, [data, pathname, query]);
 
   useEffect(() => {
     if (!data || !query.batchId || data.totalCount > 0) {
@@ -171,9 +168,9 @@ export function useConciliations() {
         title: "Carga resuelta",
         description: "Las facturas de esta carga ya no requieren revisión.",
       });
-      router.replace(`${pathname}?${buildConciliationsQueryString({ tab: query.tab, page: 1 })}`, { scroll: false });
+      replaceUrlState(`${pathname}?${buildConciliationsQueryString({ tab: query.tab, page: 1 })}`);
     })();
-  }, [data, notificationId, pathname, query, router, toastManager]);
+  }, [data, notificationId, pathname, query, toastManager]);
 
   useEffect(() => {
     if (!notificationId || !data || (query.batchId && data.totalCount === 0)) {
@@ -188,15 +185,14 @@ export function useConciliations() {
     void apiRequest(`/api/notifications/${notificationId}`, {
       method: "DELETE",
     }).then(() => {
-      router.replace(`${pathname}?${buildConciliationsQueryString(query)}`, { scroll: false });
+      replaceUrlState(`${pathname}?${buildConciliationsQueryString(query)}`);
     }).catch(() => undefined);
-  }, [data, notificationId, pathname, query, router]);
+  }, [data, notificationId, pathname, query]);
 
-  const hasNormalizedQueryParams = searchParams.has("tab") && searchParams.has("page");
-  const isPageLoading = isCompanyLoading || !hasNormalizedQueryParams || (isLoading && !data);
+  const isPageLoading = isCompanyLoading || (isLoading && !data);
 
   function syncQuery(nextQuery: ConciliationsQueryState): void {
-    router.push(`${pathname}?${buildConciliationsQueryString(nextQuery)}`, { scroll: false });
+    pushUrlState(`${pathname}?${buildConciliationsQueryString(nextQuery)}`);
   }
 
   function updateLoadingState(itemId: string, action: ConciliationItemAction | null): void {
@@ -208,12 +204,6 @@ export function useConciliations() {
 
   async function revalidateConciliations(): Promise<void> {
     await mutate();
-
-    if (!activeCompanyId) {
-      return;
-    }
-
-    await revalidateCompanyScope(activeCompanyId, ["/api/conciliations"]);
   }
 
   function handleTabChange(tab: ConciliationTab) {

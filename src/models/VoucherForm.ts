@@ -17,6 +17,7 @@ import {
   resolveParsedVoucherLetterId,
   resolveParsedVoucherTypeId,
 } from "src/lib/helpers/voucher/voucher-form";
+import { roundToTwoDecimals } from "src/lib/helpers/platform/formatting";
 
 const defaultFormValues: VoucherFormValues = {
   date: "",
@@ -89,11 +90,11 @@ function normalizeOptionalDate(value?: string): string | null {
 
 function toNumber(value: unknown): number | null {
   if (typeof value === "number") {
-    return value;
+    return roundToTwoDecimals(value);
   }
 
   if (typeof value === "string" && value) {
-    return Number(value);
+    return roundToTwoDecimals(Number(value));
   }
 
   return null;
@@ -103,7 +104,7 @@ function mapRetentionValues(items: VoucherRetention[]): VoucherFormValues["reten
   return items.map((item) => ({
     retentionConceptId: item.retentionConceptId || "",
     taxJurisdictionId: item.taxJurisdictionId || item.taxJurisdiction?.id || "",
-    amount: typeof item.amount === "number" ? item.amount : Number(item.amount?.toString() || 0),
+    amount: roundToTwoDecimals(typeof item.amount === "number" ? item.amount : Number(item.amount?.toString() || 0)),
   }));
 }
 
@@ -111,7 +112,7 @@ function mapPerceptionValues(items: VoucherPerception[]): VoucherFormValues["per
   return items.map((item) => ({
     perceptionConceptId: item.perceptionConceptId || "",
     taxJurisdictionId: item.taxJurisdictionId || item.taxJurisdiction?.id || "",
-    amount: typeof item.amount === "number" ? item.amount : Number(item.amount?.toString() || 0),
+    amount: roundToTwoDecimals(typeof item.amount === "number" ? item.amount : Number(item.amount?.toString() || 0)),
   }));
 }
 
@@ -123,7 +124,7 @@ function mapParsedRetentionValues(items: GeminiParserResolvedRetention[]): Vouch
     .map((item) => ({
       retentionConceptId: item.retentionConceptId,
       taxJurisdictionId: item.taxJurisdictionId || "",
-      amount: item.amount,
+      amount: roundToTwoDecimals(item.amount),
     }));
 }
 
@@ -135,7 +136,7 @@ function mapParsedPerceptionValues(items: GeminiParserResolvedPerception[]): Vou
     .map((item) => ({
       perceptionConceptId: item.perceptionConceptId,
       taxJurisdictionId: item.taxJurisdictionId || "",
-      amount: item.amount,
+      amount: roundToTwoDecimals(item.amount),
     }));
 }
 
@@ -199,17 +200,17 @@ export class VoucherForm {
         initialVoucher.currency === "USD" ? "USD" : "$",
         Number(initialVoucher.exchangeRate || 1),
       ),
-      subtotal: Number(initialVoucher.subtotal || 0),
-      vatAmount: Number(initialVoucher.vatAmount || 0),
-      nonTaxableAmount: Number(initialVoucher.nonTaxableAmount || 0),
-      exemptAmount: Number(initialVoucher.exemptAmount || 0),
-      otherTaxesAmount: Number(initialVoucher.otherTaxesAmount || 0),
-      totalAmount: Number(initialVoucher.totalAmount || 0),
+      subtotal: roundToTwoDecimals(Number(initialVoucher.subtotal || 0)),
+      vatAmount: roundToTwoDecimals(Number(initialVoucher.vatAmount || 0)),
+      nonTaxableAmount: roundToTwoDecimals(Number(initialVoucher.nonTaxableAmount || 0)),
+      exemptAmount: roundToTwoDecimals(Number(initialVoucher.exemptAmount || 0)),
+      otherTaxesAmount: roundToTwoDecimals(Number(initialVoucher.otherTaxesAmount || 0)),
+      totalAmount: roundToTwoDecimals(Number(initialVoucher.totalAmount || 0)),
       concept: normalizeTextInput(initialVoucher.concept),
       paymentMethod: normalizeTextInput(initialVoucher.paymentMethod),
       status: initialVoucher.status || "pending",
       paymentDate: formatDateValue(initialVoucher.paymentDate),
-      paidAmount: Number(initialVoucher.paidAmount || 0),
+      paidAmount: roundToTwoDecimals(Number(initialVoucher.paidAmount || 0)),
       comments: normalizeTextInput(initialVoucher.comments),
       createdByUserId: resolveCreatedByUserId(initialVoucher, userId),
       retentions: mapRetentionValues(initialVoucher.retentions),
@@ -234,7 +235,7 @@ export class VoucherForm {
       return null;
     }
 
-    return Math.max(totalAmount - vatAmount, 0);
+    return roundToTwoDecimals(Math.max(totalAmount - vatAmount, 0));
   }
 
   static buildPayload(

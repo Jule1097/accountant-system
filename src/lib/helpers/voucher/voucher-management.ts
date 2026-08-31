@@ -72,18 +72,9 @@ export function buildVoucherSearchParams(query: VoucherListQueryState): URLSearc
 }
 
 export function buildVoucherQuery(searchParams: URLSearchParams, nextQuery: VoucherListQueryState): string {
-  const mergedParams = new URLSearchParams(searchParams.toString());
   const normalizedParams = buildVoucherSearchParams(nextQuery);
-
-  mergedParams.forEach((_value, key) => {
-    mergedParams.delete(key);
-  });
-
-  normalizedParams.forEach((value, key) => {
-    mergedParams.set(key, value);
-  });
-
-  const queryString = mergedParams.toString();
+  void searchParams
+  const queryString = normalizedParams.toString();
 
   if (!queryString) {
     return "";
@@ -94,6 +85,7 @@ export function buildVoucherQuery(searchParams: URLSearchParams, nextQuery: Vouc
 
 export function buildVoucherCollectionPath(type: VoucherRecordType, query: VoucherListQueryState): string {
   const params = buildVoucherSearchParams(query);
+  params.delete("voucherId");
   params.set("type", type);
   return `/api/vouchers?${params.toString()}`;
 }
