@@ -4,6 +4,7 @@
 - Never modify this file unless the user explicitly asks for it. You can re-read it periodically to refresh your memory.
 - Use Spanish labels in the UI when displaying enum values. Keep enum identifiers unchanged in code, API contracts, persistence, tests, and technical documentation.
 - NEVER ADD COMMENTS ON CODE, its not neccessary. The name methods should explain by itself.
+- Do not use magic strings or magic numbers in production code. Reuse an existing constant from `src/lib/constants/` or add a responsibility-scoped constant there before using a repeated, domain, configuration, protocol, or user-facing value.
 
 - **Spec-Driven Development (SpecDD):** For any new feature, module, or structural change, you must strictly follow the SpecDD workflow using the **OpenSpec** framework. Minor bug fixes or small refactors can bypass this formal workflow.
 
