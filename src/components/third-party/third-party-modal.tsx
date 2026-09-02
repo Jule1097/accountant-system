@@ -5,16 +5,16 @@ import { Button } from 'src/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from 'src/components/ui/dialog'
 import { DialogLoadingState } from 'src/components/ui/dialog-loading-state'
 import { Input } from 'src/components/ui/input'
-import { useClientSupplierForm } from 'src/hooks/client-supplier/use-client-supplier-form'
+import { useClientSupplierForm } from 'src/hooks/third-party/use-third-party-form'
 import {
   resolveClientSupplierEntityLabel,
   resolveClientSupplierDetailTitle,
   resolveClientSupplierModalTitle,
-} from 'src/lib/helpers/client-supplier/client-supplier-ui'
+} from 'src/lib/helpers/third-party/third-party-ui'
 import {
   ClientSupplierDetailModalProps,
   ClientSupplierModalProps,
-} from 'src/types/client-supplier/client-supplier'
+} from 'src/types/third-party/third-party-resource'
 
 export function ClientSupplierModal({
   isOpen,

@@ -1,12 +1,12 @@
 "use client"
 
 import dynamic from "next/dynamic"
-import { ClientSupplierTable } from 'src/components/clients-suppliers/client-supplier-table'
-import { useClientsSuppliersManagement } from 'src/hooks/client-supplier/use-clients-suppliers-management'
-import { ClientsSuppliersManagementViewProps } from 'src/types/client-supplier/client-supplier'
+import { ClientSupplierTable } from 'src/components/third-party/third-party-table'
+import { useClientsSuppliersManagement } from 'src/hooks/third-party/use-third-party-management'
+import { ClientsSuppliersManagementViewProps } from 'src/types/third-party/third-party-resource'
 
 const ClientSupplierDeleteDialog = dynamic(
-  () => import("src/components/clients-suppliers/client-supplier-delete-dialog").then((module) => module.ClientSupplierDeleteDialog),
+  () => import("src/components/third-party/third-party-delete-dialog").then((module) => module.ClientSupplierDeleteDialog),
   {
     ssr: false,
     loading: () => null,
@@ -14,7 +14,7 @@ const ClientSupplierDeleteDialog = dynamic(
 )
 
 const ClientSupplierDetailModal = dynamic(
-  () => import("src/components/clients-suppliers/client-supplier-modal").then((module) => module.ClientSupplierDetailModal),
+  () => import("src/components/third-party/third-party-modal").then((module) => module.ClientSupplierDetailModal),
   {
     ssr: false,
     loading: () => null,
@@ -22,7 +22,7 @@ const ClientSupplierDetailModal = dynamic(
 )
 
 const ClientSupplierModal = dynamic(
-  () => import("src/components/clients-suppliers/client-supplier-modal").then((module) => module.ClientSupplierModal),
+  () => import("src/components/third-party/third-party-modal").then((module) => module.ClientSupplierModal),
   {
     ssr: false,
     loading: () => null,
@@ -43,6 +43,7 @@ export function ClientsSuppliersManagementView({
     query,
     searchValue,
     data,
+    isTableLoading,
     recordDetail,
     recordDetailError,
     isRecordDetailLoading,
@@ -101,6 +102,7 @@ export function ClientsSuppliersManagementView({
 
       <ClientSupplierTable
         data={data}
+        isLoading={isTableLoading}
         query={query}
         searchValue={searchValue}
         type={type}

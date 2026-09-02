@@ -1,6 +1,6 @@
 "use client"
 
-import { ClientsSuppliersManagementView } from 'src/components/clients-suppliers/clients-suppliers-management-view'
+import { ClientsSuppliersManagementView } from 'src/components/third-party/third-party-management-view'
 
 export function SuppliersView() {
   return (

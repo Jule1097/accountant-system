@@ -1,5 +1,5 @@
-import { ClientSupplierSkeleton } from 'src/components/clients-suppliers/client-supplier-skeleton'
-import { SuppliersView } from 'src/components/clients-suppliers/suppliers-view'
+import { ClientSupplierSkeleton } from 'src/components/third-party/third-party-skeleton'
+import { SuppliersView } from 'src/components/third-party/suppliers-view'
 import { Suspense } from 'react'
 
 export default function SuppliersPage() {

@@ -9,20 +9,21 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 's
 import {
   buildClientSupplierPageLabel,
   clientSupplierPageSizeOptions,
-} from 'src/lib/helpers/client-supplier/client-supplier-management'
+} from 'src/lib/helpers/third-party/third-party-management'
 import {
   ClientSupplierTableProps,
-} from 'src/types/client-supplier/client-supplier'
+} from 'src/types/third-party/third-party-resource'
 import {
   getClientSupplierSortValue,
   resolveClientSupplierAddButtonLabel,
   resolveClientSupplierEntityLabel,
   resolveClientSupplierSearchPlaceholder,
   resolveClientSupplierSortSelection,
-} from 'src/lib/helpers/client-supplier/client-supplier-ui'
+} from 'src/lib/helpers/third-party/third-party-ui'
 
 export function ClientSupplierTable({
   data,
+  isLoading,
   query,
   searchValue,
   type,
@@ -38,7 +39,7 @@ export function ClientSupplierTable({
   const records = data?.items || []
   const currentPage = data?.page || query.page || 1
   const totalPages = data?.totalPages || 1
-  const hasActiveFilters = Boolean(query.search)
+  const hasActiveFilters = Boolean(query.search) && searchValue === (query.search || '') && !isLoading
 
   return (
     <div className="space-y-4">

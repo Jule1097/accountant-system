@@ -1,6 +1,6 @@
-import { ClientsView } from 'src/components/clients-suppliers/clients-view'
+import { ClientsView } from 'src/components/third-party/clients-view'
 import { Suspense } from 'react'
-import { ClientSupplierSkeleton } from 'src/components/clients-suppliers/client-supplier-skeleton'
+import { ClientSupplierSkeleton } from 'src/components/third-party/third-party-skeleton'
 
 export default function ClientsPage() {
   return (

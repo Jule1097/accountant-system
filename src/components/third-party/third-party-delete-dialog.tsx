@@ -9,8 +9,8 @@ import {
   DialogTitle,
 } from 'src/components/ui/dialog'
 import { Button } from 'src/components/ui/button'
-import { resolveClientSupplierDeleteTitle } from 'src/lib/helpers/client-supplier/client-supplier-ui'
-import { ClientSupplierDeleteDialogProps } from 'src/types/client-supplier/client-supplier'
+import { resolveClientSupplierDeleteTitle } from 'src/lib/helpers/third-party/third-party-ui'
+import { ClientSupplierDeleteDialogProps } from 'src/types/third-party/third-party-resource'
 
 export function ClientSupplierDeleteDialog({
   isOpen,
