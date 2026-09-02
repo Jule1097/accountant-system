@@ -1,10 +1,10 @@
-import { ClientRepository } from 'src/repositories/client-supplier/client.repository'
-import { SupplierRepository } from 'src/repositories/client-supplier/supplier.repository'
-import { ClientService } from 'src/services/client-supplier/client.service'
-import { SupplierService } from 'src/services/client-supplier/supplier.service'
+import { ClientRepository } from 'src/repositories/third-party/client.repository'
+import { SupplierRepository } from 'src/repositories/third-party/supplier.repository'
+import { ClientService } from 'src/services/third-party/Client'
+import { SupplierService } from 'src/services/third-party/Supplier'
 
-jest.mock('src/repositories/client-supplier/client.repository')
-jest.mock('src/repositories/client-supplier/supplier.repository')
+jest.mock('src/repositories/third-party/client.repository')
+jest.mock('src/repositories/third-party/supplier.repository')
 
 const createdAt = new Date('2026-08-25T00:00:00.000Z')
 const updatedAt = new Date('2026-08-25T00:00:00.000Z')
@@ -29,8 +29,7 @@ describe('ClientService', () => {
     repositoryMock = new ClientRepository() as ClientRepositoryMock
     repositoryMock.findByNormalizedName = jest.fn().mockResolvedValue(null)
     repositoryMock.hasVouchers = jest.fn().mockResolvedValue(false)
-    service = new ClientService()
-    ;(service as unknown as { repository: ClientRepository }).repository = repositoryMock
+    service = new ClientService(repositoryMock)
   })
 
   it('rejects duplicate names using trim and case-insensitive comparison', async () => {
@@ -86,8 +85,7 @@ describe('SupplierService', () => {
     repositoryMock = new SupplierRepository() as SupplierRepositoryMock
     repositoryMock.findByNormalizedName = jest.fn().mockResolvedValue(null)
     repositoryMock.hasVouchers = jest.fn().mockResolvedValue(false)
-    service = new SupplierService()
-    ;(service as unknown as { repository: SupplierRepository }).repository = repositoryMock
+    service = new SupplierService(repositoryMock)
   })
 
   it('rejects duplicate names using trim and case-insensitive comparison', async () => {

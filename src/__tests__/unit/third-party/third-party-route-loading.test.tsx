@@ -7,12 +7,12 @@ const pendingPromise = new Promise(() => undefined)
 
 function loadClientsPage() {
   jest.resetModules()
-  jest.doMock("src/components/clients-suppliers/clients-view", () => ({
+  jest.doMock("src/components/third-party/clients-view", () => ({
     ClientsView: () => {
       throw pendingPromise
     },
   }))
-  jest.doMock("src/components/clients-suppliers/client-supplier-skeleton", () => ({
+  jest.doMock("src/components/third-party/third-party-skeleton", () => ({
     ClientSupplierSkeleton: () => <div data-testid="client-supplier-route-skeleton">client-supplier-route-skeleton</div>,
   }))
 
@@ -22,12 +22,12 @@ function loadClientsPage() {
 
 function loadSuppliersPage() {
   jest.resetModules()
-  jest.doMock("src/components/clients-suppliers/suppliers-view", () => ({
+  jest.doMock("src/components/third-party/suppliers-view", () => ({
     SuppliersView: () => {
       throw pendingPromise
     },
   }))
-  jest.doMock("src/components/clients-suppliers/client-supplier-skeleton", () => ({
+  jest.doMock("src/components/third-party/third-party-skeleton", () => ({
     ClientSupplierSkeleton: () => <div data-testid="client-supplier-route-skeleton">client-supplier-route-skeleton</div>,
   }))
 

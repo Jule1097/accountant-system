@@ -4,7 +4,7 @@ import { render, screen } from '@testing-library/react'
 import {
   ClientSupplierDetailModal,
   ClientSupplierModal,
-} from 'src/components/clients-suppliers/client-supplier-modal'
+} from 'src/components/third-party/third-party-modal'
 
 jest.mock("src/components/ui/toast", () => ({
   useToastManager: () => ({ add: jest.fn() }),

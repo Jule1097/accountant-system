@@ -3,7 +3,7 @@
 import { renderHook } from "@testing-library/react"
 import { useAnalytics } from "src/hooks/analytics/use-analytics"
 import { useNotifications } from "src/hooks/shared/use-notifications"
-import { useClientsSuppliers } from "src/hooks/client-supplier/use-clients-suppliers"
+import { useClientsSuppliers } from "src/hooks/third-party/use-third-parties"
 import { useVouchers } from "src/hooks/voucher/use-vouchers"
 
 const useSWRMock = jest.fn()
@@ -105,9 +105,10 @@ describe("company-scoped hooks", () => {
         keepPreviousData: true,
         revalidateOnFocus: false,
         revalidateOnReconnect: false,
-        suspense: true,
       })
     )
+
+    expect(useSWRMock.mock.calls[0][2]).not.toHaveProperty("suspense")
   })
 
   it("disables focus revalidation for analytics route data", () => {

@@ -1,7 +1,7 @@
 /** @jest-environment jsdom */
 
 import { act, renderHook, waitFor } from "@testing-library/react"
-import { useClientsSuppliersManagement } from "src/hooks/client-supplier/use-clients-suppliers-management"
+import { useClientsSuppliersManagement } from "src/hooks/third-party/use-third-party-management"
 
 const pushMock = jest.fn()
 const useClientsSuppliersMock = jest.fn()
@@ -29,7 +29,7 @@ jest.mock("src/contexts/company-context", () => ({
   useCompany: () => useCompanyMock(),
 }))
 
-jest.mock("src/hooks/client-supplier/use-clients-suppliers", () => ({
+jest.mock("src/hooks/third-party/use-third-parties", () => ({
   useClientsSuppliers: (...args: unknown[]) => useClientsSuppliersMock(...args),
   useClientSupplierById: (...args: unknown[]) => useClientSupplierByIdMock(...args),
 }))

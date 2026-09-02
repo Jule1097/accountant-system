@@ -1,7 +1,7 @@
 /** @jest-environment jsdom */
 
 import { fireEvent, render, screen } from '@testing-library/react'
-import { ClientsSuppliersManagementView } from 'src/components/clients-suppliers/clients-suppliers-management-view'
+import { ClientsSuppliersManagementView } from 'src/components/third-party/third-party-management-view'
 
 const pushMock = jest.fn()
 const searchParamsState = {
@@ -14,7 +14,7 @@ jest.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams('page=1&pageSize=10'),
 }))
 
-jest.mock('src/hooks/client-supplier/use-clients-suppliers-management', () => ({
+jest.mock('src/hooks/third-party/use-third-party-management', () => ({
   useClientsSuppliersManagement: () => ({
     isCreateModalOpen: false,
     isDeleting: false,
@@ -54,7 +54,7 @@ jest.mock('src/hooks/client-supplier/use-clients-suppliers-management', () => ({
   }),
 }))
 
-jest.mock('src/components/clients-suppliers/client-supplier-table', () => ({
+jest.mock('src/components/third-party/third-party-table', () => ({
   ClientSupplierTable: ({
     data,
     onSearchChange,
@@ -77,7 +77,7 @@ jest.mock('src/components/clients-suppliers/client-supplier-table', () => ({
   ),
 }))
 
-jest.mock('src/components/clients-suppliers/client-supplier-modal', () => ({
+jest.mock('src/components/third-party/third-party-modal', () => ({
   ClientSupplierModal: ({
     isOpen,
     mode,
@@ -96,7 +96,7 @@ jest.mock('src/components/clients-suppliers/client-supplier-modal', () => ({
   ),
 }))
 
-jest.mock('src/components/clients-suppliers/client-supplier-delete-dialog', () => ({
+jest.mock('src/components/third-party/third-party-delete-dialog', () => ({
   ClientSupplierDeleteDialog: ({
     isOpen,
   }: {

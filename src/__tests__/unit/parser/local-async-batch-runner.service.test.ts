@@ -1,7 +1,7 @@
-import { LocalAsyncBatchRunnerService } from "src/services/parser/local-async-batch-runner.service";
-import { VoucherBatchExecutionService } from "src/services/parser/voucher-batch-execution.service";
+import { LocalAsyncBatchRunnerService } from "src/services/parser/LocalAsyncBatchRunner";
+import { VoucherBatchExecutionService } from "src/services/parser/VoucherBatchExecution";
 
-jest.mock("src/services/parser/voucher-batch-execution.service");
+jest.mock("src/services/parser/VoucherBatchExecution");
 
 describe("LocalAsyncBatchRunnerService", () => {
   let batchExecutionServiceMock: jest.Mocked<VoucherBatchExecutionService>;

@@ -1,8 +1,8 @@
 import { NextRequest } from "next/server"
 import { GET } from "src/app/api/notifications/route"
-import { CompanyNotificationService } from "src/services/company/company-notification.service"
+import { CompanyNotificationService } from "src/services/company/CompanyNotification"
 
-jest.mock("src/services/company/company-notification.service")
+jest.mock("src/services/company/CompanyNotification")
 
 function createRequest(overrides: Partial<NextRequest> = {}) {
   return {
