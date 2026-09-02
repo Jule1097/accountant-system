@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { VoucherService } from 'src/services/voucher/voucher.service'
+import { VoucherService } from 'src/services/voucher/Voucher'
 import { voucherSchema } from 'src/lib/schemas/voucher/voucher-schemas'
 
 export async function GET(

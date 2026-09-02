@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { DashboardService } from "src/services/dashboard/dashboard.service"
+import { DashboardService } from "src/services/dashboard/Dashboard"
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {

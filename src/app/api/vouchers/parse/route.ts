@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getParserAuthenticatedUserId } from "src/lib/helpers/parser/parser-auth";
 import { collectParserAcceptedFiles } from "src/lib/helpers/parser/parser-file";
 import { parserBatchUploadSchema } from "src/lib/schemas/parser/parser-batch-schemas";
-import { VoucherParserService } from "src/services/parser/voucher-parser.service";
+import { VoucherParserService } from "src/services/parser/VoucherParser";
 
 function resolveParserRequestError(error: Error): { status: number; message: string } {
   if (error.message === "Unauthorized") {

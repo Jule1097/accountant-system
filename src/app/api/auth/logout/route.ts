@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createRequestSupabaseClient } from "src/lib/integrations/supabase-server"
 import { createAuthJsonResponse, resolveAuthErrorResponse } from "src/lib/helpers/auth/auth-response"
-import { AuthSessionService } from "src/services/auth/auth-session.service"
+import { AuthSessionService } from "src/services/auth/AuthSession"
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const response = NextResponse.next()

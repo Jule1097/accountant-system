@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { UseFormReturn } from "react-hook-form";
 import { apiRequest } from "src/lib/api/api-client";
-import { buildClientSupplierCollectionPath } from "src/lib/helpers/client-supplier/client-supplier-management";
+import { buildClientSupplierCollectionPath } from "src/lib/helpers/third-party/third-party-management";
 import {
   mergeVoucherThirdPartyOptions,
   resolveMatchingVoucherThirdPartyRecord,
@@ -12,7 +12,7 @@ import {
   shouldShowVoucherInlineThirdPartyAction,
 } from "src/lib/helpers/voucher/voucher-inline-third-party";
 import { fetchVoucherThirdParties, invalidateVoucherFormOptions } from "src/hooks/voucher/use-voucher-form-options";
-import { ClientSupplierFormValues, ClientSupplierRecord } from "src/types/client-supplier/client-supplier";
+import { ClientSupplierFormValues, ClientSupplierRecord } from "src/types/third-party/third-party-resource";
 import { VoucherScreenType } from "src/types/voucher/voucher";
 import { VoucherParsedData, VoucherThirdPartyOption } from "src/types/voucher/voucher-form";
 import { VoucherFormValues } from "src/lib/schemas/voucher/voucher-form-schemas";
