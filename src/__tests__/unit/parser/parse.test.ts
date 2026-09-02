@@ -4,14 +4,14 @@ import { parseInvoiceImage, parseInvoiceMarkdown, parseInvoiceVisualFieldRepair 
 import * as parserAuthHelpers from 'src/lib/helpers/parser/parser-auth'
 import { resolveParserPdfStrategy } from 'src/lib/helpers/parser/parser-pdf'
 import { CatalogRepository } from 'src/repositories/catalog/catalog.repository'
-import { ClientRepository } from 'src/repositories/client-supplier/client.repository'
+import { ClientRepository } from 'src/repositories/third-party/client.repository'
 import { CompanyRepository } from 'src/repositories/company/company.repository'
-import { SupplierRepository } from 'src/repositories/client-supplier/supplier.repository'
-import { VoucherParserService } from 'src/services/parser/voucher-parser.service'
+import { SupplierRepository } from 'src/repositories/third-party/supplier.repository'
+import { VoucherParserService } from 'src/services/parser/VoucherParser'
 
 jest.mock('src/lib/integrations/gemini')
-jest.mock('src/repositories/client-supplier/client.repository')
-jest.mock('src/repositories/client-supplier/supplier.repository')
+jest.mock('src/repositories/third-party/client.repository')
+jest.mock('src/repositories/third-party/supplier.repository')
 jest.mock('src/repositories/company/company.repository')
 jest.mock('src/repositories/catalog/catalog.repository')
 jest.mock('src/lib/helpers/parser/parser-pdf', () => ({

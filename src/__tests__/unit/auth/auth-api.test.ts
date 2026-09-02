@@ -2,7 +2,7 @@ import { NextRequest } from "next/server"
 import { POST as login } from "src/app/api/auth/login/route"
 import { POST as logout } from "src/app/api/auth/logout/route"
 import { createRequestSupabaseClient } from "src/lib/integrations/supabase-server"
-import { AuthSessionService } from "src/services/auth/auth-session.service"
+import { AuthSessionService } from "src/services/auth/AuthSession"
 
 jest.mock("src/lib/integrations/supabase-server", () => ({
   createRequestSupabaseClient: jest.fn(() => ({
@@ -10,7 +10,7 @@ jest.mock("src/lib/integrations/supabase-server", () => ({
   })),
 }))
 
-jest.mock("src/services/auth/auth-session.service")
+jest.mock("src/services/auth/AuthSession")
 
 type AuthSessionServiceMock = jest.MockedClass<typeof AuthSessionService> & {
   prototype: {

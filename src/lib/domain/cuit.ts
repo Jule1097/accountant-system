@@ -1,4 +1,9 @@
 const cuitDigitsPattern = /^\d{11}$/
+const cuitFormatPattern = /^(?:\d{11}|\d{2}-\d{8}-\d)$/
+
+export function isValidCuit(rawCuit: string): boolean {
+  return cuitFormatPattern.test(rawCuit.trim())
+}
 
 export function normalizeCuit(rawCuit: string): string {
   const digits = rawCuit.replace(/\D/g, '')

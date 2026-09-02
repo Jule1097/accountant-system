@@ -18,13 +18,13 @@ This file defines the technical foundation. All implementations must adhere to t
 - **Infrastructure Layer (`src/repositories/`)**: All Prisma queries must be abstracted behind repositories or data-access services to decouple the application from the ORM. **Important**: When using `@prisma/adapter-pg`, avoid using `Promise.all` for multiple concurrent Prisma queries (e.g. `findMany`), as it can trigger `pg` driver deprecation warnings (concurrent queries on a single client). Use sequential `await`s` instead.
 - **Helpers & Utilities (`src/lib/helpers/*`)**: Helper functions must be placed in `src/lib/helpers/`.
 - **Types & Schemas (`src/types/*`) and (`src/lib/schemas/*`)**: Type definitions must be in `src/types/` and Zod schemas in `src/lib/schemas/`.
-- **Constants (`src/lib/constants/*`)**: Constants must be placed in `src/lib/constants/`.
+- **Constants (`src/lib/constants/*`)**: Constants must be placed in `src/lib/constants/`. Production code must not embed magic strings or magic numbers for domain values, configuration, protocols, statuses, operation errors, or user-facing messages; reuse or add a responsibility-scoped constant instead.
 
 ## Domain-Based File Organization (Source of Truth)
 
 To ensure clarity, scalability, and maintainability, the codebase enforces **Domain-Based File Organization**.
 
-- **Organization by Domain**: The contents of `hooks`, `services`, `repositories`, `types`, `helpers`, `schemas`, and modules within `lib` **must** be organized into subfolders by domain or responsibility (e.g., `voucher/`, `client-supplier/`, `parser/`, `auth/`).
+- **Organization by Domain**: The contents of `hooks`, `services`, `repositories`, `types`, `helpers`, `schemas`, and modules within `lib` **must** be organized into subfolders by domain or responsibility (e.g., `voucher/`, `third-party/`, `parser/`, `auth/`).
 - **Subfolders Allowed**: Subfolders are allowed and encouraged when they improve architectural clarity. Do not create ambiguous generic folders if the file belongs to an existing clear domain.
 - **Choosing the Right Folder**:
   - `shared/`: For elements reused across completely unrelated domains (e.g., `use-mobile.ts`, `utils.ts`).
@@ -53,6 +53,10 @@ To ensure clarity, scalability, and maintainability, the codebase enforces **Dom
 - **Component Props Typing Rule:** Component prop interfaces and reusable view-model types must live in `src/types/`. Do not define exported or feature-level prop interfaces inside component files.
 - **Component & File Length Limit:** All components, pages, and architectural files must strictly range between **150 to 200 lines maximum**. Break down complex UIs into smaller, single-responsibility sub-components.
 - **Promise Derivation in Hooks:** Custom React hooks representing queries or async fetches should derive the promise during render using `useMemo` based on dependencies (e.g. `activeCompanyId`), instead of invoking `setState` from inside a `useEffect` loop.
+- **Single-Purpose Shared Hooks:** Shared hooks must be separated by stable responsibility, such as resource loading, mutations, pagination, filtering, searching, sorting, URL state, selection, or feedback state. A shared hook must not combine unrelated state machines.
+- **Entity-Agnostic Shared Hooks:** Shared hooks must not import or encode a concrete business entity, domain message, form schema, modal implementation, API route, or repository. Entity-specific behavior must be supplied through typed adapters, configuration, or injected functions.
+- **Management Hook Boundary:** Domain management hooks must remain thin composition adapters. They may coordinate shared hooks and domain adapters, but must not reimplement generic pagination, filtering, searching, sorting, data loading, mutation, or feedback mechanics.
+- **Independent UI and Async Responsibilities:** Data loading, request execution, URL/query state, UI transitions, pagination adjustments, and feedback side effects must remain independently replaceable and testable. Generic hooks may expose outcomes and transitions but must not own domain-specific presentation messages.
 
 ## Code Style & Clean Architecture Rules
 - Use `camelCase` for variables, functions, hooks, methods, and object properties.
@@ -64,6 +68,7 @@ To ensure clarity, scalability, and maintainability, the codebase enforces **Dom
 - **Zero Nested IFs:** Nested `if` statements (`if` inside an `if`) are strictly prohibited across all codebase layers (frontend and backend). Whenever conditional depth is required, you **must** extract the logic into a modular helper function located in `src/lib/helpers/`.
 - **Reuse First Policy:** Before implementing any new utility, validation, or helper method, you **must** review existing codebase modules to reuse available methods. Only generate a new one if no suitable reusable method exists.
 - **Reuse Includes Tests And Contracts:** The reuse-first rule also applies to test helpers, fixtures, mocks, schemas, DTOs, query-state models, and UI state contracts. Avoid cloning similar artifacts with slight variations when they can be generalized safely.
+- **Selective Design Principles:** Apply SOLID, DRY, KISS, YAGNI, composition over inheritance, and dependency inversion only when they reduce coupling, duplication, responsibility overlap, or the cost of extending the system. Do not introduce abstractions solely to satisfy a named principle.
 - Do not leave dead code, commented-out code, debug logs, temporary TODOs, or unused exports.
 
 ## TypeScript Rules

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { parserBatchStatusQuerySchema } from "src/lib/schemas/parser/parser-batch-schemas";
-import { VoucherParserService } from "src/services/parser/voucher-parser.service";
+import { VoucherParserService } from "src/services/parser/VoucherParser";
 
 export async function POST(
   request: NextRequest,

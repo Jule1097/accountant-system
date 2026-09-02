@@ -44,7 +44,7 @@ describe("dynamic overlay loading", () => {
   })
 
   it("keeps client-supplier overlays isolated from the page suspense fallback", async () => {
-    await import("src/components/clients-suppliers/clients-suppliers-management-view")
+    await import("src/components/third-party/third-party-management-view")
 
     expect(dynamicMock).toHaveBeenCalledTimes(3)
     expect(dynamicMock).toHaveBeenNthCalledWith(

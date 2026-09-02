@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { SupplierService } from 'src/services/client-supplier/supplier.service'
-import { shouldUseClientSupplierLegacyList } from 'src/lib/helpers/client-supplier/client-supplier'
+import { SupplierService } from 'src/services/third-party/Supplier'
+import { shouldUseClientSupplierLegacyList } from 'src/lib/helpers/third-party/third-party-persistence'
 import {
   parseClientSupplierListQuery,
   resolveClientSupplierCollectionErrorResponse,
-} from 'src/lib/helpers/client-supplier/client-supplier-api'
-import { clientSupplierSchema } from 'src/lib/schemas/client-supplier/client-supplier-schemas'
+} from 'src/lib/helpers/third-party/third-party-api'
+import { clientSupplierSchema } from 'src/lib/schemas/third-party/third-party-schemas'
 
 export async function GET(request: NextRequest) {
   try {

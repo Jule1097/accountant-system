@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { conciliationBulkPersistSchema } from "src/lib/schemas/conciliation/conciliations-schemas";
-import { VoucherPersistenceService } from "src/services/parser/voucher-persistence.service";
+import { VoucherPersistenceService } from "src/services/parser/VoucherPersistence";
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {

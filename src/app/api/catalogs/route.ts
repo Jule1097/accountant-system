@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { CatalogService } from 'src/services/catalog/catalog.service'
+import { CatalogService } from 'src/services/catalog/Catalog'
 
 export async function GET() {
   try {

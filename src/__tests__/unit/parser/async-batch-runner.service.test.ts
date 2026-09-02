@@ -1,10 +1,10 @@
 import { getWorkflowDriver, parseBatchIdArg, validateWorkflowDriverConfiguration } from "src/lib/helpers/parser/async-batch-runner";
-import { AsyncBatchRunnerService } from "src/../src/services/parser/async-batch-runner.service";
-import { GcpAsyncBatchRunnerService } from "src/../src/services/parser/gcp-async-batch-runner.service";
-import { LocalAsyncBatchRunnerService } from "src/../src/services/parser/local-async-batch-runner.service";
+import { AsyncBatchRunnerService } from "src/../src/services/parser/AsyncBatchRunner";
+import { GcpAsyncBatchRunnerService } from "src/../src/services/parser/GcpAsyncBatchRunner";
+import { LocalAsyncBatchRunnerService } from "src/../src/services/parser/LocalAsyncBatchRunner";
 
-jest.mock("src/../src/services/parser/gcp-async-batch-runner.service");
-jest.mock("src/../src/services/parser/local-async-batch-runner.service");
+jest.mock("src/../src/services/parser/GcpAsyncBatchRunner");
+jest.mock("src/../src/services/parser/LocalAsyncBatchRunner");
 
 describe("async batch runner configuration", () => {
   const originalEnv = process.env;

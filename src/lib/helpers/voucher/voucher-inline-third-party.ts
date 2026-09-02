@@ -1,6 +1,6 @@
 import { compareCuit } from "src/lib/domain/cuit"
-import { normalizeClientSupplierName } from "src/lib/helpers/client-supplier/client-supplier"
-import { ClientSupplierFormValues, ClientSupplierModalInitialValues, ClientSupplierRecord } from "src/types/client-supplier/client-supplier"
+import { normalizeThirdPartyName } from "src/lib/helpers/third-party/third-party"
+import { ClientSupplierFormValues, ClientSupplierModalInitialValues, ClientSupplierRecord } from "src/types/third-party/third-party-resource"
 import { VoucherScreenType } from "src/types/voucher/voucher"
 import { VoucherParsedData, VoucherThirdPartyOption } from "src/types/voucher/voucher-form"
 
@@ -67,10 +67,10 @@ export function resolveMatchingVoucherThirdPartyRecord(
   records: ClientSupplierRecord[],
   values: ClientSupplierFormValues
 ): ClientSupplierRecord | null {
-  const normalizedName = normalizeClientSupplierName(values.name)
+  const normalizedName = normalizeThirdPartyName(values.name)
   const exactMatches = records.filter((record) => {
     const sameCuit = values.cuit ? compareCuit(record.cuit, values.cuit) : false
-    const sameName = values.name ? normalizeClientSupplierName(record.name) === normalizedName : false
+    const sameName = values.name ? normalizeThirdPartyName(record.name) === normalizedName : false
 
     if (values.name && values.cuit) {
       return sameCuit && sameName

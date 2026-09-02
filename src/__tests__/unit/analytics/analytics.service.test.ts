@@ -1,4 +1,4 @@
-import { AnalyticsService } from 'src/services/analytics/analytics.service'
+import { AnalyticsService } from 'src/services/analytics/Analytics'
 import { VoucherRepository } from 'src/repositories/voucher/voucher.repository'
 
 jest.mock('src/repositories/voucher/voucher.repository')

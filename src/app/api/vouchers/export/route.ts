@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { VoucherExportService } from 'src/services/voucher/voucher-export.service'
+import { VoucherExportService } from 'src/services/voucher/VoucherExport'
 import { voucherExportQuerySchema } from 'src/lib/schemas/voucher/voucher-export-schemas'
 import { ExportQueryParams } from 'src/types/voucher/voucher-export'
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { voucherSummaryQuerySchema } from 'src/lib/schemas/voucher/voucher-schemas'
-import { VoucherService } from 'src/services/voucher/voucher.service'
+import { VoucherService } from 'src/services/voucher/Voucher'
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {

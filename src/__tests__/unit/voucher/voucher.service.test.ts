@@ -1,7 +1,7 @@
 import { Decimal } from 'decimal.js'
 import { Voucher } from 'src/models/Voucher'
 import { VoucherRepository } from 'src/repositories/voucher/voucher.repository'
-import { VoucherService } from 'src/services/voucher/voucher.service'
+import { VoucherService } from 'src/services/voucher/Voucher'
 
 jest.mock('src/repositories/voucher/voucher.repository')
 

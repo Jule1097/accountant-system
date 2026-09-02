@@ -21,8 +21,8 @@ import { UseVoucherFormProps, useVoucherForm } from "src/hooks/voucher/use-vouch
 import { useVoucherInlineThirdParty } from "src/hooks/voucher/use-voucher-inline-third-party";
 import { VoucherFormOptionsData, useVoucherFormOptions } from "src/hooks/voucher/use-voucher-form-options";
 import { Voucher } from "src/models/Voucher";
-import { ClientSupplierModal } from "src/components/clients-suppliers/client-supplier-modal";
-import { resolveClientSupplierAddButtonLabel } from "src/lib/helpers/client-supplier/client-supplier-ui";
+import { ClientSupplierModal } from "src/components/third-party/third-party-modal";
+import { resolveClientSupplierAddButtonLabel } from "src/lib/helpers/third-party/third-party-ui";
 import { VoucherParsedData } from "src/types/voucher/voucher-form";
 import { VoucherModalMode, VoucherScreenType } from "src/types/voucher/voucher";
 
