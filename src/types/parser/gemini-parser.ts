@@ -101,7 +101,7 @@ export interface GeminiParserResolvedPerception {
   taxJurisdictionName: string | null
 }
 
-export interface GeminiParserResponse {
+export interface ParsedVoucherData {
   posNumber: string | null
   number: string | null
   date: string | null

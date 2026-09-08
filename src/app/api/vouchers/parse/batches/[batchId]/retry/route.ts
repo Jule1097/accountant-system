@@ -1,36 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
+import { executeRequestWithContext } from "src/lib/helpers/api/request-handler";
+import { apiResponseMessages } from "src/lib/constants/api-response";
+import { httpStatusCodes } from "src/lib/constants/http";
 import { parserBatchStatusQuerySchema } from "src/lib/schemas/parser/parser-batch-schemas";
-import { VoucherParserService } from "src/services/parser/voucher-parser.service";
+import { VoucherParserService } from "src/services/parser/VoucherParser";
+import { resolveApplicationErrorResponse } from "src/lib/helpers/api/application-error-response";
 
 export async function POST(
   request: NextRequest,
   context: { params: Promise<{ batchId: string }> }
-): Promise<NextResponse> {
-  try {
-    const companyId = request.headers.get("x-company-id");
-
-    if (!companyId) {
-      return NextResponse.json({ error: "Falta la empresa activa" }, { status: 400 });
-    }
-
+): Promise<Response> {
+  return executeRequestWithContext(request, async ({ companyId }) => {
     const params = await context.params;
     const parsedParams = parserBatchStatusQuerySchema.safeParse(params);
 
     if (!parsedParams.success) {
-      return NextResponse.json({ error: "El batch solicitado es inválido" }, { status: 400 });
+      return NextResponse.json({ error: apiResponseMessages.conciliation.invalidBatch }, { status: httpStatusCodes.badRequest });
     }
 
     const parserService = new VoucherParserService();
     await parserService.retryBatch(companyId, parsedParams.data.batchId);
 
-    return NextResponse.json({ batchId: parsedParams.data.batchId }, { status: 202 });
-  } catch (error: unknown) {
-    console.error("Error retrying parser batch:", error);
-
-    if (error instanceof Error) {
-      return NextResponse.json({ error: error.message }, { status: 404 });
-    }
-
-    return NextResponse.json({ error: "No se pudo reintentar el batch" }, { status: 500 });
-  }
+    return NextResponse.json({ batchId: parsedParams.data.batchId }, { status: httpStatusCodes.accepted });
+  }, (error) => resolveApplicationErrorResponse(error, { request, operation: "retry parser batch", resource: "parser batch", workflow: "retry" }));
 }

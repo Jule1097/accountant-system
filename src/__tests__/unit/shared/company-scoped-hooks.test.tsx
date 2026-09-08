@@ -3,7 +3,7 @@
 import { renderHook } from "@testing-library/react"
 import { useAnalytics } from "src/hooks/analytics/use-analytics"
 import { useNotifications } from "src/hooks/shared/use-notifications"
-import { useClientsSuppliers } from "src/hooks/client-supplier/use-clients-suppliers"
+import { useClientsSuppliers } from "src/hooks/third-party/use-third-parties"
 import { useVouchers } from "src/hooks/voucher/use-vouchers"
 
 const useSWRMock = jest.fn()
@@ -105,9 +105,10 @@ describe("company-scoped hooks", () => {
         keepPreviousData: true,
         revalidateOnFocus: false,
         revalidateOnReconnect: false,
-        suspense: true,
       })
     )
+
+    expect(useSWRMock.mock.calls[0][2]).not.toHaveProperty("suspense")
   })
 
   it("disables focus revalidation for analytics route data", () => {
@@ -127,6 +128,31 @@ describe("company-scoped hooks", () => {
         suspense: true,
       })
     )
+  })
+
+  it("does not expose cached resource revalidation as initial loading", () => {
+    useCompanyMock.mockReturnValue({
+      activeCompanyId: "company-1",
+      loading: false,
+    })
+    useSWRMock.mockReturnValue({
+      data: { items: [{ id: "client-1" }] },
+      error: undefined,
+      isLoading: false,
+      isValidating: true,
+      mutate: jest.fn(),
+    })
+
+    const { result } = renderHook(() => useClientsSuppliers("clients", {
+      page: 1,
+      pageSize: 10,
+      sortBy: "name",
+      sortOrder: "asc",
+      recordId: null,
+    }))
+
+    expect(result.current.isLoading).toBe(false)
+    expect(result.current.isValidating).toBe(true)
   })
 
   it("keeps notifications requests disabled while the company context is still loading", () => {

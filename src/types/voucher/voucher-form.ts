@@ -1,4 +1,3 @@
-import { GeminiParserResponse } from "src/types/parser/gemini-parser";
 import { VoucherVatDetail } from "src/types/voucher/voucher";
 
 export interface VoucherFormCatalogState {
@@ -8,7 +7,6 @@ export interface VoucherFormCatalogState {
   perceptionConcepts: { id: string; name: string }[];
   taxJurisdictions: { id: string; name: string }[];
 }
-
 export interface VoucherThirdPartyOption {
   id: string;
   name: string;
@@ -61,5 +59,3 @@ export interface VoucherFormPayload {
   }[];
   vatDetails: Pick<VoucherVatDetail, "vatRateId" | "subtotal" | "vatAmount">[];
 }
-
-export type VoucherParsedData = GeminiParserResponse;

@@ -1,17 +1,31 @@
 import Decimal from 'decimal.js'
-import { Voucher } from 'src/models/Voucher'
+import { voucherZeroAmount } from 'src/lib/constants/voucher'
 import { getPreviousMonthRangeInArgentina } from '../platform/date-timezone'
 import { standardJurisdictions } from 'src/lib/helpers/platform/excel-builder'
 import { normalizeCuit } from 'src/lib/domain/cuit'
 import { resolveTaxJurisdictionName } from 'src/lib/domain/tax-jurisdictions'
+import { Money } from 'src/models/voucher/Money'
+import { Purchase } from 'src/models/voucher/Purchase'
+import { Sale } from 'src/models/voucher/Sale'
+import { Voucher } from 'src/models/voucher/Voucher'
 import {
   ExportColumnDefinition,
   ExportQueryParams,
   RetentionConceptLike,
   PerceptionConceptLike,
   VatRateLike,
+  VoucherExportRow,
 } from 'src/types/voucher/voucher-export'
 import { VoucherFilterParams } from 'src/types/voucher/voucher'
+import type { VoucherVisitor } from 'src/types/voucher/voucher-operations'
+
+function toExportMoney(value: string | number | undefined, currency: string): Money {
+  return new Money(value?.toString() || voucherZeroAmount, currency)
+}
+
+function toExportNumber(value: Money): number {
+  return Number(value.toString())
+}
 
 export function buildExportFilters(params: ExportQueryParams): {
   filters: VoucherFilterParams
@@ -67,26 +81,26 @@ export function cleanHeaderName(name: string, category: 'ret' | 'perc'): string 
 }
 
 export function mapSalesVoucherToRow(
-  voucher: Voucher,
+  voucher: Sale,
   saleConcepts: RetentionConceptLike[]
-): Record<string, unknown> {
-  const isLetterC = voucher.voucherLetter?.letter === 'C'
-  const subtotal = isLetterC ? 0 : voucher.getSignedValueInArs(voucher.subtotal).toNumber()
+): VoucherExportRow {
+  const isLetterC = voucher.voucherLetter === 'C'
+  const subtotal = isLetterC ? 0 : toExportNumber(voucher.getSignedValueInArs(voucher.subtotal))
 
-  const row: Record<string, unknown> = {
+  const row: VoucherExportRow = {
     date: voucher.date,
     paymentDate: voucher.paymentDate || null,
-    voucherType: voucher.voucherType?.name || '',
-    letter: voucher.voucherLetter?.letter || '',
+    voucherType: voucher.voucherTypeName || '',
+    letter: voucher.voucherLetter || '',
     posNumber: voucher.posNumber,
     number: voucher.number,
     clientName: voucher.client?.name || '',
     clientCuit: voucher.client?.cuit ? normalizeCuit(voucher.client.cuit) : '',
     currency: voucher.currency,
-    exchangeRate: voucher.getExchangeRateDecimal().toNumber(),
+    exchangeRate: Number(voucher.exchangeRate.toString()),
     subtotal,
-    vat: voucher.getSignedValueInArs(voucher.vatAmount).toNumber(),
-    total: voucher.getSignedValueInArs(voucher.totalAmount).toNumber(),
+    vat: toExportNumber(voucher.getSignedValueInArs(voucher.vatAmount)),
+    total: toExportNumber(voucher.getSignedValueInArs(voucher.totalAmount)),
   }
 
   saleConcepts.forEach((c) => {
@@ -97,10 +111,10 @@ export function mapSalesVoucherToRow(
     row[`ret_${j}`] = 0
   })
 
-  let otrosRet = voucher.getSignedValueInArs(voucher.otherTaxesAmount).neg()
+  let otrosRet = new Decimal(voucher.getSignedValueInArs(voucher.otherTaxesAmount).toString()).negated()
 
   voucher.retentions.forEach((ret) => {
-    const amount = voucher.getSignedValueInArs(ret.amount).neg()
+    const amount = new Decimal(voucher.getSignedValueInArs(toExportMoney(ret.amount, voucher.currency)).toString()).negated()
     const matchedConcept = saleConcepts.find((c) => c.id === ret.retentionConceptId)
     if (matchedConcept) {
       row[`ret_concept_${matchedConcept.id}`] = new Decimal((row[`ret_concept_${matchedConcept.id}`] as number) || 0)
@@ -109,7 +123,7 @@ export function mapSalesVoucherToRow(
       return
     }
 
-    const resolvedName = resolveTaxJurisdictionName(ret.taxJurisdiction?.name)
+    const resolvedName = resolveTaxJurisdictionName(ret.taxJurisdictionName)
     const isStandard = resolvedName && standardJurisdictions.includes(resolvedName)
     if (isStandard) {
       row[`ret_${resolvedName}`] = new Decimal((row[`ret_${resolvedName}`] as number) || 0).add(amount).toNumber()
@@ -124,27 +138,27 @@ export function mapSalesVoucherToRow(
 }
 
 export function mapPurchasesVoucherToRow(
-  voucher: Voucher,
+  voucher: Purchase,
   allVatRates: VatRateLike[],
   activeVatRates: VatRateLike[],
   purchaseConcepts: PerceptionConceptLike[]
-): Record<string, unknown> {
-  const isLetterC = voucher.voucherLetter?.letter === 'C'
-  const subtotal = isLetterC ? 0 : voucher.getSignedValueInArs(voucher.subtotal).toNumber()
+): VoucherExportRow {
+  const isLetterC = voucher.voucherLetter === 'C'
+  const subtotal = isLetterC ? 0 : toExportNumber(voucher.getSignedValueInArs(voucher.subtotal))
 
-  const row: Record<string, unknown> = {
+  const row: VoucherExportRow = {
     date: voucher.date,
     paymentDate: voucher.paymentDate || null,
-    voucherType: voucher.voucherType?.name || '',
-    letter: voucher.voucherLetter?.letter || '',
+    voucherType: voucher.voucherTypeName || '',
+    letter: voucher.voucherLetter || '',
     posNumber: voucher.posNumber,
     number: voucher.number,
     supplierName: voucher.supplier?.name || '',
     supplierCuit: voucher.supplier?.cuit ? normalizeCuit(voucher.supplier.cuit) : '',
     currency: voucher.currency,
-    exchangeRate: voucher.getExchangeRateDecimal().toNumber(),
+    exchangeRate: Number(voucher.exchangeRate.toString()),
     subtotal,
-    total: voucher.getSignedValueInArs(voucher.totalAmount).toNumber(),
+    total: toExportNumber(voucher.getSignedValueInArs(voucher.totalAmount)),
   }
 
   activeVatRates.forEach((vr) => {
@@ -160,7 +174,7 @@ export function mapPurchasesVoucherToRow(
   })
 
   let exempt = isLetterC
-    ? voucher.getSignedValueInArs(voucher.subtotal).plus(voucher.getSignedValueInArs(voucher.exemptAmount))
+    ? voucher.getSignedValueInArs(voucher.subtotal).add(voucher.getSignedValueInArs(voucher.exemptAmount))
     : voucher.getSignedValueInArs(voucher.exemptAmount)
   let nonTaxable = voucher.getSignedValueInArs(voucher.nonTaxableAmount)
 
@@ -169,8 +183,8 @@ export function mapPurchasesVoucherToRow(
     const hasVatDetails = voucher.vatDetails.length > 0
     if (hasVatDetails) {
       voucher.vatDetails.forEach((detail) => {
-        const subtotalVal = voucher.getSignedValueInArs(detail.subtotal)
-        const vat = voucher.getSignedValueInArs(detail.vatAmount)
+        const subtotalVal = voucher.getSignedValueInArs(toExportMoney(detail.subtotal, voucher.currency))
+        const vat = voucher.getSignedValueInArs(toExportMoney(detail.vatAmount, voucher.currency))
         const vr = allVatRates.find((v) => v.id === detail.vatRateId)
 
         if (!vr) {
@@ -185,7 +199,7 @@ export function mapPurchasesVoucherToRow(
           return
         }
         if (vr.rate.toNumber() > 0) {
-          row[`iva_${vr.id}`] = new Decimal((row[`iva_${vr.id}`] as number) || 0).add(vat).toNumber()
+          row[`iva_${vr.id}`] = new Decimal((row[`iva_${vr.id}`] as number) || 0).add(vat.toString()).toNumber()
         }
       })
     }
@@ -214,7 +228,7 @@ export function mapPurchasesVoucherToRow(
           })
 
           const vatVal = voucher.getSignedValueInArs(voucher.vatAmount)
-          row[`iva_${closestVr.id}`] = vatVal.toNumber()
+          row[`iva_${closestVr.id}`] = toExportNumber(vatVal)
         }
       }
 
@@ -225,32 +239,32 @@ export function mapPurchasesVoucherToRow(
     }
   }
 
-  row.exempt = exempt.toNumber()
-  row.nonTaxable = nonTaxable.toNumber()
+  row.exempt = toExportNumber(exempt)
+  row.nonTaxable = toExportNumber(nonTaxable)
 
   let otrosPerc = voucher.getSignedValueInArs(voucher.otherTaxesAmount)
 
   voucher.perceptions.forEach((perc) => {
-    const amount = voucher.getSignedValueInArs(perc.amount)
+    const amount = voucher.getSignedValueInArs(toExportMoney(perc.amount, voucher.currency))
     const matchedConcept = purchaseConcepts.find((c) => c.id === perc.perceptionConceptId)
     if (matchedConcept) {
       row[`perc_concept_${matchedConcept.id}`] = new Decimal((row[`perc_concept_${matchedConcept.id}`] as number) || 0)
-        .add(amount)
+        .add(amount.toString())
         .toNumber()
       return
     }
 
-    const resolvedName = resolveTaxJurisdictionName(perc.taxJurisdiction?.name)
+    const resolvedName = resolveTaxJurisdictionName(perc.taxJurisdictionName)
     const isStandard = resolvedName && standardJurisdictions.includes(resolvedName)
     if (isStandard) {
-      row[`perc_${resolvedName}`] = new Decimal((row[`perc_${resolvedName}`] as number) || 0).add(amount).toNumber()
+      row[`perc_${resolvedName}`] = new Decimal((row[`perc_${resolvedName}`] as number) || 0).add(amount.toString()).toNumber()
       return
     }
 
     otrosPerc = otrosPerc.add(amount)
   })
 
-  row.otherPerceptions = otrosPerc.toNumber()
+  row.otherPerceptions = toExportNumber(otrosPerc)
   return row
 }
 
@@ -264,7 +278,7 @@ export function prepareExportWorkbookData(
   }
 ): {
   columns: ExportColumnDefinition[]
-  data: Record<string, unknown>[]
+  data: VoucherExportRow[]
 } {
   const isSales = type === 'sales'
   if (isSales) {
@@ -301,7 +315,8 @@ export function prepareExportWorkbookData(
       { header: 'Total', key: 'total', isMonetary: true },
     ]
 
-    const data = vouchers.map((v) => mapSalesVoucherToRow(v, saleConcepts))
+    const visitor: VoucherVisitor<VoucherExportRow | null> = { visitSale: (voucher) => mapSalesVoucherToRow(voucher, saleConcepts), visitPurchase: () => null }
+    const data = vouchers.map((voucher) => voucher.accept(visitor)).filter((row): row is VoucherExportRow => row !== null)
 
     return { columns, data }
   }
@@ -346,9 +361,8 @@ export function prepareExportWorkbookData(
     { header: 'Total', key: 'total', isMonetary: true },
   ]
 
-  const data = vouchers.map((v) =>
-    mapPurchasesVoucherToRow(v, catalogs.allVatRates, activeVatRates, purchaseConcepts)
-  )
+  const visitor: VoucherVisitor<VoucherExportRow | null> = { visitSale: () => null, visitPurchase: (voucher) => mapPurchasesVoucherToRow(voucher, catalogs.allVatRates, activeVatRates, purchaseConcepts) }
+  const data = vouchers.map((voucher) => voucher.accept(visitor)).filter((row): row is VoucherExportRow => row !== null)
 
   return { columns, data }
 }

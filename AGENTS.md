@@ -4,12 +4,14 @@
 - Never modify this file unless the user explicitly asks for it. You can re-read it periodically to refresh your memory.
 - Use Spanish labels in the UI when displaying enum values. Keep enum identifiers unchanged in code, API contracts, persistence, tests, and technical documentation.
 - NEVER ADD COMMENTS ON CODE, its not neccessary. The name methods should explain by itself.
+- Do not use magic strings or magic numbers in production code. Reuse an existing constant from `src/lib/constants/` or add a responsibility-scoped constant there before using a repeated, domain, configuration, protocol, or user-facing value.
 
 - **Spec-Driven Development (SpecDD):** For any new feature, module, or structural change, you must strictly follow the SpecDD workflow using the **OpenSpec** framework. Minor bug fixes or small refactors can bypass this formal workflow.
 
 ## Skill Integration Policy
 - **Always check installed skills first:** Before implementing any new code, feature, or tool integration, you must scan and verify the installed skills/extensions to leverage the appropriate ones when applicable.
 - **Mandatory Reuse Audit Before Coding:** Before creating any new component, hook, helper, service, test, schema, type, constant, loader, modal, table, filter, or UI pattern, you must first inspect the existing codebase to verify whether an equivalent or adaptable implementation already exists. Only if no suitable option exists may you create a new artifact, and in that case it must be designed as reusable by default instead of being hard-wired to a single screen or flow.
+- Tests must reuse existing production contracts whenever applicable. Do not create or weaken production types to satisfy a simplified or incorrectly defined test; update the test to use the real boundary contract first, and create a new type only when the audited boundary genuinely requires a distinct representation.
 
 ## Next.js: ALWAYS read docs before coding
 Before any Next.js work, find and read the relevant doc in `node_modules/next/dist/docs/`. Your training data is outdated — the docs are the source of truth.
@@ -28,6 +30,15 @@ Whenever the user requests a new feature, module, or structural change, **never 
    - Only after the failing tests exist, write the production code until those tests pass, then run the relevant Jest suites.
    - Mark tasks complete in the change's `tasks.md` file (updating `[ ]` to `[x]`).
 5. **Archiving & Merging:** Once all tasks are completed, run `openspec archive <change-name>` to merge and update the main project specifications.
+
+## TypeScript & Next.js Formatting Rules
+- **Collapsed Imports:** Group all import statements at the top of the file without blank lines between them. Do not separate imports by category using empty lines; keep the entire import block as a single, dense text block.
+- **Maximize Single-Line Statements in Methods:** Keep simple expressions, variable assignments, ternary operators, conditional checks, and method chains (`.map().filter()`) inside methods, functions, hooks, and callbacks on a single line when they remain readable. Do not break those statements unless the total line length exceeds 120 characters or multiline formatting materially improves clarity.
+- **Readable Component JSX:** Do not force component declarations, JSX trees, props, arrays, or object literals used by components onto a single line. Format component markup across multiple lines when it improves readability and reviewability.
+- **No Blank Lines in Methods:** Avoid unnecessary empty lines between variable declarations, assignments, or sequential expressions inside a method, hook, callback, or Server Action. Code lines should remain compact while allowing blank lines between meaningful logical sections.
+- **Readable Component Structure:** Keep hooks (`useState`, `useRouter`), local handlers, and variable definitions organized and readable. Components may use vertical whitespace and multiline JSX to separate major UI sections.
+- **Single-Line Arrow Functions:** For simple callbacks, mapping, or filtering (e.g., `.map()`, `.filter()`), always prefer single-line arrow functions without curly braces or return statements when possible.
+- **No Inline Comments:** Do not inject comments or explanatory text inside method bodies. Code must be dense, clean, and self-documenting.
 
 ## Language Policy
 - User-facing pages, HTML copy, labels, validation messages, error messages, and demo content must be written in Spanish.

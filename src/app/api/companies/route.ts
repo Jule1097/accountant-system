@@ -1,42 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
-import { CompanyService } from 'src/services/company/company.service'
+import { apiResponseMessages } from 'src/lib/constants/api-response'
+import { getAuthenticatedUserId } from 'src/lib/helpers/auth/request-context'
+import { CompanyService } from 'src/services/company/Company'
+import { applicationErrorCodes } from 'src/lib/constants/application-error'
+import { ApplicationError } from 'src/lib/errors/application-error'
+import { resolveApplicationErrorResponse } from 'src/lib/helpers/api/application-error-response'
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
-    let supabaseResponse = NextResponse.next()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return request.cookies.getAll()
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value }) => {
-              request.cookies.set(name, value)
-            })
-            supabaseResponse = NextResponse.next()
-            cookiesToSet.forEach(({ name, value, options }) => {
-              supabaseResponse.cookies.set(name, value, options)
-            })
-          },
-        },
-      }
-    )
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const userId = await getAuthenticatedUserId(request)
+    if (!userId) {
+      throw new ApplicationError(applicationErrorCodes.unauthenticated, apiResponseMessages.auth.invalidSession, 'Company list authentication failed')
     }
 
     const companyService = new CompanyService()
-    const companies = await companyService.getCompaniesByUser(user.id)
+    const companies = await companyService.getCompaniesByUser(userId)
 
     return NextResponse.json(companies)
   } catch (error) {
-    console.error('Error fetching companies:', error)
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+    return resolveApplicationErrorResponse(error, { request, operation: 'fetch companies', resource: 'company', workflow: 'query' })
   }
 }

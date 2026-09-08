@@ -1,67 +1,58 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { ClientService } from 'src/services/client-supplier/client.service'
-import { resolveClientSupplierItemErrorResponse } from 'src/lib/helpers/client-supplier/client-supplier-api'
-import { clientSupplierSchema } from 'src/lib/schemas/client-supplier/client-supplier-schemas'
+import { executeRequestWithContext } from 'src/lib/helpers/api/request-handler'
+import { apiResponseMessages } from 'src/lib/constants/api-response'
+import { httpStatusCodes } from 'src/lib/constants/http'
+import { clientNotFoundError } from 'src/lib/constants/messages'
+import { ClientService } from 'src/services/third-party/Client'
+import { resolveApplicationErrorResponse } from 'src/lib/helpers/api/application-error-response'
+import { clientSupplierSchema } from 'src/lib/schemas/third-party/third-party-schemas'
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
+  return executeRequestWithContext(request, async ({ companyId }) => {
     const { id } = await params
-    const companyId = request.headers.get('x-company-id')!
     const clientService = new ClientService()
     const client = await clientService.getClientById(companyId, id)
 
     if (!client) {
-      return NextResponse.json({ error: 'Cliente no encontrado' }, { status: 404 })
+      return NextResponse.json({ error: clientNotFoundError }, { status: httpStatusCodes.notFound })
     }
 
     return NextResponse.json(client)
-  } catch (error) {
-    console.error('Error fetching client:', error)
-    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
-  }
+  }, (error) => resolveApplicationErrorResponse(error, { request, operation: 'fetch client', resource: 'client' }))
 }
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
+  return executeRequestWithContext(request, async ({ companyId }) => {
     const { id } = await params
-    const companyId = request.headers.get('x-company-id')!
     const body = await request.json()
 
     const parsed = clientSupplierSchema.safeParse(body)
     if (!parsed.success) {
-      return NextResponse.json({ error: 'Datos inválidos', details: parsed.error.format() }, { status: 400 })
+      return NextResponse.json({ error: apiResponseMessages.common.invalidData, details: parsed.error.format() }, { status: httpStatusCodes.badRequest })
     }
 
     const clientService = new ClientService()
     const updatedClient = await clientService.updateClient(companyId, id, parsed.data.name, parsed.data.cuit)
 
     return NextResponse.json(updatedClient)
-  } catch (error: unknown) {
-    const err = error as Error
-    console.error('Error updating client:', err)
-    return resolveClientSupplierItemErrorResponse(err.message)
-  }
+  }, (error) => resolveApplicationErrorResponse(error, { request, operation: 'update client', resource: 'client' }))
 }
 
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
+  return executeRequestWithContext(request, async ({ companyId }) => {
     const { id } = await params
-    const companyId = request.headers.get('x-company-id')!
     const clientService = new ClientService()
 
     await clientService.deleteClient(companyId, id)
-    return new NextResponse(null, { status: 204 })
-  } catch (error) {
-    console.error('Error deleting client:', error)
-    return resolveClientSupplierItemErrorResponse((error as Error).message)
-  }
+    return new NextResponse(null, { status: httpStatusCodes.noContent })
+  }, (error) => resolveApplicationErrorResponse(error, { request, operation: 'delete client', resource: 'client' }))
 }

@@ -5,10 +5,13 @@ import { useEffect, useState } from 'react'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { VoucherManagementView } from 'src/components/vouchers/voucher-management-view'
 import { VoucherModalPerceptions } from 'src/components/vouchers/voucher-modal-perceptions'
+import { VoucherModalActions } from 'src/components/vouchers/voucher-modal-actions'
+import { VoucherTableFilters } from 'src/components/vouchers/voucher-table-filters'
+import { VoucherTableToolbar } from 'src/components/vouchers/voucher-table-toolbar'
 import { useVoucherForm, VoucherFormValues } from 'src/hooks/voucher/use-voucher-form'
 import { ApiRequestError } from 'src/lib/api/api-client'
-import { Voucher } from 'src/models/Voucher'
-import { VoucherParsedData } from 'src/types/voucher/voucher-form'
+import { ParsedVoucherData } from 'src/types/parser/gemini-parser'
+import { VoucherApiResponse } from 'src/types/voucher/voucher-api'
 import { VoucherListResponse, VoucherModalMode, VoucherSummaryResponse } from 'src/types/voucher/voucher'
 
 const toastAdd = jest.fn()
@@ -47,11 +50,7 @@ jest.mock('src/lib/api/api-client', () => ({
     }
   },
   apiRequest: (...args: unknown[]) => apiRequestMock(...args),
-}))
-
-jest.mock('src/lib/helpers/platform/history-navigation', () => ({
-  replaceUrlState: (url: string) => replaceMock(url, { scroll: false }),
-  pushUrlState: jest.fn(),
+  parseJsonResponse: async (response: Response) => response.json(),
 }))
 
 jest.mock('src/hooks/auth/use-auth', () => ({
@@ -81,8 +80,8 @@ jest.mock('src/components/vouchers/voucher-table', () => ({
   }: {
     data: VoucherListResponse
     onAdd: () => void
-    onSelectVoucher: (voucher: Voucher, action?: "view" | "edit") => void
-    onDeleteVoucher: (voucher: Voucher) => void
+    onSelectVoucher: (voucher: VoucherApiResponse, action?: "view" | "edit") => void
+    onDeleteVoucher: (voucher: VoucherApiResponse) => void
   }) => (
     <div data-testid="voucher-table-mock">
       <button type="button" onClick={onAdd}>
@@ -92,6 +91,9 @@ jest.mock('src/components/vouchers/voucher-table', () => ({
         <div key={item.voucher.id}>
           <button type="button" onClick={() => onSelectVoucher(item.voucher, "edit")}>
             Seleccionar {item.voucher.id}
+          </button>
+          <button type="button" onClick={() => onSelectVoucher(item.voucher, "view")}>
+            Ver {item.voucher.id}
           </button>
           <button type="button" onClick={() => onDeleteVoucher(item.voucher)}>
             Eliminar {item.voucher.id}
@@ -116,7 +118,7 @@ jest.mock('src/components/vouchers/voucher-modal', () => ({
     isOpen: boolean
     mode: 'create' | 'edit' | 'view'
     isLoadingDetail?: boolean
-    initialVoucher?: Voucher | null
+    initialVoucher?: VoucherApiResponse | null
   }) => (
     <div data-testid={`${mode}-modal`}>
       {isOpen ? 'open' : 'closed'}|{isLoadingDetail ? 'loading' : 'idle'}|{initialVoucher?.id ?? 'none'}
@@ -134,7 +136,7 @@ jest.mock('src/components/vouchers/voucher-detail-modal', () => ({
     onLoadError,
   }: {
     voucherId: string | null
-    voucher?: Voucher
+    voucher?: VoucherApiResponse
     error?: unknown
     isLoading?: boolean
     mode: VoucherModalMode
@@ -172,7 +174,7 @@ jest.mock('src/components/vouchers/voucher-delete-dialog', () => ({
     onConfirm,
   }: {
     isOpen: boolean
-    voucher: Voucher | null
+    voucher: VoucherApiResponse | null
     onConfirm: () => void
   }) =>
     isOpen ? (
@@ -256,8 +258,8 @@ function PerceptionsHarness() {
   )
 }
 
-function createVoucher(overrides: Record<string, unknown> = {}) {
-  return new Voucher({
+function createVoucher(overrides: Partial<VoucherApiResponse> = {}): VoucherApiResponse {
+  return {
     id: '123e4567-e89b-12d3-a456-426614174010',
     companyId: '123e4567-e89b-12d3-a456-426614174011',
     type: 'purchase',
@@ -266,22 +268,23 @@ function createVoucher(overrides: Record<string, unknown> = {}) {
     posNumber: '00001',
     number: '00000123',
     supplierId: '123e4567-e89b-12d3-a456-426614174014',
-    date: new Date('2026-08-08T00:00:00.000Z'),
-    accountingPeriod: new Date('2026-08-01T00:00:00.000Z'),
-    currency: '$',
-    exchangeRate: 1,
-    subtotal: 100,
-    vatAmount: 21,
-    nonTaxableAmount: 0,
-    exemptAmount: 0,
-    otherTaxesAmount: 0,
-    totalAmount: 136,
-    netAmount: 136,
+    date: '2026-08-08T00:00:00.000Z',
+    accountingPeriod: '2026-08-01T00:00:00.000Z',
+    currency: 'ARS',
+    exchangeRate: '1.0000',
+    subtotal: '100.00',
+    vatAmount: '21.00',
+    nonTaxableAmount: '0.00',
+    exemptAmount: '0.00',
+    otherTaxesAmount: '0.00',
+    totalAmount: '136.00',
+    netAmount: '136.00',
+    saldo: '86.00',
     concept: 'Servicios',
     paymentMethod: 'Transferencia',
     status: 'partial',
-    paymentDate: new Date('2026-08-10T00:00:00.000Z'),
-    paidAmount: 50,
+    paymentDate: '2026-08-10T00:00:00.000Z',
+    paidAmount: '50.00',
     comments: 'Observación breve',
     createdByUserId: '123e4567-e89b-12d3-a456-426614174015',
     retentions: [],
@@ -289,19 +292,22 @@ function createVoucher(overrides: Record<string, unknown> = {}) {
       {
         perceptionConceptId: '123e4567-e89b-12d3-a456-426614174016',
         taxJurisdictionId: '123e4567-e89b-12d3-a456-426614174017',
-        amount: 15,
+        amount: '15.00',
         perceptionConcept: { id: '123e4567-e89b-12d3-a456-426614174016', name: 'Percepción de Ingresos Brutos' },
         taxJurisdiction: { id: '123e4567-e89b-12d3-a456-426614174017', name: 'CABA' },
       },
     ],
     vatDetails: [],
+    clientId: null,
+    client: null,
+    voucherType: { name: 'Factura' },
     voucherLetter: { letter: 'A' },
     supplier: { name: 'Proveedor Uno', cuit: '30-22222222-3' },
     ...overrides,
-  })
+  }
 }
 
-function createVoucherListResponse(vouchers: Voucher[]): VoucherListResponse {
+function createVoucherListResponse(vouchers: VoucherApiResponse[]): VoucherListResponse {
   return {
     items: vouchers.map((voucher) => ({
       rowKey: voucher.id || `${voucher.posNumber}-${voucher.number}`,
@@ -345,6 +351,129 @@ describe('Voucher UI', () => {
 
     expect(screen.getByRole('option', { name: 'CABA' })).toBeInTheDocument()
     expect(screen.getByRole('option', { name: 'Buenos Aires' })).toBeInTheDocument()
+  })
+
+  it('does not show a jurisdiction select for non-IIBB perceptions', async () => {
+    render(<PerceptionsHarness />)
+
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'per-iva' } })
+
+    await waitFor(() => {
+      expect(screen.getAllByRole('combobox')).toHaveLength(1)
+    })
+  })
+
+  it('formats perception amounts with localized decimals', () => {
+    render(<PerceptionsHarness />)
+
+    const amountInput = screen.getByDisplayValue('0,00')
+
+    expect(amountInput).toHaveAttribute('type', 'text')
+    expect(amountInput).toHaveAttribute('inputmode', 'decimal')
+
+    fireEvent.change(amountInput, { target: { value: '200,50' } })
+    fireEvent.blur(amountInput)
+
+    expect(amountInput).toHaveValue('200,50')
+  })
+
+  it('renders voucher filters and forwards their changes', () => {
+    jest.useFakeTimers()
+    const onSearchChange = jest.fn()
+    const onStatusChange = jest.fn()
+    const onDateRangeChange = jest.fn()
+    const onClearFilters = jest.fn()
+    const { container } = render(
+      <VoucherTableFilters
+        query={{ page: 1, pageSize: 10, status: 'pending', dateFrom: '2026-08-01', dateTo: '2026-08-31' }}
+        searchValue="Proveedor"
+        onSearchChange={onSearchChange}
+        onClearFilters={onClearFilters}
+        onStatusChange={onStatusChange}
+        onDateRangeChange={onDateRangeChange}
+      />
+    )
+
+    fireEvent.change(screen.getByPlaceholderText('Buscar por nombre, CUIT...'), { target: { value: 'Acme' } })
+    fireEvent.change(screen.getByDisplayValue('Pendiente'), { target: { value: 'paid' } })
+    const [dateFromInput, dateToInput] = Array.from(container.querySelectorAll('input[type="date"]'))
+    fireEvent.change(dateFromInput, { target: { value: '2026-08-02' } })
+    fireEvent.change(dateToInput, { target: { value: '2026-08-30' } })
+    jest.advanceTimersByTime(1500)
+    fireEvent.click(screen.getByRole('button', { name: 'Borrar filtros' }))
+
+    expect(onSearchChange).toHaveBeenCalledWith('Acme')
+    expect(onStatusChange).toHaveBeenCalledWith('paid')
+    expect(onDateRangeChange).toHaveBeenCalledWith('2026-08-02', '2026-08-30')
+    expect(onClearFilters).toHaveBeenCalledTimes(1)
+    jest.useRealTimers()
+  })
+
+  it('renders table toolbar actions and forwards sorting changes', () => {
+    const onAdd = jest.fn()
+    const onSortChange = jest.fn()
+    render(
+      <VoucherTableToolbar
+        total={4}
+        query={{ page: 1, pageSize: 10, sortBy: 'date', sortOrder: 'desc', voucherId: null }}
+        type="sales"
+        onAdd={onAdd}
+        onSortChange={onSortChange}
+      />
+    )
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Ordenar por' }), { target: { value: 'status:asc' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Agregar Venta' }))
+
+    expect(onSortChange).toHaveBeenCalledWith('status', 'asc')
+    expect(onAdd).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders mode-specific voucher modal actions', () => {
+    const onClose = jest.fn()
+    const { rerender } = render(<VoucherModalActions mode="view" isProcessing={false} isValid={true} primaryButtonLabel="Guardar" onClose={onClose} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar' }))
+    expect(onClose).toHaveBeenCalledTimes(1)
+
+    rerender(<VoucherModalActions mode="edit" isProcessing={true} isValid={false} primaryButtonLabel="Guardando cambios..." onClose={onClose} />)
+
+    expect(screen.getByRole('button', { name: 'Guardando cambios...' })).toBeDisabled()
+  })
+
+  it('keeps the table skeleton visible while voucher data is loading', () => {
+    useVouchersMock.mockReturnValue({ data: undefined, isLoading: true, mutate: jest.fn() })
+
+    render(
+      <VoucherManagementView
+        type="sales"
+        title="Ventas"
+        description="GestiÃ³n"
+      />
+    )
+
+    expect(screen.getByRole('table')).toBeInTheDocument()
+    expect(screen.queryByTestId('voucher-table-mock')).not.toBeInTheDocument()
+  })
+
+  it('opens voucher detail from the current table record without showing a detail loader', async () => {
+    const voucher = createVoucher({ id: 'voucher-view-id' })
+    useVouchersMock.mockReturnValue({ data: createVoucherListResponse([voucher]), isLoading: false, mutate: jest.fn() })
+
+    render(
+      <VoucherManagementView
+        type="sales"
+        title="Ventas"
+        description="GestiÃ³n"
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ver voucher-view-id' }))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('view-modal')).toHaveTextContent('open|idle|voucher-view-id')
+    })
+    expect(useVoucherByIdMock).toHaveBeenLastCalledWith('')
   })
 
   it('renders the compact purchases grid and exposes detail and delete actions per row', () => {
@@ -417,6 +546,7 @@ describe('Voucher UI', () => {
   })
 
   it('applies date filters only when both dates are present', async () => {
+    jest.useFakeTimers()
     const onDateRangeChange = jest.fn()
     const voucher = createVoucher()
     const { container } = render(
@@ -445,10 +575,10 @@ describe('Voucher UI', () => {
     expect(onDateRangeChange).not.toHaveBeenCalled()
 
     fireEvent.change(dateToInput, { target: { value: '2026-08-14' } })
+    jest.advanceTimersByTime(1500)
 
-    await waitFor(() => {
-      expect(onDateRangeChange).toHaveBeenCalledWith('2026-08-01', '2026-08-14')
-    })
+    expect(onDateRangeChange).toHaveBeenCalledWith('2026-08-01', '2026-08-14')
+    jest.useRealTimers()
   })
 
   it('shows direct page shortcuts for pagination jumps', () => {
@@ -564,7 +694,7 @@ describe('Voucher UI', () => {
       })
     )
     expect(onOpenChange).toHaveBeenCalledWith(false)
-    expect(onSuccess).toHaveBeenCalledWith(expect.any(Voucher), 'create')
+    expect(onSuccess).toHaveBeenCalledWith(expect.objectContaining({ type: 'purchase' }), 'create')
     expect(toastAdd).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'success',
@@ -592,7 +722,7 @@ describe('Voucher UI', () => {
       resetKey: 'batch-item-1',
       ...reviewOptions,
     } as Parameters<typeof useVoucherForm>[0]
-    const parsedReviewData: VoucherParsedData = {
+    const parsedReviewData: ParsedVoucherData = {
       posNumber: '1',
       number: '123',
       date: '2026-08-08',
@@ -700,7 +830,7 @@ describe('Voucher UI', () => {
       })
     )
     expect(onOpenChange).not.toHaveBeenCalledWith(false)
-    expect(onSuccess).toHaveBeenCalledWith(expect.any(Voucher), 'edit')
+    expect(onSuccess).toHaveBeenCalledWith(expect.objectContaining({ type: 'purchase' }), 'edit')
     expect(toastAdd).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'success',
@@ -818,7 +948,10 @@ describe('Voucher UI', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar eliminación' }))
 
     await waitFor(() => {
-      expect(apiRequestMock).toHaveBeenCalledWith('/api/vouchers/voucher-delete-id', { method: 'DELETE' })
+      expect(apiRequestMock).toHaveBeenCalledWith('/api/vouchers/voucher-delete-id', {
+        method: 'DELETE',
+        headers: { 'x-company-id': '123e4567-e89b-12d3-a456-426614174011' },
+      })
     })
 
     expect(toastAdd).toHaveBeenCalledWith(

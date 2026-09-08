@@ -1,0 +1,71 @@
+import { CompanyRepository } from 'src/repositories/company/company.repository'
+import { CatalogRepository } from 'src/repositories/catalog/catalog.repository'
+import { VoucherService } from './Voucher'
+import { buildExcelWorkbook } from 'src/lib/helpers/platform/excel-builder'
+import { normalizeCuit } from 'src/lib/domain/cuit'
+import {
+  buildExportFilters,
+  prepareExportWorkbookData,
+  generateExportFilename,
+} from 'src/lib/helpers/voucher/voucher-export'
+import {
+  ExportQueryParams,
+  VoucherExportResult,
+} from 'src/types/voucher/voucher-export'
+import { apiResponseMessages } from 'src/lib/constants/api-response'
+import { applicationErrorCodes } from 'src/lib/constants/application-error'
+import { ApplicationError } from 'src/lib/errors/application-error'
+
+export class VoucherExportService {
+  private companyRepository: CompanyRepository
+  private catalogRepository: CatalogRepository
+  private voucherService: VoucherService
+
+  constructor() {
+    this.companyRepository = new CompanyRepository()
+    this.catalogRepository = new CatalogRepository()
+    this.voucherService = new VoucherService()
+  }
+
+  async exportVouchers(companyId: string, params: ExportQueryParams): Promise<VoucherExportResult> {
+    const company = await this.companyRepository.findById(companyId)
+    if (!company) {
+      throw new ApplicationError(applicationErrorCodes.notFound, apiResponseMessages.voucher.notFound, 'Company not found while exporting vouchers')
+    }
+
+    const { filters, periodString } = buildExportFilters(params)
+
+    const vouchers = await this.voucherService.getAllVouchers(companyId, filters)
+    const allVatRates = await this.catalogRepository.getVatRates()
+    const allRetentionConcepts = await this.catalogRepository.getRetentionConcepts()
+    const allPerceptionConcepts = await this.catalogRepository.getPerceptionConcepts()
+
+    const { columns, data } = prepareExportWorkbookData(params.type, vouchers, {
+      allVatRates,
+      allRetentionConcepts,
+      allPerceptionConcepts,
+    })
+
+    const titleText = params.type === 'sales' ? 'Libro IVA Ventas' : 'Libro IVA Compras'
+    const subTitleText = params.mode === 'declaration' ? `Período: ${periodString}` : 'Filtro: Vista Actual'
+    const companyCuit = company.cuit ? normalizeCuit(company.cuit) : ''
+
+    const workbook = buildExcelWorkbook(
+      titleText,
+      company.name,
+      companyCuit,
+      subTitleText,
+      columns,
+      data
+    )
+
+    const filename = generateExportFilename(params, company.name, periodString)
+    const excelBuffer = await workbook.xlsx.writeBuffer()
+    const buffer = Buffer.from(excelBuffer as ArrayBuffer)
+
+    return {
+      filename,
+      buffer,
+    }
+  }
+}

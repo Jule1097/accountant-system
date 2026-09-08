@@ -1,13 +1,6 @@
 import { ApiRequestError } from "src/lib/api/api-client";
-import {
-  createNormalizedSearchParams,
-  readEnumParam,
-  readOptionalDateParam,
-  readOptionalEnumParam,
-  readOptionalStringParam,
-  readPositiveIntegerParam,
-} from "src/lib/helpers/platform/query-state";
-import { Voucher } from "src/models/Voucher";
+import { parseUrlState, updateUrlState } from "src/lib/helpers/shared/url-state";
+import { VoucherApiResponse } from "src/types/voucher/voucher-api";
 import {
   VoucherListQueryState,
   VoucherListResponse,
@@ -19,10 +12,23 @@ import {
 } from "src/types/voucher/voucher";
 
 export const voucherPageSizeOptions = [10, 20, 50] as const;
+export const voucherSearchDebounceMs = 1500;
 
 const voucherStatusOptions: VoucherStatus[] = ["pending", "partial", "paid"];
 const voucherSortByOptions: VoucherSortBy[] = ["date", "status", "voucher"];
 const voucherSortOrderOptions: VoucherSortOrder[] = ["asc", "desc"];
+
+export const voucherTableParameters = {
+  page: { defaultValue: 1, parse: (value: string | null) => Number(value), normalize: (value: number) => Number.isInteger(value) && value > 0 ? value : 1, serialize: (value: number) => value === 1 ? null : String(value) },
+  pageSize: { defaultValue: 10, parse: (value: string | null) => Number(value), normalize: (value: number) => voucherPageSizeOptions.includes(value as typeof voucherPageSizeOptions[number]) ? value : 10, serialize: (value: number) => value === 10 ? null : String(value), allowedValues: voucherPageSizeOptions },
+  search: { defaultValue: "", serialize: (value: string) => value || null },
+  status: { defaultValue: undefined, parse: (value: string | null) => value ? value as VoucherStatus : undefined, allowedValues: voucherStatusOptions },
+  dateFrom: { defaultValue: undefined, parse: (value: string | null) => value ?? undefined },
+  dateTo: { defaultValue: undefined, parse: (value: string | null) => value ?? undefined },
+  sortBy: { defaultValue: "date", serialize: (value: VoucherSortBy) => value === "date" ? null : value, allowedValues: voucherSortByOptions },
+  sortOrder: { defaultValue: "desc", serialize: (value: VoucherSortOrder) => value === "desc" ? null : value, allowedValues: voucherSortOrderOptions },
+  voucherId: { defaultValue: null, parse: (value: string | null) => value },
+} as const;
 
 export function resolveVoucherRecordType(type: VoucherScreenType): VoucherRecordType {
   if (type === "sales") {
@@ -33,47 +39,15 @@ export function resolveVoucherRecordType(type: VoucherScreenType): VoucherRecord
 }
 
 export function readVoucherListQuery(searchParams: URLSearchParams): VoucherListQueryState {
-  const pageSize = readPositiveIntegerParam(searchParams, "pageSize", 10);
-  const normalizedPageSize = voucherPageSizeOptions.includes(pageSize as 10 | 20 | 50) ? pageSize : 10;
-
-  return {
-    page: readPositiveIntegerParam(searchParams, "page", 1),
-    pageSize: normalizedPageSize,
-    search: readOptionalStringParam(searchParams, "search"),
-    status: readOptionalEnumParam(searchParams, "status", voucherStatusOptions),
-    dateFrom: readOptionalDateParam(searchParams, "dateFrom"),
-    dateTo: readOptionalDateParam(searchParams, "dateTo"),
-    sortBy: readEnumParam(searchParams, "sortBy", voucherSortByOptions, "date"),
-    sortOrder: readEnumParam(searchParams, "sortOrder", voucherSortOrderOptions, "desc"),
-    voucherId: readOptionalStringParam(searchParams, "voucherId") ?? null,
-  };
+  return parseUrlState(searchParams, voucherTableParameters) as VoucherListQueryState;
 }
 
 export function buildVoucherSearchParams(query: VoucherListQueryState): URLSearchParams {
-  return createNormalizedSearchParams(
-    {
-      page: query.page,
-      pageSize: query.pageSize,
-      search: query.search,
-      status: query.status,
-      dateFrom: query.dateFrom,
-      dateTo: query.dateTo,
-      sortBy: query.sortBy,
-      sortOrder: query.sortOrder,
-      voucherId: query.voucherId,
-    },
-    {
-      page: 1,
-      pageSize: 10,
-      sortBy: "date",
-      sortOrder: "desc",
-    }
-  );
+  return updateUrlState(new URLSearchParams(), voucherTableParameters, query);
 }
 
-export function buildVoucherQuery(searchParams: URLSearchParams, nextQuery: VoucherListQueryState): string {
+export function buildVoucherQuery(nextQuery: VoucherListQueryState): string {
   const normalizedParams = buildVoucherSearchParams(nextQuery);
-  void searchParams
   const queryString = normalizedParams.toString();
 
   if (!queryString) {
@@ -159,11 +133,6 @@ export function getVoucherStatusBadgeClassName(status: string): string {
   return "bg-[#FF5C0018] text-[#FF5C00]";
 }
 
-export function getVoucherFormattedAmount(currency: string, value: number): string {
-  const currencyLabel = currency === "USD" ? "USD" : "$";
-  return `${currencyLabel} ${value.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
 export function getVoucherFormattedExchangeRate(value: number): string {
   return value.toLocaleString("es-AR", {
     minimumFractionDigits: 2,
@@ -171,15 +140,7 @@ export function getVoucherFormattedExchangeRate(value: number): string {
   });
 }
 
-export function getVoucherFormattedDate(value?: Date | null): string {
-  if (!value) {
-    return "—";
-  }
-
-  return new Date(value).toLocaleDateString("es-AR", { timeZone: "UTC" });
-}
-
-export function getVoucherTaxTotal(voucher: Voucher, type: VoucherScreenType): number {
+export function getVoucherTaxTotal(voucher: VoucherApiResponse, type: VoucherScreenType): number {
   const list = type === "sales" ? voucher.retentions : voucher.perceptions;
   return list.reduce((sum, item) => sum + Number(item.amount || 0), 0);
 }

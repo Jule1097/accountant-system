@@ -5,7 +5,7 @@ import { resolveGeminiCatalogMatch } from 'src/lib/helpers/parser/gemini-parser'
 import { resolveTaxJurisdictionName } from 'src/lib/domain/tax-jurisdictions'
 import {
   GeminiParserCatalogs,
-  GeminiParserResponse,
+  ParsedVoucherData,
   RawGeminiParsedVoucher,
   RawGeminiTaxItem,
   RawGeminiVatDetail,
@@ -181,7 +181,7 @@ export class GeminiParsedVoucher {
     return this.normalizeThirdPartyCuit(this.extractedData.thirdPartyCuit)
   }
 
-  toResponse(catalogs: GeminiParserCatalogs, thirdPartyId: string | null): GeminiParserResponse {
+  toResponse(catalogs: GeminiParserCatalogs, thirdPartyId: string | null): ParsedVoucherData {
     const thirdPartyCuit = this.getLookupThirdPartyCuit()
     const thirdPartyName = this.normalizeThirdPartyName(thirdPartyCuit)
     const currency = this.normalizeCurrency(this.extractedData.currency)

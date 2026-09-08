@@ -49,6 +49,7 @@ CLAUDE.md
 .agent
 .gemini
 .devin
+.fallow
 
 # Supabase
 supabase/.temp/

@@ -1,14 +1,14 @@
-import { NextResponse } from 'next/server'
-import { CatalogService } from 'src/services/catalog/catalog.service'
+import { NextRequest, NextResponse } from 'next/server'
+import { resolveApplicationErrorResponse } from 'src/lib/helpers/api/application-error-response'
+import { CatalogService } from 'src/services/catalog/Catalog'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const catalogService = new CatalogService()
     const catalog = await catalogService.getFullCatalog()
     
     return NextResponse.json(catalog)
   } catch (error) {
-    console.error('Error fetching catalogs:', error)
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+    return resolveApplicationErrorResponse(error, { request, operation: 'fetch catalogs', resource: 'catalog', workflow: 'query' })
   }
 }

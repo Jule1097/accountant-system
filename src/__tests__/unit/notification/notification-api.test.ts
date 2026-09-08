@@ -1,14 +1,25 @@
 import { NextRequest } from "next/server"
 import { GET } from "src/app/api/notifications/route"
-import { CompanyNotificationService } from "src/services/company/company-notification.service"
+import { CompanyNotificationService } from "src/services/company/CompanyNotification"
 
-jest.mock("src/services/company/company-notification.service")
+jest.mock("src/services/company/CompanyNotification")
+jest.mock("src/lib/helpers/auth/request-context", () => {
+  const { RequestContextError } = jest.requireActual("src/lib/errors/request-context")
+  const { requestContextErrorCodes } = jest.requireActual("src/lib/constants/auth")
+  return {
+    requireRequestContext: jest.fn(async (request: NextRequest) => {
+      const companyId = request.headers.get("x-company-id")
+      if (!companyId) throw new RequestContextError(requestContextErrorCodes.companyRequired)
+      return { userId: "user-1", companyId }
+    }),
+  }
+})
 
 function createRequest(overrides: Partial<NextRequest> = {}) {
   return {
     headers: { get: () => "company-1" },
     ...overrides,
-  } as unknown as NextRequest
+  } as NextRequest
 }
 
 describe("Notification API Route Handler", () => {

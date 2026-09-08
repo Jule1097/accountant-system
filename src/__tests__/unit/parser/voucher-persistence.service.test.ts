@@ -1,12 +1,12 @@
 import { ParserBatchRepository } from "src/repositories/parser/parser-batch.repository";
-import { VoucherService } from "src/services/voucher/voucher.service";
-import { VoucherPersistenceService } from "src/services/parser/voucher-persistence.service";
+import { VoucherService } from "src/services/voucher/Voucher";
+import { VoucherPersistenceService } from "src/services/parser/VoucherPersistence";
 import { AsyncBatchRunner } from "src/types/parser/async-batch-runner";
 import { ParserBatchItemContextRecord } from "src/types/parser/parser-batch";
 import { VoucherFormPayload } from "src/types/voucher/voucher-form";
 
 jest.mock("src/repositories/parser/parser-batch.repository");
-jest.mock("src/services/voucher/voucher.service");
+jest.mock("src/services/voucher/Voucher");
 
 const companyId = "123e4567-e89b-12d3-a456-426614174001";
 const supplierId = "123e4567-e89b-12d3-a456-426614174002";
@@ -89,8 +89,8 @@ describe("VoucherPersistenceService", () => {
     batchRepositoryMock = new ParserBatchRepository() as jest.Mocked<ParserBatchRepository>;
     voucherServiceMock = new VoucherService() as jest.Mocked<VoucherService>;
 
-    (service as unknown as { batchRepository: ParserBatchRepository }).batchRepository = batchRepositoryMock;
-    (service as unknown as { voucherService: VoucherService }).voucherService = voucherServiceMock;
+    Object.defineProperty(service, "batchRepository", { value: batchRepositoryMock, writable: true });
+    Object.defineProperty(service, "voucherService", { value: voucherServiceMock, writable: true });
   });
 
   it("persists the validated purchase payload without losing voucher number or supplier", async () => {

@@ -9,11 +9,11 @@ import {
   DialogTitle,
 } from "src/components/ui/dialog";
 import { Button } from "src/components/ui/button";
-import { Voucher } from "src/models/Voucher";
+import { VoucherApiResponse } from "src/types/voucher/voucher-api";
 
 interface VoucherDeleteDialogProps {
   isOpen: boolean;
-  voucher: Voucher | null;
+  voucher: VoucherApiResponse | null;
   isDeleting: boolean;
   title?: string;
   description?: string;
@@ -21,7 +21,7 @@ interface VoucherDeleteDialogProps {
   onConfirm: () => void;
 }
 
-function resolveDeleteDescription(voucher: Voucher | null, description?: string): string {
+function resolveDeleteDescription(voucher: VoucherApiResponse | null, description?: string): string {
   if (description) {
     return description;
   }

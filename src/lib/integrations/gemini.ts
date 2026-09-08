@@ -181,7 +181,12 @@ async function parseGeminiResponseWithSchema(
   try {
     return JSON.parse(text) as RawGeminiParsedVoucher;
   } catch (error: unknown) {
-    console.error("Failed to parse Gemini response as JSON:", error);
+    console.error("Failed to parse Gemini response as JSON", {
+      operation: "parse-gemini-response",
+      workflowState: "failed",
+      providerName: "gemini",
+      errorName: error instanceof Error ? error.name : "UnknownError",
+    });
     throw new Error("Failed to parse invoice");
   }
 }

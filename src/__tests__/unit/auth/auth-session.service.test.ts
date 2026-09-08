@@ -1,4 +1,4 @@
-import { AuthSessionService } from "src/services/auth/auth-session.service"
+import { AuthSessionService } from "src/services/auth/AuthSession"
 
 describe("AuthSessionService", () => {
   const signInWithPassword = jest.fn()

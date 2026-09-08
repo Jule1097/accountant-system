@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { executeRequestWithContext } from "src/lib/helpers/api/request-handler";
+import { apiResponseMessages } from "src/lib/constants/api-response";
+import { httpStatusCodes } from "src/lib/constants/http";
 import { conciliationsQuerySchema } from "src/lib/schemas/conciliation/conciliations-schemas";
-import { ConciliationsService } from "src/services/conciliation/conciliations.service";
+import { ConciliationsService } from "src/services/conciliation/Conciliations";
+import { resolveApplicationErrorResponse } from "src/lib/helpers/api/application-error-response";
 
-export async function GET(request: NextRequest): Promise<NextResponse> {
-  try {
-    const companyId = request.headers.get("x-company-id");
-
-    if (!companyId) {
-      return NextResponse.json({ error: "Falta la empresa activa" }, { status: 400 });
-    }
-
+export async function GET(request: NextRequest): Promise<Response> {
+  return executeRequestWithContext(request, async ({ companyId }) => {
     const url = new URL(request.url);
     const parsedQuery = conciliationsQuerySchema.safeParse({
       batchId: url.searchParams.get("batchId") || undefined,
@@ -18,7 +16,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     });
 
     if (!parsedQuery.success) {
-      return NextResponse.json({ error: "La búsqueda de conciliaciones es inválida" }, { status: 400 });
+      return NextResponse.json({ error: apiResponseMessages.conciliation.searchInvalid }, { status: httpStatusCodes.badRequest });
     }
 
     const conciliationsService = new ConciliationsService();
@@ -30,8 +28,5 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     );
 
     return NextResponse.json(page);
-  } catch (error: unknown) {
-    console.error("Error fetching conciliations:", error);
-    return NextResponse.json({ error: "No se pudieron cargar las conciliaciones" }, { status: 500 });
-  }
+  }, (error) => resolveApplicationErrorResponse(error, { request, operation: "fetch conciliations", resource: "conciliation", workflow: "query", unexpectedMessage: apiResponseMessages.conciliation.loadFailed }))
 }

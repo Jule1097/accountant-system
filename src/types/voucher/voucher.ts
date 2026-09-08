@@ -1,6 +1,5 @@
-import { Prisma } from 'src/generated/prisma/client'
+import type { VoucherApiResponse } from 'src/types/voucher/voucher-api'
 import { useVouchers, useVoucherSummary } from 'src/hooks/voucher/use-vouchers'
-import { Voucher } from 'src/models/Voucher'
 
 export type VoucherRecordType = 'sale' | 'purchase'
 
@@ -10,39 +9,10 @@ export type VoucherSortBy = 'date' | 'status' | 'voucher'
 
 export type VoucherSortOrder = 'asc' | 'desc'
 
-export interface VoucherRetention {
-  retentionConceptId: string
-  taxJurisdictionId?: string | null
-  amount: Prisma.Decimal | number
-  retentionConcept?: {
-    id: string
-    name: string
-    type?: string
-  } | null
-  taxJurisdiction?: {
-    id: string
-    name: string
-  } | null
-}
-
-export interface VoucherPerception {
-  perceptionConceptId: string
-  taxJurisdictionId?: string | null
-  amount: Prisma.Decimal | number
-  perceptionConcept?: {
-    id: string
-    name: string
-  } | null
-  taxJurisdiction?: {
-    id: string
-    name: string
-  } | null
-}
-
 export interface VoucherVatDetail {
   vatRateId: string
-  subtotal: Prisma.Decimal | number
-  vatAmount: Prisma.Decimal | number
+  subtotal: string | number
+  vatAmount: string | number
   vatRate?: {
     id: string
     name: string
@@ -71,16 +41,16 @@ export interface VoucherListQueryState {
   voucherId?: string | null
 }
 
-export interface VoucherListItem {
+export interface VoucherListItem<TVoucher = VoucherApiResponse> {
   rowKey: string
-  voucher: Voucher
+  voucher: TVoucher
   composedVoucherId: string
   partyName: string | null
   partyCuit: string | null
 }
 
-export interface VoucherListResponse {
-  items: VoucherListItem[]
+export interface VoucherListResponse<TVoucher = VoucherApiResponse> {
+  items: VoucherListItem<TVoucher>[]
   page: number
   pageSize: number
   total: number
@@ -93,26 +63,21 @@ export interface VoucherSummaryResponse {
   topPartyName: string | null
 }
 
-export interface VoucherCollectionKey {
-  type: VoucherRecordType
-  query: VoucherListQueryState
-}
-
 export type VoucherScreenType = 'sales' | 'purchases'
 
 export type VoucherModalMode = 'create' | 'edit' | 'view'
 
 export interface UseVouchersResult {
-  data: VoucherListResponse | undefined
+  data: VoucherListResponse<VoucherApiResponse> | undefined
   isLoading: boolean
-  mutate: () => Promise<VoucherListResponse | undefined>
+  mutate: () => Promise<VoucherListResponse<VoucherApiResponse> | undefined>
 }
 
 export interface UseVoucherByIdResult {
-  data: Voucher | undefined
+  data: VoucherApiResponse | undefined
   isLoading: boolean
   error: unknown
-  mutate: () => Promise<Voucher | undefined>
+  mutate: () => Promise<VoucherApiResponse | undefined>
 }
 
 export interface UseVoucherSummaryResult {
@@ -127,23 +92,23 @@ export interface UseVoucherManagementResult {
   voucherId: string | null;
   viewVoucherId: string | null;
   setViewVoucherId: (id: string | null) => void;
-  voucherPendingDelete: Voucher | null;
+  voucherPendingDelete: VoucherApiResponse | null;
   query: VoucherListQueryState;
   searchValue: string;
   isTableLoading: boolean;
   isSummaryLoading: boolean;
   vouchersData: ReturnType<typeof useVouchers>["data"];
   summaryData: ReturnType<typeof useVoucherSummary>["data"];
-  voucherDetail: Voucher | undefined;
+  voucherDetail: VoucherApiResponse | undefined;
   voucherDetailError: unknown;
   isVoucherDetailLoading: boolean;
   openCreateModal: () => void;
   handleCreateModalOpenChange: (open: boolean) => void;
   handleEditModalOpenChange: (open: boolean) => void;
-  handleSelectVoucher: (voucher: Voucher, action?: "view" | "edit") => void;
+  handleSelectVoucher: (voucher: VoucherApiResponse, action?: "view" | "edit") => void;
   handleCreateSuccess: () => Promise<void>;
-  handleEditSuccess: (_voucher: Voucher, mode: VoucherModalMode) => Promise<void>;
-  handleDeleteVoucher: (voucher: Voucher) => void;
+  handleEditSuccess: (_voucher: VoucherApiResponse, mode: VoucherModalMode) => Promise<void>;
+  handleDeleteVoucher: (voucher: VoucherApiResponse) => void;
   handleDeleteDialogOpenChange: (open: boolean) => void;
   handleVoucherDetailError: (error: unknown) => void;
   handleSearchChange: (value: string) => void;

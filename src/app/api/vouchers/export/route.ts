@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { VoucherExportService } from 'src/services/voucher/voucher-export.service'
+import { executeRequestWithContext } from 'src/lib/helpers/api/request-handler'
+import { apiResponseMessages } from 'src/lib/constants/api-response'
+import { httpStatusCodes } from 'src/lib/constants/http'
+import { VoucherExportService } from 'src/services/voucher/VoucherExport'
 import { voucherExportQuerySchema } from 'src/lib/schemas/voucher/voucher-export-schemas'
 import { ExportQueryParams } from 'src/types/voucher/voucher-export'
+import { resolveApplicationErrorResponse } from 'src/lib/helpers/api/application-error-response'
 
-export async function GET(request: NextRequest): Promise<NextResponse> {
-  try {
-    const companyId = request.headers.get('x-company-id')
-    if (!companyId) {
-      return NextResponse.json({ error: 'x-company-id header is missing' }, { status: 400 })
-    }
+export async function GET(request: NextRequest): Promise<Response> {
+  return executeRequestWithContext(request, async ({ companyId }) => {
 
     const { searchParams } = request.nextUrl
     const queryData = {
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     const parsed = voucherExportQuerySchema.safeParse(queryData)
     if (!parsed.success) {
-      return NextResponse.json({ error: 'Parámetros de búsqueda inválidos.' }, { status: 400 })
+      return NextResponse.json({ error: apiResponseMessages.common.invalidSearchParameters }, { status: httpStatusCodes.badRequest })
     }
 
     const exportService = new VoucherExportService()
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const result = await exportService.exportVouchers(companyId, params)
 
     const response = new NextResponse(new Uint8Array(result.buffer), {
-      status: 200,
+      status: httpStatusCodes.ok,
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         'Content-Disposition': `attachment; filename="${result.filename}"`,
@@ -56,8 +56,5 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       },
     })
     return response
-  } catch (error) {
-    console.error('Error generating Excel export:', error)
-    return NextResponse.json({ error: 'Error interno del servidor al exportar Excel' }, { status: 500 })
-  }
+  }, (error) => resolveApplicationErrorResponse(error, { request, operation: 'export vouchers', resource: 'voucher', workflow: 'export' }))
 }

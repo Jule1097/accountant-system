@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createRequestSupabaseClient } from "src/lib/integrations/supabase-server"
 import { createAuthJsonResponse, resolveAuthErrorResponse } from "src/lib/helpers/auth/auth-response"
-import { AuthSessionService } from "src/services/auth/auth-session.service"
+import { AuthSessionService } from "src/services/auth/AuthSession"
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const response = NextResponse.next()
@@ -13,9 +13,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     await authSessionService.logout(supabase)
 
     return createAuthJsonResponse(response, { success: true })
-  } catch (error: unknown) {
-    const err = error as Error
-    console.error("Error logging out:", err)
-    return resolveAuthErrorResponse(err.message, response)
+  } catch (error) {
+    console.error("Authentication logout failed", { path: request.nextUrl.pathname, operation: "logout", errorName: error instanceof Error ? error.name : "UnknownError" })
+    return resolveAuthErrorResponse(error, response)
   }
 }

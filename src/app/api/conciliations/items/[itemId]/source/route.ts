@@ -1,42 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
+import { executeRequestWithContext } from "src/lib/helpers/api/request-handler";
+import { apiResponseMessages } from "src/lib/constants/api-response";
+import { httpStatusCodes } from "src/lib/constants/http";
 import { conciliationItemParamsSchema } from "src/lib/schemas/conciliation/conciliations-schemas";
-import { ConciliationsService } from "src/services/conciliation/conciliations.service";
+import { ConciliationsService } from "src/services/conciliation/Conciliations";
+import { resolveApplicationErrorResponse } from "src/lib/helpers/api/application-error-response";
 
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ itemId: string }> }
-): Promise<NextResponse> {
-  try {
-    const companyId = request.headers.get("x-company-id") || request.nextUrl.searchParams.get("companyId");
-
-    if (!companyId) {
-      return NextResponse.json({ error: "Falta la empresa activa" }, { status: 400 });
-    }
-
+): Promise<Response> {
+  return executeRequestWithContext(request, async ({ companyId }) => {
     const params = await context.params;
     const parsedParams = conciliationItemParamsSchema.safeParse(params);
 
     if (!parsedParams.success) {
-      return NextResponse.json({ error: "El ítem solicitado es inválido" }, { status: 400 });
+      return NextResponse.json({ error: apiResponseMessages.conciliation.invalidItem }, { status: httpStatusCodes.badRequest });
     }
 
     const conciliationsService = new ConciliationsService();
     const sourceFile = await conciliationsService.getSourceFile(companyId, parsedParams.data.itemId);
 
     return new NextResponse(new Uint8Array(sourceFile.buffer), {
-      status: 200,
+      status: httpStatusCodes.ok,
       headers: {
         "Content-Type": sourceFile.mimeType,
         "Content-Disposition": `inline; filename="${sourceFile.fileName}"`,
       },
     });
-  } catch (error: unknown) {
-    console.error("Error fetching conciliation source file:", error);
-
-    if (error instanceof Error) {
-      return NextResponse.json({ error: error.message }, { status: 404 });
-    }
-
-    return NextResponse.json({ error: "No se pudo cargar el archivo fuente" }, { status: 500 });
-  }
+  }, (error) => resolveApplicationErrorResponse(error, { request, operation: "fetch conciliation source file", resource: "conciliation", workflow: "source" }));
 }

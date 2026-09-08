@@ -11,9 +11,9 @@ const handlePageChangeMock = jest.fn();
 const handleReviewMock = jest.fn();
 const handleRegenerateMock = jest.fn();
 const handlePersistMock = jest.fn();
-const handlePersistBatchMock = jest.fn();
+const handlePersistSectionMock = jest.fn();
 const handleDeleteMock = jest.fn();
-const handleDeleteSelectedMock = jest.fn();
+const handleDeleteSectionMock = jest.fn();
 const handleToggleItemSelectionMock = jest.fn();
 const handleToggleAllDiscardableMock = jest.fn();
 const handleReviewModalOpenChangeMock = jest.fn();
@@ -157,10 +157,22 @@ jest.mock("src/hooks/conciliation/use-conciliations", () => ({
     reviewItem: undefined,
     isReviewItemLoading: false,
     reviewSourceUrl: null,
+    getSectionSelectionState: (section: { items: Array<{ id: string; canDiscard: boolean; status: string }> }) => {
+      const discardableItemIds = section.items.filter((item) => item.canDiscard).map((item) => item.id);
+      const validatedItemIds = section.items.filter((item) => item.status === "Validada").map((item) => item.id);
+      const selectedItemIds = ["item-ready", "item-validated"];
+      return {
+        discardableItemIds,
+        validatedItemIds,
+        selectedDiscardableItemIds: discardableItemIds.filter((itemId) => selectedItemIds.includes(itemId)),
+        selectedValidatedItemIds: validatedItemIds.filter((itemId) => selectedItemIds.includes(itemId)),
+        allDiscardableSelected: false,
+      };
+    },
+    handlePersistSection: handlePersistSectionMock,
+    handleDeleteSection: handleDeleteSectionMock,
+    confirmDeleteDialog: jest.fn(),
     isVoucherSelected: (itemId: string) => itemId === "item-ready" || itemId === "item-validated",
-    getSelectedCount: (itemIds: string[]) =>
-      itemIds.filter((itemId) => itemId === "item-ready" || itemId === "item-validated").length,
-    areAllSectionItemsSelected: () => false,
     handleTabChange: handleTabChangeMock,
     handlePageChange: handlePageChangeMock,
     handleToggleItemSelection: handleToggleItemSelectionMock,
@@ -172,11 +184,7 @@ jest.mock("src/hooks/conciliation/use-conciliations", () => ({
     handleReviewSubmit: handleReviewSubmitMock,
     handleRegenerate: handleRegenerateMock,
     handlePersist: handlePersistMock,
-    handlePersistBatch: handlePersistBatchMock,
     handleDelete: handleDeleteMock,
-    handleDeleteSelected: handleDeleteSelectedMock,
-    confirmDelete: jest.fn(),
-    confirmDeleteSelected: jest.fn(),
   }),
 }));
 
@@ -270,14 +278,14 @@ describe("Login Theme & Conciliations UI", () => {
       expect.objectContaining({ id: "item-ready" }),
       false
     );
-    expect(handleDeleteSelectedMock).toHaveBeenCalled();
+    expect(handleDeleteSectionMock).toHaveBeenCalled();
   });
 
   it("shows mass confirmation button for validated items and current batch", async () => {
     render(<ConciliationsPage />);
 
     fireEvent.click((await screen.findAllByRole("button", { name: "Guardar seleccionadas (1)" }))[0]);
-    expect(handlePersistBatchMock).toHaveBeenCalled();
+    expect(handlePersistSectionMock).toHaveBeenCalled();
   });
 
   it("does not mount closed overlays while conciliations is idle", async () => {

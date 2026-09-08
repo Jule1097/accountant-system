@@ -1,3 +1,5 @@
+import { isError } from "src/lib/helpers/shared/type-guards"
+
 export class ApiRequestError extends Error {
   status: number
   payload: unknown
@@ -8,6 +10,14 @@ export class ApiRequestError extends Error {
     this.status = status
     this.payload = payload
   }
+}
+
+export function isApiRequestError(value: unknown): value is ApiRequestError {
+  return isError(value) && value.name === "ApiRequestError" && "status" in value && typeof value.status === "number"
+}
+
+export async function parseJsonResponse<T>(response: Response): Promise<T> {
+  return response.json() as Promise<T>
 }
 
 async function parseErrorPayload(response: Response): Promise<unknown> {

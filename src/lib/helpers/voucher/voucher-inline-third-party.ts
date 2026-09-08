@@ -1,8 +1,9 @@
 import { compareCuit } from "src/lib/domain/cuit"
-import { normalizeClientSupplierName } from "src/lib/helpers/client-supplier/client-supplier"
-import { ClientSupplierFormValues, ClientSupplierModalInitialValues, ClientSupplierRecord } from "src/types/client-supplier/client-supplier"
+import { normalizeThirdPartyName } from "src/lib/helpers/third-party/third-party"
+import { ClientSupplierFormValues, ClientSupplierModalInitialValues, ClientSupplierRecord } from "src/types/third-party/third-party-resource"
 import { VoucherScreenType } from "src/types/voucher/voucher"
-import { VoucherParsedData, VoucherThirdPartyOption } from "src/types/voucher/voucher-form"
+import { ParsedVoucherData } from "src/types/parser/gemini-parser"
+import { VoucherThirdPartyOption } from "src/types/voucher/voucher-form"
 
 export function resolveVoucherThirdPartyEndpoint(type: VoucherScreenType): string {
   if (type === "sales") {
@@ -21,7 +22,7 @@ export function resolveVoucherThirdPartyModalType(type: VoucherScreenType): "cli
 }
 
 export function resolveVoucherInlineInitialValues(
-  parsedData: VoucherParsedData | null | undefined,
+  parsedData: ParsedVoucherData | null | undefined,
   selectedThirdParty: VoucherThirdPartyOption | undefined
 ): ClientSupplierModalInitialValues {
   return {
@@ -31,7 +32,7 @@ export function resolveVoucherInlineInitialValues(
 }
 
 export function shouldShowVoucherInlineThirdPartyAction(
-  parsedData: VoucherParsedData | null | undefined,
+  parsedData: ParsedVoucherData | null | undefined,
   selectedThirdParty: VoucherThirdPartyOption | undefined
 ): boolean {
   if (selectedThirdParty) {
@@ -67,10 +68,10 @@ export function resolveMatchingVoucherThirdPartyRecord(
   records: ClientSupplierRecord[],
   values: ClientSupplierFormValues
 ): ClientSupplierRecord | null {
-  const normalizedName = normalizeClientSupplierName(values.name)
+  const normalizedName = normalizeThirdPartyName(values.name)
   const exactMatches = records.filter((record) => {
     const sameCuit = values.cuit ? compareCuit(record.cuit, values.cuit) : false
-    const sameName = values.name ? normalizeClientSupplierName(record.name) === normalizedName : false
+    const sameName = values.name ? normalizeThirdPartyName(record.name) === normalizedName : false
 
     if (values.name && values.cuit) {
       return sameCuit && sameName

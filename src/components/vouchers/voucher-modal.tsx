@@ -1,53 +1,35 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Suspense, use, useState } from "react";
-import { LoaderCircle } from "lucide-react";
-import { Button } from "src/components/ui/button";
+import { Suspense, use } from "react";
 import { DialogLoadingState } from "src/components/ui/dialog-loading-state";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "src/components/ui/dialog";
-import { ConciliationReviewPreview } from "src/components/conciliations/conciliation-review-preview";
-import { VoucherModalCoreFields } from "src/components/vouchers/voucher-modal-core-fields";
-import { VoucherModalDropzone } from "src/components/vouchers/voucher-modal-dropzone";
-import { VoucherModalPerceptions } from "src/components/vouchers/voucher-modal-perceptions";
-import { VoucherModalRetentions } from "src/components/vouchers/voucher-modal-retentions";
-import { UseVoucherFormProps, useVoucherForm } from "src/hooks/voucher/use-voucher-form";
-import { useVoucherInlineThirdParty } from "src/hooks/voucher/use-voucher-inline-third-party";
-import { VoucherFormOptionsData, useVoucherFormOptions } from "src/hooks/voucher/use-voucher-form-options";
-import { Voucher } from "src/models/Voucher";
-import { ClientSupplierModal } from "src/components/clients-suppliers/client-supplier-modal";
-import { resolveClientSupplierAddButtonLabel } from "src/lib/helpers/client-supplier/client-supplier-ui";
-import { VoucherParsedData } from "src/types/voucher/voucher-form";
-import { VoucherModalMode, VoucherScreenType } from "src/types/voucher/voucher";
+import { ResourceModal } from "src/components/ui/resource-modal";
+import { VoucherModalForm } from "src/components/vouchers/voucher-modal-form";
+import type { VoucherModalFormProps } from "src/components/vouchers/voucher-modal-form";
+import { useVoucherFormOptions } from "src/hooks/voucher/use-voucher-form-options";
+import type { VoucherFormOptionsData } from "src/hooks/voucher/use-voucher-form-options";
+import type { ParsedVoucherData } from "src/types/parser/gemini-parser";
+import type { VoucherApiResponse } from "src/types/voucher/voucher-api";
+import type { VoucherModalMode, VoucherScreenType } from "src/types/voucher/voucher";
 
 interface VoucherModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   type: VoucherScreenType;
   mode: VoucherModalMode;
-  initialVoucher?: Voucher | null;
-  initialParsedData?: VoucherParsedData | null;
+  initialVoucher?: VoucherApiResponse | null;
+  initialParsedData?: ParsedVoucherData | null;
   isLoadingDetail?: boolean;
   resetKey?: string;
-  submitAction?: UseVoucherFormProps["submitAction"];
+  submitAction?: VoucherModalFormProps["submitAction"];
   submitButtonLabel?: string;
   titleOverride?: string;
   descriptionOverride?: string;
   sidePanel?: ReactNode;
-  onSuccess?: (voucher: Voucher, mode: VoucherModalMode) => void;
+  onSuccess?: (voucher: VoucherApiResponse, mode: VoucherModalMode) => void;
 }
 
 export interface VoucherModalReadyProps extends VoucherModalProps {
-  options: VoucherFormOptionsData;
-}
-
-interface VoucherModalFormProps extends Omit<UseVoucherFormProps, "catalogs" | "thirdParties"> {
   options: VoucherFormOptionsData;
 }
 
@@ -55,302 +37,36 @@ interface VoucherModalAsyncFormProps extends VoucherModalProps {
   optionsPromise: Promise<VoucherFormOptionsData> | null;
 }
 
-function resolvePrimaryButtonLabel(
-  mode: VoucherModalMode,
-  isProcessing: boolean,
-  submitButtonLabel?: string
-): string {
-  if (!isProcessing) {
-    return submitButtonLabel || (mode === "edit" ? "Guardar cambios" : "Guardar Comprobante");
+function resolveVoucherModalTitle(type: VoucherScreenType, mode: VoucherModalMode, titleOverride?: string): string {
+  if (titleOverride) {
+    return titleOverride;
   }
 
-  if (submitButtonLabel === "Validar factura") {
-    return "Validando factura...";
+  if (mode === "create") {
+    return `Agregar Comprobante de ${type === "sales" ? "Venta" : "Compra"}`;
+  }
+
+  return "Detalle del Comprobante";
+}
+
+function resolveVoucherModalDescription(type: VoucherScreenType, mode: VoucherModalMode, descriptionOverride?: string): string {
+  if (descriptionOverride) {
+    return descriptionOverride;
+  }
+
+  if (mode === "view") {
+    return "Visualiza la información del comprobante.";
   }
 
   if (mode === "edit") {
-    return "Guardando cambios...";
+    return "Revisa el comprobante y ajusta la información cargada desde la base.";
   }
 
-  return "Guardando comprobante...";
+  return "Sube el comprobante (PDF/JPG) para procesarlo con IA o completa los datos manualmente.";
 }
 
-function VoucherModalShell({
-  isOpen,
-  onOpenChange,
-  type,
-  mode,
-  children,
-  titleOverride,
-  descriptionOverride,
-  sidePanel,
-}: {
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
-  type: VoucherScreenType;
-  mode: VoucherModalMode;
-  children: ReactNode;
-  titleOverride?: string;
-  descriptionOverride?: string;
-  sidePanel?: ReactNode;
-}) {
-  const isEditing = mode === "edit";
-  const isViewing = mode === "view";
-  const title = titleOverride || (
-    isViewing
-      ? "Detalle del Comprobante"
-      : isEditing
-        ? "Detalle del Comprobante"
-        : `Agregar Comprobante de ${type === "sales" ? "Venta" : "Compra"}`
-  );
-  const description = descriptionOverride || (
-    isViewing
-      ? "Visualiza la información del comprobante."
-      : isEditing
-        ? "Revisa el comprobante y ajusta la información cargada desde la base."
-        : "Sube el comprobante (PDF/JPG) para procesarlo con IA o completa los datos manualmente."
-  );
-  const dialogWidthClass = sidePanel
-    ? "sm:max-w-[1180px]"
-    : mode === "create"
-      ? "sm:max-w-[1180px]"
-      : "sm:max-w-[720px]";
-
-  return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className={`max-h-[90vh] overflow-y-auto ${dialogWidthClass}`}>
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
-        </DialogHeader>
-        {sidePanel ? (
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(420px,500px)] xl:grid-cols-[minmax(0,1fr)_minmax(500px,560px)] lg:items-start">
-            <div className="min-w-0">{children}</div>
-            <div className="min-w-0 lg:sticky lg:top-0">{sidePanel}</div>
-          </div>
-        ) : children}
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function VoucherModalForm({
-  isOpen,
-  onOpenChange,
-  type,
-  mode,
-  initialVoucher,
-  initialParsedData,
-  resetKey,
-  submitAction,
-  submitButtonLabel,
-  onSuccess,
-  options,
-}: VoucherModalFormProps) {
-  const [thirdParties, setThirdParties] = useState(options.thirdParties);
-  const {
-    form,
-    retentionFields,
-    appendRetention,
-    removeRetention,
-    perceptionFields,
-    appendPerception,
-    removePerception,
-    isProcessing,
-    fileInputRef,
-    handleDrop,
-    handleDragOver,
-    onDropzoneClick,
-    onFileChange,
-    onSubmit,
-    handleOpenChange,
-    handlePosBlur,
-    handleNumberBlur,
-    previewDocument,
-    currentParsedData,
-  } = useVoucherForm({
-    isOpen,
-    onOpenChange,
-    type,
-    mode,
-    catalogs: options.catalogs,
-    thirdParties,
-    initialVoucher,
-    initialParsedData,
-    resetKey,
-    submitAction,
-    submitButtonLabel,
-    onSuccess,
-  });
-  const {
-    isInlineModalOpen,
-    inlineModalType,
-    inlineInitialValues,
-    shouldShowInlineAction,
-    openInlineModal,
-    handleInlineModalOpenChange,
-    handleInlineSuccess,
-    resolveDuplicateRecord,
-  } = useVoucherInlineThirdParty({
-    type,
-    form,
-    parsedData: currentParsedData,
-    thirdParties,
-    setThirdParties,
-  });
-  const {
-    handleSubmit,
-    formState: { isValid },
-  } = form;
-  const isEditing = mode === "edit";
-  const isViewing = mode === "view";
-  const shouldShowDropzone = !isEditing && !isViewing && !initialParsedData && !submitAction;
-  const primaryButtonLabel = resolvePrimaryButtonLabel(mode, isProcessing, submitButtonLabel);
-
-  return (
-    <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 py-2">
-      {shouldShowDropzone && (
-        <VoucherModalDropzone
-          isProcessing={isProcessing}
-          fileInputRef={fileInputRef}
-          onFileChange={onFileChange}
-          handleDrop={handleDrop}
-          handleDragOver={handleDragOver}
-          onDropzoneClick={onDropzoneClick}
-        />
-      )}
-
-      {previewDocument ? (
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(420px,500px)] xl:grid-cols-[minmax(0,1fr)_minmax(500px,560px)] lg:items-start">
-          <div className="grid min-w-0 gap-4">
-            <VoucherModalCoreFields
-              form={form}
-              isProcessing={isProcessing}
-              catalogs={options.catalogs}
-              thirdParties={thirdParties}
-              type={type}
-              mode={mode}
-              initialVoucher={initialVoucher}
-              handlePosBlur={handlePosBlur}
-              handleNumberBlur={handleNumberBlur}
-              thirdPartyAction={!shouldShowInlineAction || mode === "view" ? null : (
-                <Button type="button" variant="outline" className="w-full" onClick={openInlineModal}>
-                  {resolveClientSupplierAddButtonLabel(inlineModalType)}
-                </Button>
-              )}
-              taxListsNode={
-                <>
-                  {type === "sales" && (
-                    <VoucherModalRetentions
-                      form={form}
-                      fields={retentionFields}
-                      append={appendRetention}
-                      remove={removeRetention}
-                      catalogs={options.catalogs}
-                      disabled={isProcessing || mode === "view"}
-                    />
-                  )}
-                  {type === "purchases" && (
-                    <VoucherModalPerceptions
-                      form={form}
-                      fields={perceptionFields}
-                      append={appendPerception}
-                      remove={removePerception}
-                      catalogs={options.catalogs}
-                      disabled={isProcessing || mode === "view"}
-                    />
-                  )}
-                </>
-              }
-            />
-
-            {mode === "view" ? (
-              <Button type="button" onClick={() => handleOpenChange(false)} className="w-full h-10 !bg-[#FF5C00] hover:!bg-[#FF5C00]/90 !text-white text-sm font-medium rounded-md">
-                Cerrar
-              </Button>
-            ) : (
-              <Button type="submit" className="w-full h-10 !bg-[#FF5C00] hover:!bg-[#FF5C00]/90 !text-white text-sm font-medium rounded-md" disabled={!isValid || isProcessing}>
-                {isProcessing && <LoaderCircle className="h-4 w-4 animate-spin" />}
-                {primaryButtonLabel}
-              </Button>
-            )}
-          </div>
-
-          <div className="min-w-0 lg:sticky lg:top-0">
-            <ConciliationReviewPreview
-              sourceUrl={previewDocument.sourceUrl}
-              mimeType={previewDocument.mimeType}
-              fileName={previewDocument.fileName}
-            />
-          </div>
-        </div>
-      ) : (
-        <>
-          <VoucherModalCoreFields
-            form={form}
-            isProcessing={isProcessing}
-            catalogs={options.catalogs}
-            thirdParties={thirdParties}
-            type={type}
-            mode={mode}
-            initialVoucher={initialVoucher}
-            handlePosBlur={handlePosBlur}
-            handleNumberBlur={handleNumberBlur}
-            thirdPartyAction={!shouldShowInlineAction || mode === "view" ? null : (
-              <Button type="button" variant="outline" className="w-full" onClick={openInlineModal}>
-                {resolveClientSupplierAddButtonLabel(inlineModalType)}
-              </Button>
-            )}
-            taxListsNode={
-              <>
-                {type === "sales" && (
-                  <VoucherModalRetentions
-                    form={form}
-                    fields={retentionFields}
-                    append={appendRetention}
-                    remove={removeRetention}
-                    catalogs={options.catalogs}
-                    disabled={isProcessing || mode === "view"}
-                  />
-                )}
-                {type === "purchases" && (
-                  <VoucherModalPerceptions
-                    form={form}
-                    fields={perceptionFields}
-                    append={appendPerception}
-                    remove={removePerception}
-                    catalogs={options.catalogs}
-                    disabled={isProcessing || mode === "view"}
-                  />
-                )}
-              </>
-            }
-          />
-
-          {mode === "view" ? (
-            <Button type="button" onClick={() => handleOpenChange(false)} className="w-full h-10 !bg-[#FF5C00] hover:!bg-[#FF5C00]/90 !text-white text-sm font-medium rounded-md">
-              Cerrar
-            </Button>
-          ) : (
-            <Button type="submit" className="w-full h-10 !bg-[#FF5C00] hover:!bg-[#FF5C00]/90 !text-white text-sm font-medium rounded-md" disabled={!isValid || isProcessing}>
-              {isProcessing && <LoaderCircle className="h-4 w-4 animate-spin" />}
-              {primaryButtonLabel}
-            </Button>
-          )}
-        </>
-      )}
-
-      <ClientSupplierModal
-        isOpen={isInlineModalOpen}
-        type={inlineModalType}
-        mode="create"
-        initialValues={inlineInitialValues}
-        onOpenChange={handleInlineModalOpenChange}
-        onSuccess={handleInlineSuccess}
-        onResolveDuplicate={resolveDuplicateRecord}
-      />
-    </form>
-  );
+function resolveVoucherModalSize(mode: VoucherModalMode, sidePanel?: ReactNode): "default" | "wide" {
+  return mode === "create" || Boolean(sidePanel) ? "wide" : "default";
 }
 
 function VoucherModalAsyncForm({ optionsPromise, ...props }: VoucherModalAsyncFormProps) {
@@ -361,6 +77,16 @@ function VoucherModalAsyncForm({ optionsPromise, ...props }: VoucherModalAsyncFo
   const options = use(optionsPromise);
 
   return <VoucherModalForm {...props} options={options} />;
+}
+
+function VoucherModalLoadingState({ title, description }: { title: string; description: string }) {
+  return (
+    <DialogLoadingState
+      title={title}
+      description={description}
+      minHeightClassName="min-h-[320px]"
+    />
+  );
 }
 
 export function VoucherModalReady({
@@ -381,37 +107,35 @@ export function VoucherModalReady({
   options,
 }: VoucherModalReadyProps) {
   return (
-    <VoucherModalShell
+    <ResourceModal
       isOpen={isOpen}
       onOpenChange={onOpenChange}
-      type={type}
-      mode={mode}
-      titleOverride={titleOverride}
-      descriptionOverride={descriptionOverride}
+      title={resolveVoucherModalTitle(type, mode, titleOverride)}
+      description={resolveVoucherModalDescription(type, mode, descriptionOverride)}
+      size={resolveVoucherModalSize(mode, sidePanel)}
       sidePanel={sidePanel}
-    >
-      {isLoadingDetail ? (
-        <DialogLoadingState
+      isLoading={isLoadingDetail}
+      loadingState={
+        <VoucherModalLoadingState
           title="Cargando comprobante"
           description="Estamos trayendo la información para editarla."
-          minHeightClassName="min-h-[320px]"
         />
-      ) : (
-        <VoucherModalForm
-          isOpen={isOpen}
-          onOpenChange={onOpenChange}
-          type={type}
-          mode={mode}
-          initialVoucher={initialVoucher}
-          initialParsedData={initialParsedData}
-          resetKey={resetKey}
-          submitAction={submitAction}
-          submitButtonLabel={submitButtonLabel}
-          onSuccess={onSuccess}
-          options={options}
-        />
-      )}
-    </VoucherModalShell>
+      }
+    >
+      <VoucherModalForm
+        isOpen={isOpen}
+        onOpenChange={onOpenChange}
+        type={type}
+        mode={mode}
+        initialVoucher={initialVoucher}
+        initialParsedData={initialParsedData}
+        resetKey={resetKey}
+        submitAction={submitAction}
+        submitButtonLabel={submitButtonLabel}
+        onSuccess={onSuccess}
+        options={options}
+      />
+    </ResourceModal>
   );
 }
 
@@ -434,47 +158,44 @@ export function VoucherModal({
   const { promise: optionsPromise } = useVoucherFormOptions({ isOpen, type });
 
   return (
-    <VoucherModalShell
+    <ResourceModal
       isOpen={isOpen}
       onOpenChange={onOpenChange}
-      type={type}
-      mode={mode}
-      titleOverride={titleOverride}
-      descriptionOverride={descriptionOverride}
+      title={resolveVoucherModalTitle(type, mode, titleOverride)}
+      description={resolveVoucherModalDescription(type, mode, descriptionOverride)}
+      size={resolveVoucherModalSize(mode, sidePanel)}
       sidePanel={sidePanel}
-    >
-      {isLoadingDetail ? (
-        <DialogLoadingState
+      isLoading={isLoadingDetail}
+      loadingState={
+        <VoucherModalLoadingState
           title="Cargando comprobante"
           description="Estamos trayendo la información para editarla."
-          minHeightClassName="min-h-[320px]"
         />
-      ) : (
-        <Suspense
-          fallback={
-            <DialogLoadingState
-              title="Cargando formulario"
-              description="Estamos preparando las opciones del comprobante."
-              minHeightClassName="min-h-[320px]"
-            />
-          }
-        >
-          <VoucherModalAsyncForm
-            optionsPromise={optionsPromise}
-            isOpen={isOpen}
-            onOpenChange={onOpenChange}
-            type={type}
-            mode={mode}
-            initialVoucher={initialVoucher}
-            initialParsedData={initialParsedData}
-            resetKey={resetKey}
-            submitAction={submitAction}
-            submitButtonLabel={submitButtonLabel}
-            onSuccess={onSuccess}
+      }
+    >
+      <Suspense
+        fallback={
+          <VoucherModalLoadingState
+            title="Cargando formulario"
+            description="Estamos preparando las opciones del comprobante."
           />
-        </Suspense>
-      )}
-    </VoucherModalShell>
+        }
+      >
+        <VoucherModalAsyncForm
+          optionsPromise={optionsPromise}
+          isOpen={isOpen}
+          onOpenChange={onOpenChange}
+          type={type}
+          mode={mode}
+          initialVoucher={initialVoucher}
+          initialParsedData={initialParsedData}
+          resetKey={resetKey}
+          submitAction={submitAction}
+          submitButtonLabel={submitButtonLabel}
+          onSuccess={onSuccess}
+        />
+      </Suspense>
+    </ResourceModal>
   );
 }
 
@@ -494,12 +215,16 @@ export function VoucherModalLoading({
   description: string;
 }) {
   return (
-    <VoucherModalShell isOpen={isOpen} onOpenChange={onOpenChange} type={type} mode={mode}>
-      <DialogLoadingState
-        title={title}
-        description={description}
-        minHeightClassName="min-h-[320px]"
-      />
-    </VoucherModalShell>
+    <ResourceModal
+      isOpen={isOpen}
+      onOpenChange={onOpenChange}
+      title={resolveVoucherModalTitle(type, mode)}
+      description={resolveVoucherModalDescription(type, mode)}
+      size={resolveVoucherModalSize(mode)}
+      isLoading
+      loadingState={<VoucherModalLoadingState title={title} description={description} />}
+    >
+      {null}
+    </ResourceModal>
   );
 }

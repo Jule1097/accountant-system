@@ -1,13 +1,13 @@
 import { ParserBatchRepository } from "src/repositories/parser/parser-batch.repository";
-import { BatchExecutionLockService } from "src/services/parser/batch-execution-lock.service";
-import { VoucherBatchExecutionService } from "src/services/parser/voucher-batch-execution.service";
-import { VoucherParserService } from "src/services/parser/voucher-parser.service";
-import { VoucherPersistenceService } from "src/services/parser/voucher-persistence.service";
+import { BatchExecutionLockService } from "src/services/parser/BatchExecutionLock";
+import { VoucherBatchExecutionService } from "src/services/parser/VoucherBatchExecution";
+import { VoucherParserService } from "src/services/parser/VoucherParser";
+import { VoucherPersistenceService } from "src/services/parser/VoucherPersistence";
 
 jest.mock("src/repositories/parser/parser-batch.repository");
-jest.mock("src/services/parser/batch-execution-lock.service");
-jest.mock("src/services/parser/voucher-parser.service");
-jest.mock("src/services/parser/voucher-persistence.service");
+jest.mock("src/services/parser/BatchExecutionLock");
+jest.mock("src/services/parser/VoucherParser");
+jest.mock("src/services/parser/VoucherPersistence");
 
 describe("VoucherBatchExecutionService", () => {
   let batchRepositoryMock: jest.Mocked<ParserBatchRepository>;
@@ -17,19 +17,15 @@ describe("VoucherBatchExecutionService", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    batchRepositoryMock = {
-      listItemIdsByBatchAndStatuses: jest.fn(),
-    } as unknown as jest.Mocked<ParserBatchRepository>;
-    lockServiceMock = {
-      acquire: jest.fn(),
-      release: jest.fn(),
-    } as unknown as jest.Mocked<BatchExecutionLockService>;
-    parserServiceMock = {
-      processItem: jest.fn(),
-    } as unknown as jest.Mocked<VoucherParserService>;
-    persistenceServiceMock = {
-      processJob: jest.fn(),
-    } as unknown as jest.Mocked<VoucherPersistenceService>;
+    batchRepositoryMock = new ParserBatchRepository() as jest.Mocked<ParserBatchRepository>;
+    batchRepositoryMock.listItemIdsByBatchAndStatuses = jest.fn();
+    lockServiceMock = new BatchExecutionLockService() as jest.Mocked<BatchExecutionLockService>;
+    lockServiceMock.acquire = jest.fn();
+    lockServiceMock.release = jest.fn();
+    parserServiceMock = new VoucherParserService() as jest.Mocked<VoucherParserService>;
+    parserServiceMock.processItem = jest.fn();
+    persistenceServiceMock = new VoucherPersistenceService() as jest.Mocked<VoucherPersistenceService>;
+    persistenceServiceMock.processJob = jest.fn();
 
     (ParserBatchRepository as jest.MockedClass<typeof ParserBatchRepository>).mockImplementation(() => batchRepositoryMock);
     (BatchExecutionLockService as jest.MockedClass<typeof BatchExecutionLockService>).mockImplementation(() => lockServiceMock);
