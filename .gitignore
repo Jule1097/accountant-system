@@ -40,8 +40,6 @@ next-env.d.ts
 
 /src/generated/prisma
 
-eslint-rules
-
 # IDE & Agent Configs
 .agents/
 .claude/

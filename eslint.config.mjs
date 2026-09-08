@@ -1,17 +1,27 @@
 import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
-import domainInstanceofRule from "./eslint-rules/no-domain-instanceof.js";
+
+const RESTRICTED_DOMAIN_CLASSES = ["Sale", "Purchase", "Voucher", "Money", "ThirdParty"];
+const domainClassesPattern = `^(${RESTRICTED_DOMAIN_CLASSES.join("|")})$`;
 
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   {
     rules: {
-      "architecture/no-domain-instanceof": "error",
-      "no-restricted-syntax": ["error", { selector: "TSAsExpression > TSUnknownKeyword", message: "Do not cast through unknown; use the explicit boundary type." }],
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: `BinaryExpression[operator='instanceof'][right.name=/${domainClassesPattern}/]`,
+          message: "Use polymorphic dispatch instead of instanceof for domain classes.",
+        },
+        {
+          selector: "TSAsExpression > TSUnknownKeyword",
+          message: "Do not cast through unknown; use the explicit boundary type.",
+        },
+      ],
     },
-    plugins: { architecture: { rules: { "no-domain-instanceof": domainInstanceofRule } } },
   },
   globalIgnores([
     ".next/**",
@@ -19,7 +29,7 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
     "src/scripts/build-worker.js",
-  ])
+  ]),
 ]);
 
 export default eslintConfig;
