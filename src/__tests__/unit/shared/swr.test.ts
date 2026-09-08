@@ -3,6 +3,7 @@ import { buildCompanyPathKey, companyPathFetcher } from "src/lib/helpers/platfor
 
 jest.mock("src/lib/api/api-client", () => ({
   apiRequest: jest.fn(),
+  parseJsonResponse: async (response: Response) => response.json(),
 }))
 
 describe("companyPathFetcher", () => {

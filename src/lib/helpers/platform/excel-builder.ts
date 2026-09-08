@@ -60,7 +60,7 @@ export function buildExcelWorkbook(
   companyCuit: string,
   subTitleText: string,
   columns: ExportColumnDefinition[],
-  data: Record<string, unknown>[]
+  data: Record<string, ExcelJS.CellValue>[]
 ): ExcelJS.Workbook {
   const workbook = new ExcelJS.Workbook()
   const sheet = workbook.addWorksheet(titleText)

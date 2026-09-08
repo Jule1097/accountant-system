@@ -1,5 +1,5 @@
 import { mutate } from "swr";
-import { apiRequest } from "src/lib/api/api-client";
+import { apiRequest, parseJsonResponse } from "src/lib/api/api-client";
 
 export type CompanyPathKey = readonly [string, string];
 
@@ -21,7 +21,7 @@ export async function companyPathFetcher<T>(companyId: string, path: string): Pr
       "x-company-id": companyId,
     },
   });
-  return response.json() as Promise<T>;
+  return parseJsonResponse<T>(response);
 }
 
 export async function revalidateCompanyScope(companyId: string, pathPrefixes: string[]): Promise<void> {

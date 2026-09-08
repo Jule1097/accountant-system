@@ -60,20 +60,4 @@ export interface ResourceMutationHookResult<TCreate, TUpdate, TResponse> {
   remove: (resourceId: string) => Promise<TResponse>
 }
 
-export interface ResourceQueryStateOptions<TQuery extends object> {
-  initialQuery: TQuery
-  sourceQuery?: TQuery
-  searchKey?: keyof TQuery
-  debounceMs?: number
-  onDebouncedSearch?: (value: string) => void
-}
-
-export interface ResourceQueryStateResult<TQuery extends object> {
-  query: TQuery
-  searchValue: string
-  setSearchValue: (value: string) => void
-  updateQuery: (values: Partial<TQuery>) => void
-  resetQuery: () => void
-  cancelPendingSearch: () => void
-}
 export type ResourceSWRConfiguration<TItem> = SWRConfiguration<TItem, unknown>

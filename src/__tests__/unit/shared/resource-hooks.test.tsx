@@ -5,7 +5,6 @@ import {
   useResourceDetail,
   useResourceList,
   useResourceMutation,
-  useResourceQueryState,
 } from "src/hooks/shared/use-resource"
 
 const swrMock = jest.fn()
@@ -129,67 +128,4 @@ describe("generic resource hooks", () => {
     )
   })
 
-  it("updates generic query state and debounces search changes", () => {
-    jest.useFakeTimers()
-    const onDebouncedSearch = jest.fn()
-    const { result } = renderHook(() => useResourceQueryState({
-      initialQuery: { page: 1, search: "" },
-      searchKey: "search",
-      debounceMs: 300,
-      onDebouncedSearch,
-    }))
-
-    act(() => {
-      result.current.setSearchValue("acme")
-    })
-
-    act(() => {
-      jest.advanceTimersByTime(300)
-    })
-
-    expect(result.current.query).toEqual({ page: 1, search: "" })
-    expect(result.current.searchValue).toBe("acme")
-    expect(onDebouncedSearch).toHaveBeenCalledWith("acme")
-
-    act(() => {
-      result.current.updateQuery({ page: 2 })
-    })
-
-    expect(result.current.query).toEqual({ page: 2, search: "" })
-    jest.useRealTimers()
-  })
-
-  it("synchronizes search state with an external query and cancels pending debounce", () => {
-    jest.useFakeTimers()
-    const onDebouncedSearch = jest.fn()
-    const { result, rerender } = renderHook(
-      ({ search }: { search: string }) => useResourceQueryState({
-        initialQuery: { page: 1, search: "" },
-        sourceQuery: { page: 1, search },
-        searchKey: "search",
-        debounceMs: 300,
-        onDebouncedSearch,
-      }),
-      { initialProps: { search: "" } }
-    )
-
-    act(() => {
-      result.current.setSearchValue("acme")
-    })
-
-    act(() => {
-      result.current.cancelPendingSearch()
-    })
-
-    act(() => {
-      jest.advanceTimersByTime(300)
-    })
-
-    expect(onDebouncedSearch).not.toHaveBeenCalled()
-
-    rerender({ search: "globex" })
-
-    expect(result.current.searchValue).toBe("globex")
-    jest.useRealTimers()
-  })
 })

@@ -1,16 +1,15 @@
 "use client"
 
 import useSWR from "swr"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { defaultResourceSearchDebounceMs, resourceOperationErrors } from "src/lib/constants/resource"
+import { useCallback } from "react"
+import { resourceMutationStatuses, resourceOperationErrors } from "src/lib/constants/resource"
 import { useCompany } from "src/contexts/company-context"
+import { useAsyncMutation } from "src/hooks/shared/use-async-mutation"
 import { buildCompanyPathKey } from "src/lib/helpers/platform/swr"
 import {
   ResourceDetailHookResult,
   ResourceHookResult,
   ResourceMutationHookResult,
-  ResourceQueryStateOptions,
-  ResourceQueryStateResult,
   UseResourceDetailOptions,
   UseResourceListOptions,
   UseResourceMutationOptions,
@@ -52,100 +51,12 @@ export function useResourceDetail<TResponse, TItem>({
   return { data, error, isLoading, mutate }
 }
 
-export function useResourceQueryState<TQuery extends object>({
-  initialQuery,
-  sourceQuery,
-  searchKey,
-  debounceMs = defaultResourceSearchDebounceMs,
-  onDebouncedSearch,
-}: ResourceQueryStateOptions<TQuery>): ResourceQueryStateResult<TQuery> {
-  const initialQueryRef = useRef(initialQuery)
-  const sourceOrInitialQuery = sourceQuery ?? initialQuery
-  const sourceSearchValue = useMemo(
-    () => searchKey ? String(sourceOrInitialQuery[searchKey] ?? "") : "",
-    [searchKey, sourceOrInitialQuery]
-  )
-  const initialSearchValue = sourceSearchValue
-  const [query, setQuery] = useState(() => initialQuery)
-  const [localSearchState, setLocalSearchState] = useState({
-    sourceValue: sourceSearchValue,
-    value: initialSearchValue,
-  })
-  const searchTimeoutRef = useRef<number | null>(null)
-  const hasInitializedSearchRef = useRef(false)
-  const searchValue = sourceQuery && localSearchState.sourceValue !== sourceSearchValue
-    ? sourceSearchValue
-    : localSearchState.value
-
-  const setSearchValue = useCallback((value: string): void => {
-    setLocalSearchState({ sourceValue: sourceSearchValue, value })
-  }, [sourceSearchValue])
-
-  const cancelPendingSearch = useCallback((): void => {
-    if (searchTimeoutRef.current === null) {
-      return
-    }
-
-    window.clearTimeout(searchTimeoutRef.current)
-    searchTimeoutRef.current = null
-  }, [])
-
-  useEffect(() => {
-    if (!searchKey || !onDebouncedSearch) {
-      return
-    }
-
-    if (!hasInitializedSearchRef.current) {
-      hasInitializedSearchRef.current = true
-      return
-    }
-
-    searchTimeoutRef.current = window.setTimeout(() => {
-      searchTimeoutRef.current = null
-      onDebouncedSearch(searchValue)
-    }, debounceMs)
-    return cancelPendingSearch
-  }, [cancelPendingSearch, debounceMs, onDebouncedSearch, searchKey, searchValue])
-
-  const updateQuery = useCallback((values: Partial<TQuery>): void => {
-    setQuery((currentQuery) => ({ ...currentQuery, ...values }))
-  }, [])
-
-  const resetQuery = useCallback((): void => {
-    setQuery(initialQueryRef.current)
-    setLocalSearchState({ sourceValue: sourceSearchValue, value: initialSearchValue })
-  }, [initialSearchValue, sourceSearchValue])
-
-  return {
-    query: sourceQuery ?? query,
-    searchValue,
-    setSearchValue,
-    updateQuery,
-    resetQuery,
-    cancelPendingSearch,
-  }
-}
-
 export function useResourceMutation<TCreate, TUpdate, TResponse>({
   adapter,
   scopeId = null,
 }: UseResourceMutationOptions<TCreate, TUpdate, TResponse>): ResourceMutationHookResult<TCreate, TUpdate, TResponse> {
-  const [isMutating, setIsMutating] = useState(false)
-  const [error, setError] = useState<unknown>(undefined)
-
-  const run = useCallback(async <TResult,>(operation: () => Promise<TResult>): Promise<TResult> => {
-    setIsMutating(true)
-    setError(undefined)
-
-    try {
-      return await operation()
-    } catch (operationError) {
-      setError(operationError)
-      throw operationError
-    } finally {
-      setIsMutating(false)
-    }
-  }, [])
+  const mutation = useAsyncMutation()
+  const run = useCallback(<TResult,>(operation: () => Promise<TResult>): Promise<TResult> => mutation.execute(operation), [mutation])
 
   const create = useCallback(
     (payload: TCreate) => {
@@ -177,5 +88,5 @@ export function useResourceMutation<TCreate, TUpdate, TResponse>({
     [adapter, run, scopeId]
   )
 
-  return { isMutating, error, create, update, remove }
+  return { isMutating: mutation.status === resourceMutationStatuses.loading, error: mutation.error, create, update, remove }
 }
