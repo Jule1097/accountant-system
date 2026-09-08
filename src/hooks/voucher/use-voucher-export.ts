@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useToastManager } from "src/components/ui/toast";
 import { VoucherScreenType, VoucherListQueryState } from "src/types/voucher/voucher";
+import { resolveVoucherRecordType } from "src/lib/helpers/voucher/voucher-management";
 
 export function useVoucherExport() {
   const [isExporting, setIsExporting] = useState(false);
@@ -16,7 +17,7 @@ export function useVoucherExport() {
   ) => {
     setIsExporting(true);
     try {
-      const apiType = type === "sales" ? "sale" : "purchase";
+      const apiType = resolveVoucherRecordType(type);
       const params = new URLSearchParams();
       params.set("mode", mode);
       params.set("type", apiType);

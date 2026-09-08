@@ -1,24 +1,25 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useFieldArray, useForm, useWatch, Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToastManager } from "src/components/ui/toast";
 import { useAuth } from "src/hooks/auth/use-auth";
 import { useVoucherPreview } from "src/hooks/voucher/use-voucher-preview";
-import { ApiRequestError, apiRequest } from "src/lib/api/api-client";
-import { voucherFormSchema, VoucherFormValues } from "src/lib/schemas/voucher/voucher-form-schemas";
-import { VoucherForm } from "src/models/VoucherForm";
-import { Voucher } from "src/models/Voucher";
+import { ApiRequestError, apiRequest, parseJsonResponse } from "src/lib/api/api-client";
+import { createVoucherFormSchema, VoucherFormValues } from "src/lib/schemas/voucher/voucher-form-schemas";
+import { buildVoucherFormInitialValues, buildVoucherFormPayload, buildVoucherParsedPatch, resolveSalesSubtotal } from "src/lib/helpers/voucher/voucher-form";
 import { ParserBatchAsyncResponse } from "src/types/parser/parser-batch";
+import { ParsedVoucherData } from "src/types/parser/gemini-parser";
+import { VoucherApiResponse } from "src/types/voucher/voucher-api";
 import { VoucherModalMode, VoucherScreenType } from "src/types/voucher/voucher";
 import {
   VoucherFormCatalogState,
   VoucherFormPayload,
-  VoucherParsedData,
   VoucherPreviewDocument,
   VoucherThirdPartyOption,
 } from "src/types/voucher/voucher-form";
+import { resolveVoucherRecordType } from "src/lib/helpers/voucher/voucher-management";
 
 export type { VoucherFormValues } from "src/lib/schemas/voucher/voucher-form-schemas";
 
@@ -29,24 +30,12 @@ export interface UseVoucherFormProps {
   mode: VoucherModalMode;
   catalogs: VoucherFormCatalogState;
   thirdParties: VoucherThirdPartyOption[];
-  initialVoucher?: Voucher | null;
-  initialParsedData?: VoucherParsedData | null;
+  initialVoucher?: VoucherApiResponse | null;
+  initialParsedData?: ParsedVoucherData | null;
   resetKey?: string;
   submitAction?: (payload: VoucherFormPayload, values: VoucherFormValues) => Promise<void>;
   submitButtonLabel?: string;
-  onSuccess?: (voucher: Voucher, mode: VoucherModalMode) => void;
-}
-
-async function parseResponseJson<T>(response: Response): Promise<T> {
-  return response.json() as Promise<T>;
-}
-
-function resolveVoucherKind(type: VoucherScreenType): "sale" | "purchase" {
-  if (type === "sales") {
-    return "sale";
-  }
-
-  return "purchase";
+  onSuccess?: (voucher: VoucherApiResponse, mode: VoucherModalMode) => void;
 }
 
 function toFileArray(files: FileList | null): File[] {
@@ -58,7 +47,7 @@ function toFileArray(files: FileList | null): File[] {
 }
 
 function isParserBatchResponse(
-  value: ParserBatchAsyncResponse | VoucherParsedData
+  value: ParserBatchAsyncResponse | ParsedVoucherData
 ): value is ParserBatchAsyncResponse {
   return "mode" in value && value.mode === "batch";
 }
@@ -84,7 +73,7 @@ function resolveVoucherErrorMessage(error: unknown, mode: VoucherModalMode): str
 }
 
 function buildEmptyVoucherFormValues(userId?: string): VoucherFormValues {
-  return VoucherForm.buildInitialValues(undefined, userId);
+  return buildVoucherFormInitialValues(undefined, userId);
 }
 
 export function useVoucherForm({
@@ -106,7 +95,7 @@ export function useVoucherForm({
   const [sessionCycle, setSessionCycle] = useState(0);
   const [parsedDataOverride, setParsedDataOverride] = useState<{
     sessionKey: string;
-    data: VoucherParsedData | null;
+    data: ParsedVoucherData | null;
   } | null>(null);
   const toastManager = useToastManager();
   const { user } = useAuth();
@@ -119,10 +108,11 @@ export function useVoucherForm({
   const currentParsedData = parsedDataOverride?.sessionKey === activeSessionKey
     ? parsedDataOverride.data
     : initialParsedData || null;
+  const formSchema = useMemo(() => createVoucherFormSchema(catalogs), [catalogs]);
   const form = useForm<VoucherFormValues>({
-    resolver: zodResolver(voucherFormSchema) as unknown as Resolver<VoucherFormValues>,
+    resolver: zodResolver(formSchema) as Resolver<VoucherFormValues>,
     mode: "onChange",
-    defaultValues: VoucherForm.buildInitialValues(),
+    defaultValues: buildVoucherFormInitialValues(),
   });
   const {
     control,
@@ -155,6 +145,10 @@ export function useVoucherForm({
     control,
     name: "vatAmount",
   });
+  const watchedCurrency = useWatch({
+    control,
+    name: "currency",
+  });
   const isProcessing = isParsing || isSubmitting;
   const previewDocument: VoucherPreviewDocument | null = previewSourceUrl && previewFile
     ? {
@@ -176,10 +170,10 @@ export function useVoucherForm({
     if (lastResetKeyRef.current !== activeResetKey) {
       lastResetKeyRef.current = activeResetKey;
       lastParsedDataRef.current = parsedDataSignature;
-      const nextValues = VoucherForm.buildInitialValues(initialVoucher, user?.id);
+      const nextValues = buildVoucherFormInitialValues(initialVoucher, user?.id);
 
       if (initialParsedData) {
-        const patch = VoucherForm.buildParsedPatch(initialParsedData, nextValues, type, catalogs, thirdParties);
+        const patch = buildVoucherParsedPatch(initialParsedData, nextValues, type, catalogs, thirdParties);
         reset({ ...nextValues, ...patch });
       } else {
         reset(nextValues);
@@ -194,7 +188,7 @@ export function useVoucherForm({
     }
 
     lastParsedDataRef.current = parsedDataSignature;
-    const patch = VoucherForm.buildParsedPatch(initialParsedData, getValues(), type, catalogs, thirdParties);
+    const patch = buildVoucherParsedPatch(initialParsedData, getValues(), type, catalogs, thirdParties);
     reset({ ...getValues(), ...patch }, { keepDirtyValues: true, keepTouched: true });
     void trigger();
   }, [activeResetKey, catalogs, getValues, initialParsedData, initialVoucher, isOpen, reset, thirdParties, trigger, type, user?.id]);
@@ -240,12 +234,13 @@ export function useVoucherForm({
   }, [getValues, setValue, user?.id]);
 
   useEffect(() => {
-    const normalizedSubtotal = VoucherForm.resolveSalesSubtotal(
+    const normalizedSubtotal = resolveSalesSubtotal(
       type,
       watchedVoucherLetterId,
       watchedTotalAmount,
       watchedVatAmount,
-      catalogs
+      catalogs,
+      watchedCurrency
     );
 
     if (normalizedSubtotal === null) {
@@ -257,10 +252,10 @@ export function useVoucherForm({
     }
 
     setValue("subtotal", normalizedSubtotal, { shouldValidate: true });
-  }, [catalogs, getValues, setValue, type, watchedTotalAmount, watchedVatAmount, watchedVoucherLetterId]);
+  }, [catalogs, getValues, setValue, type, watchedCurrency, watchedTotalAmount, watchedVatAmount, watchedVoucherLetterId]);
 
-  const applyParsedVoucherData = async (parsedData: VoucherParsedData): Promise<void> => {
-    const patch = VoucherForm.buildParsedPatch(parsedData, getValues(), type, catalogs, thirdParties);
+  const applyParsedVoucherData = async (parsedData: ParsedVoucherData): Promise<void> => {
+    const patch = buildVoucherParsedPatch(parsedData, getValues(), type, catalogs, thirdParties);
     setParsedDataOverride({
       sessionKey: activeSessionKey,
       data: parsedData,
@@ -284,7 +279,7 @@ export function useVoucherForm({
 
     try {
       const formData = new FormData();
-      const voucherKind = resolveVoucherKind(type);
+      const voucherKind = resolveVoucherRecordType(type);
 
       for (const file of files) {
         formData.append("files", file);
@@ -296,7 +291,7 @@ export function useVoucherForm({
         method: "POST",
         body: formData,
       });
-      const parsedResponse = await parseResponseJson<ParserBatchAsyncResponse | VoucherParsedData>(response);
+      const parsedResponse = await parseJsonResponse<ParserBatchAsyncResponse | ParsedVoucherData>(response);
 
       if (isParserBatchResponse(parsedResponse)) {
         toastManager.add({
@@ -315,7 +310,12 @@ export function useVoucherForm({
         description: "Los campos detectados se completaron de manera automática.",
       });
     } catch (error: unknown) {
-      console.error(error);
+      console.error("Voucher parsing failed", {
+        operation: "parse-voucher",
+        workflowState: "failed",
+        providerName: "gemini",
+        errorName: error instanceof Error ? error.name : "UnknownError",
+      });
       toastManager.add({
         type: "error",
         title: "Error al procesar",
@@ -366,14 +366,13 @@ export function useVoucherForm({
     setIsSubmitting(true);
 
     try {
-      const payload = VoucherForm.buildPayload(values, type, catalogs);
+      const payload = buildVoucherFormPayload(values, type, catalogs);
+      const endpoint = mode === "edit" ? `/api/vouchers/${initialVoucher?.id}` : "/api/vouchers";
 
       if (submitAction) {
         await submitAction(payload, values);
         return;
       }
-
-      const endpoint = mode === "edit" ? `/api/vouchers/${initialVoucher?.id}` : "/api/vouchers";
 
       const response = await apiRequest(endpoint, {
         method: mode === "edit" ? "PUT" : "POST",
@@ -382,8 +381,7 @@ export function useVoucherForm({
         },
         body: JSON.stringify(payload),
       });
-      const data = await response.json();
-      const savedVoucher = new Voucher(data);
+      const savedVoucher = await parseJsonResponse<VoucherApiResponse>(response);
 
       toastManager.add({
         type: "success",

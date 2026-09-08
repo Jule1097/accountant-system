@@ -1,3 +1,6 @@
+import type { ParserBatchItemContextRecord } from "src/types/parser/parser-batch"
+import type { VoucherFormPayload } from "src/types/voucher/voucher-form"
+
 export type ConciliationTab = "sales" | "purchases";
 
 export type ConciliationVisibleStatus =
@@ -36,6 +39,29 @@ export interface ConciliationSectionData {
   items: ConciliationItem[];
   totalCount: number;
   hasMore: boolean;
+}
+
+export interface ConciliationSectionSelectionState {
+  discardableItemIds: string[]
+  validatedItemIds: string[]
+  selectedDiscardableItemIds: string[]
+  selectedValidatedItemIds: string[]
+  allDiscardableSelected: boolean
+}
+
+export interface ConciliationSectionProps {
+  section: ConciliationSectionData
+  selection: ConciliationSectionSelectionState
+  loadingVouchers: Record<string, ConciliationItemAction | undefined>
+  isVoucherSelected: (itemId: string) => boolean
+  onToggleVisibleSelection: (itemIds: string[], checked: boolean) => void
+  onToggleItemSelection: (voucher: ConciliationItem, checked: boolean) => void
+  onReview: (voucher: ConciliationItem) => void
+  onRegenerate: (voucher: ConciliationItem) => void
+  onPersist: (voucher: ConciliationItem) => void
+  onDelete: (voucher: ConciliationItem) => void
+  onPersistSelected: () => void
+  onDeleteSelected: () => void
 }
 
 export interface ConciliationBulkDiscardPayload {
@@ -91,4 +117,18 @@ export interface ConciliationDeleteDialogState {
   title: string;
   description: string;
   mode: "single" | "bulk" | null;
+}
+
+export interface ConciliationsOverlaysProps {
+  activeTab: ConciliationTab
+  isReviewModalOpen: boolean
+  reviewItem: ParserBatchItemContextRecord | undefined
+  isReviewItemLoading: boolean
+  reviewSourceUrl: string | null
+  onReviewModalOpenChange: (open: boolean) => void
+  onReviewSubmit: (payload: VoucherFormPayload) => Promise<void>
+  deleteDialogState: ConciliationDeleteDialogState
+  isDeleting: boolean
+  onDeleteDialogOpenChange: (open: boolean) => void
+  onConfirmDelete: () => Promise<void>
 }

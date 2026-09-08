@@ -61,6 +61,7 @@ export interface UseClientsSuppliersManagementResult {
   query: ClientSupplierListQueryState
   searchValue: string
   isTableLoading: boolean
+  tableError: unknown
   data: ClientSupplierListResponse<ClientSupplierRecord> | undefined
   recordDetail: ClientSupplierRecord | undefined
   recordDetailError: unknown
@@ -80,8 +81,36 @@ export interface UseClientsSuppliersManagementResult {
   handlePageChange: (page: number) => void
   handlePageSizeChange: (pageSize: number) => void
   confirmRecordDelete: () => Promise<void>
+  retryTable: () => Promise<void>
   goToClients: () => void
   goToSuppliers: () => void
+}
+
+export interface ClientSupplierManagementHeaderProps {
+  type: ClientSupplierEntityType
+  title: string
+  description: string
+  onClientsClick: () => void
+  onSuppliersClick: () => void
+}
+
+export interface ClientSupplierOverlaysProps {
+  type: ClientSupplierEntityType
+  isCreateModalOpen: boolean
+  isDeleting: boolean
+  recordId: string | null
+  viewRecordId: string | null
+  recordPendingDelete: ClientSupplierRecord | null
+  recordDetail: ClientSupplierRecord | undefined
+  recordDetailError: unknown
+  isRecordDetailLoading: boolean
+  onCreateModalOpenChange: (open: boolean) => void
+  onEditModalOpenChange: (open: boolean) => void
+  onCreateSuccess: () => Promise<void>
+  onEditSuccess: () => Promise<void>
+  onDeleteDialogOpenChange: (open: boolean) => void
+  onRecordDetailError: (error: unknown) => void
+  onConfirmDelete: () => Promise<void>
 }
 
 export interface ClientsSuppliersManagementViewProps {
@@ -93,6 +122,7 @@ export interface ClientsSuppliersManagementViewProps {
 export interface ClientSupplierTableProps {
   data?: ClientSupplierListResponse<ClientSupplierRecord>
   isLoading: boolean
+  error?: unknown
   query: ClientSupplierListQueryState
   searchValue: string
   type: ClientSupplierEntityType
@@ -104,6 +134,7 @@ export interface ClientSupplierTableProps {
   onSortChange: (sortBy: ClientSupplierSortBy, sortOrder: ClientSupplierSortOrder) => void
   onPageChange: (page: number) => void
   onPageSizeChange: (pageSize: number) => void
+  onRetry: () => void
 }
 
 export interface ClientSupplierModalProps {

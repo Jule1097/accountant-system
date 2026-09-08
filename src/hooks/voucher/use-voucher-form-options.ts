@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { apiRequest } from "src/lib/api/api-client";
+import { apiRequest, parseJsonResponse } from "src/lib/api/api-client";
 import { clearCachedPromise, getCachedPromise } from "src/lib/helpers/platform/promise-cache";
 import { resolveVoucherThirdPartyEndpoint } from "src/lib/helpers/voucher/voucher-inline-third-party";
 import { VoucherScreenType } from "src/types/voucher/voucher";
@@ -21,10 +21,6 @@ interface UseVoucherFormOptionsResult {
   promise: Promise<VoucherFormOptionsData> | null;
 }
 
-async function parseResponseJson<T>(response: Response): Promise<T> {
-  return response.json() as Promise<T>;
-}
-
 function resolveVoucherFormOptionsCacheKey(type: VoucherScreenType): string {
   return `voucher-form-options:${type}`
 }
@@ -41,12 +37,12 @@ function resolveVoucherThirdPartyList(
 
 export async function fetchVoucherCatalogs(): Promise<VoucherFormCatalogState> {
   const response = await apiRequest("/api/catalogs")
-  return parseResponseJson<VoucherFormCatalogState>(response)
+  return parseJsonResponse<VoucherFormCatalogState>(response)
 }
 
 export async function fetchVoucherThirdParties(type: VoucherScreenType): Promise<VoucherThirdPartyOption[]> {
   const response = await apiRequest(resolveVoucherThirdPartyEndpoint(type))
-  const payload = await parseResponseJson<VoucherThirdPartyOption[] | { items: VoucherThirdPartyOption[] }>(response)
+  const payload = await parseJsonResponse<VoucherThirdPartyOption[] | { items: VoucherThirdPartyOption[] }>(response)
   return resolveVoucherThirdPartyList(payload)
 }
 

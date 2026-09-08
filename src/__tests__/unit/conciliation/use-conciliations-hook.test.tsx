@@ -4,6 +4,7 @@ import { act, renderHook, waitFor } from "@testing-library/react"
 import { useConciliations } from "src/hooks/conciliation/use-conciliations"
 
 const pushMock = jest.fn()
+const replaceMock = jest.fn()
 const useSWRMock = jest.fn()
 const useCompanyMock = jest.fn()
 const replaceStateMock = jest.fn()
@@ -15,7 +16,7 @@ const searchParamsState = {
 
 jest.mock("next/navigation", () => ({
   usePathname: () => "/conciliations",
-  useRouter: () => ({ push: pushMock, refresh: jest.fn(), replace: jest.fn() }),
+  useRouter: () => ({ push: pushMock, refresh: jest.fn(), replace: replaceMock }),
   useSearchParams: () => new URLSearchParams(searchParamsState.value),
 }))
 
@@ -73,22 +74,21 @@ describe("useConciliations", () => {
     renderHook(() => useConciliations())
 
     await waitFor(() => {
-      expect(replaceStateMock).not.toHaveBeenCalled()
+      expect(replaceMock).not.toHaveBeenCalled()
     })
     expect(pushMock).not.toHaveBeenCalled()
   })
 
-  it("updates tab query state through native history instead of route navigation", async () => {
+  it("updates tab query state through router replacement", async () => {
     searchParamsState.value = "tab=sales&page=1"
 
     const { result } = renderHook(() => useConciliations())
 
-    result.current.handleTabChange("purchases")
+    act(() => result.current.handleTabChange("purchases"))
 
     await waitFor(() => {
-      expect(pushStateMock).toHaveBeenCalledWith(null, "", "/conciliations?tab=purchases&page=1")
+      expect(replaceMock).toHaveBeenCalledWith("/conciliations?tab=purchases&page=1", { scroll: false })
     })
-    expect(pushMock).not.toHaveBeenCalled()
   })
 
   it("requests only the active tab data and keeps the review fetch disabled while the modal is closed", () => {

@@ -3,18 +3,19 @@
 import { Suspense, use, useEffect } from "react";
 import { VoucherModalLoading, VoucherModalReady } from "src/components/vouchers/voucher-modal";
 import { VoucherFormOptionsData, useVoucherFormOptions } from "src/hooks/voucher/use-voucher-form-options";
-import { Voucher } from "src/models/Voucher";
+import { buildVoucherViewOptions } from "src/lib/helpers/voucher/voucher-form";
+import { VoucherApiResponse } from "src/types/voucher/voucher-api";
 import { VoucherModalMode, VoucherScreenType } from "src/types/voucher/voucher";
 
 interface VoucherDetailModalProps {
   voucherId: string | null;
-  voucher: Voucher | undefined;
+  voucher: VoucherApiResponse | undefined;
   error: unknown;
   isLoading: boolean;
   type: VoucherScreenType;
   mode: VoucherModalMode;
   onOpenChange: (open: boolean) => void;
-  onSuccess: (voucher: Voucher, mode: VoucherModalMode) => Promise<void>;
+  onSuccess: (voucher: VoucherApiResponse, mode: VoucherModalMode) => Promise<void>;
   onLoadError: (error: unknown) => void;
 }
 
@@ -26,12 +27,12 @@ function VoucherDetailModalContent({
   onOpenChange,
   onSuccess,
 }: {
-  voucher: Voucher;
+  voucher: VoucherApiResponse;
   optionsPromise: Promise<VoucherFormOptionsData> | null;
   type: VoucherScreenType;
   mode: VoucherModalMode;
   onOpenChange: (open: boolean) => void;
-  onSuccess: (voucher: Voucher, mode: VoucherModalMode) => Promise<void>;
+  onSuccess: (voucher: VoucherApiResponse, mode: VoucherModalMode) => Promise<void>;
 }) {
   if (!optionsPromise) {
     return null;
@@ -63,7 +64,7 @@ export function VoucherDetailModal({
   onSuccess,
   onLoadError,
 }: VoucherDetailModalProps) {
-  const { promise: optionsPromise } = useVoucherFormOptions({ isOpen: Boolean(voucherId), type });
+  const { promise: optionsPromise } = useVoucherFormOptions({ isOpen: Boolean(voucherId) && mode !== "view", type });
 
   useEffect(() => {
     if (!error) {
@@ -86,6 +87,20 @@ export function VoucherDetailModal({
         mode={mode}
         title="Cargando comprobante"
         description="Estamos trayendo la información para editarla."
+      />
+    );
+  }
+
+  if (mode === "view") {
+    return (
+      <VoucherModalReady
+        isOpen
+        onOpenChange={onOpenChange}
+        type={type}
+        mode={mode}
+        initialVoucher={voucher}
+        onSuccess={onSuccess}
+        options={buildVoucherViewOptions(voucher, type)}
       />
     );
   }

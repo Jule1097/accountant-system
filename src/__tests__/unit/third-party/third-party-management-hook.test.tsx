@@ -4,6 +4,7 @@ import { act, renderHook, waitFor } from "@testing-library/react"
 import { useClientsSuppliersManagement } from "src/hooks/third-party/use-third-party-management"
 
 const pushMock = jest.fn()
+const replaceMock = jest.fn()
 const useClientsSuppliersMock = jest.fn()
 const useClientSupplierByIdMock = jest.fn()
 const useCompanyMock = jest.fn()
@@ -15,7 +16,7 @@ const searchParamsState = {
 
 jest.mock("next/navigation", () => ({
   usePathname: () => "/clients",
-  useRouter: () => ({ push: pushMock }),
+  useRouter: () => ({ push: pushMock, replace: replaceMock }),
   useSearchParams: () => new URLSearchParams(searchParamsState.value),
 }))
 
@@ -39,6 +40,7 @@ describe("useClientsSuppliersManagement", () => {
     jest.clearAllMocks()
     jest.useFakeTimers()
     replaceStateMock.mockReset()
+    replaceMock.mockReset()
     window.history.replaceState = replaceStateMock
     useCompanyMock.mockReturnValue({
       activeCompanyId: "company-1",
@@ -74,7 +76,7 @@ describe("useClientsSuppliersManagement", () => {
     expect(useClientSupplierByIdMock).toHaveBeenLastCalledWith("clients", "")
 
     await waitFor(() => {
-      expect(replaceStateMock).toHaveBeenCalledWith(null, "", "/clients")
+      expect(replaceMock).toHaveBeenCalledWith("/clients", { scroll: false })
     })
   })
 
@@ -89,11 +91,7 @@ describe("useClientsSuppliersManagement", () => {
       jest.advanceTimersByTime(1000)
     })
 
-    expect(replaceStateMock).toHaveBeenCalledWith(
-      null,
-      "",
-      "/clients"
-    )
+    expect(replaceMock).toHaveBeenCalledWith("/clients", { scroll: false })
     expect(replaceStateMock).not.toHaveBeenCalledWith(
       null,
       "",
@@ -146,4 +144,5 @@ describe("useClientsSuppliersManagement", () => {
     })
     expect(useClientSupplierByIdMock).toHaveBeenLastCalledWith("clients", "")
   })
+
 })

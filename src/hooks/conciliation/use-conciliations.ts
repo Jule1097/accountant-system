@@ -7,18 +7,19 @@ import { useCompany } from "src/contexts/company-context";
 import { apiRequest } from "src/lib/api/api-client";
 import {
   areAllVisibleDiscardableSelected,
+  buildConciliationSectionSelectionState,
   buildConciliationsPath,
   buildConciliationsQueryString,
-  mergeSelectedItemIds,
   readConciliationsQuery,
-  removeSelectedItemIds,
   resolveActionErrorMessage,
   resolveConciliationsRefreshInterval,
   resolveSelectedVisibleItemIds,
 } from "src/lib/helpers/conciliation/conciliations-state";
-import { pushUrlState, replaceUrlState } from "src/lib/helpers/platform/history-navigation";
 import { buildCompanyPathKey, companyPathFetcher } from "src/lib/helpers/platform/swr";
 import { useToastManager } from "src/components/ui/toast";
+import { conciliationTableParameters } from "src/lib/helpers/conciliation/conciliations-state";
+import { useAccumulatedSelection } from "src/hooks/shared/use-accumulated-selection";
+import { useTableQueryState } from "src/hooks/shared/use-table-query-state";
 import {
   ConciliationBulkDiscardResponse,
   ConciliationBulkPersistResponse,
@@ -28,6 +29,7 @@ import {
   ConciliationPersistBatchActionState,
   ConciliationPersistResult,
   ConciliationSectionData,
+  ConciliationSectionSelectionState,
   ConciliationsPageData,
   ConciliationsQueryState,
   ConciliationTab,
@@ -53,8 +55,9 @@ export function useConciliations() {
   const pathname = usePathname();
   const toastManager = useToastManager();
   const { activeCompanyId, loading: isCompanyLoading } = useCompany();
+  const selection = useAccumulatedSelection<string>({ companyId: activeCompanyId });
+  const { selectedIds: selectedItemIds } = selection;
   const [loadingVouchers, setLoadingVouchers] = useState<Record<string, ConciliationItemAction | undefined>>({});
-  const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
   const [reviewItemId, setReviewItemId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [pendingDeleteItem, setPendingDeleteItem] = useState<ConciliationItem | null>(null);
@@ -62,9 +65,8 @@ export function useConciliations() {
   const [deleteDialogMode, setDeleteDialogMode] = useState<"single" | "bulk" | null>(null);
   const handledNotificationIdRef = useRef<string | null>(null);
   const handledStaleBatchPathRef = useRef<string | null>(null);
-  const query = useMemo(() => readConciliationsQuery(searchParams), [searchParams]);
-  const notificationId = searchParams.get("notificationId");
-  const path = buildConciliationsPath(query);
+  const sourceQuery = useMemo(() => readConciliationsQuery(searchParams), [searchParams]);
+  const path = buildConciliationsPath(sourceQuery);
   const key = buildCompanyPathKey(activeCompanyId, path, !isCompanyLoading);
   const { data, mutate, isLoading } = useSWR<ConciliationsPageData>(
     key,
@@ -77,6 +79,9 @@ export function useConciliations() {
       refreshWhenHidden: false,
     }
   );
+  const tableQueryState = useTableQueryState({ pathname, parameters: conciliationTableParameters, pageKey: "page", totalPages: data?.totalPages });
+  const query = tableQueryState.query;
+  const notificationId = query.notificationId;
   const reviewItemKey = buildCompanyPathKey(
     activeCompanyId,
     reviewItemId ? `/api/vouchers/parse/items/${reviewItemId}` : null,
@@ -137,14 +142,6 @@ export function useConciliations() {
   }, [deleteDialogMode, pendingBulkDeleteItemIds.length, pendingDeleteItem]);
 
   useEffect(() => {
-    if (!data || query.page <= data.totalPages) {
-      return;
-    }
-
-    replaceUrlState(`${pathname}?${buildConciliationsQueryString({ ...query, page: data.totalPages })}`);
-  }, [data, pathname, query]);
-
-  useEffect(() => {
     if (!data || !query.batchId || data.totalCount > 0) {
       return;
     }
@@ -168,9 +165,9 @@ export function useConciliations() {
         title: "Carga resuelta",
         description: "Las facturas de esta carga ya no requieren revisión.",
       });
-      replaceUrlState(`${pathname}?${buildConciliationsQueryString({ tab: query.tab, page: 1 })}`);
+      router.replace(`${pathname}?${buildConciliationsQueryString({ tab: query.tab, page: 1 })}`, { scroll: false });
     })();
-  }, [data, notificationId, pathname, query, toastManager]);
+  }, [data, notificationId, pathname, query, router, toastManager]);
 
   useEffect(() => {
     if (!notificationId || !data || (query.batchId && data.totalCount === 0)) {
@@ -185,14 +182,14 @@ export function useConciliations() {
     void apiRequest(`/api/notifications/${notificationId}`, {
       method: "DELETE",
     }).then(() => {
-      replaceUrlState(`${pathname}?${buildConciliationsQueryString(query)}`);
+      router.replace(`${pathname}?${buildConciliationsQueryString(query)}`, { scroll: false });
     }).catch(() => undefined);
-  }, [data, notificationId, pathname, query]);
+  }, [data, notificationId, pathname, query, router]);
 
   const isPageLoading = isCompanyLoading || (isLoading && !data);
 
   function syncQuery(nextQuery: ConciliationsQueryState): void {
-    pushUrlState(`${pathname}?${buildConciliationsQueryString(nextQuery)}`);
+    tableQueryState.update(nextQuery);
   }
 
   function updateLoadingState(itemId: string, action: ConciliationItemAction | null): void {
@@ -207,7 +204,7 @@ export function useConciliations() {
   }
 
   function handleTabChange(tab: ConciliationTab) {
-    setSelectedItemIds([]);
+    selection.clear();
     syncQuery({
       ...query,
       tab,
@@ -216,7 +213,6 @@ export function useConciliations() {
   }
 
   function handlePageChange(page: number) {
-    setSelectedItemIds([]);
     syncQuery({
       ...query,
       page,
@@ -228,31 +224,25 @@ export function useConciliations() {
       return;
     }
 
-    setSelectedItemIds((currentValue) => {
-      if (checked) {
-        return currentValue.includes(item.id) ? currentValue : [...currentValue, item.id];
-      }
-
-      return currentValue.filter((itemId) => itemId !== item.id);
-    });
+    selection.toggle(item.id, checked);
   }
 
   function handleToggleAllDiscardable(checked: boolean): void {
     if (!checked) {
-      setSelectedItemIds((currentValue) => removeSelectedItemIds(currentValue, removableItemIds));
+      selection.toggleMany(removableItemIds, false);
       return;
     }
 
-    setSelectedItemIds((currentValue) => mergeSelectedItemIds(currentValue, removableItemIds));
+    selection.toggleMany(removableItemIds, true);
   }
 
   function handleToggleVisibleSelection(itemIds: string[], checked: boolean): void {
     if (!checked) {
-      setSelectedItemIds((currentValue) => removeSelectedItemIds(currentValue, itemIds));
+      selection.toggleMany(itemIds, false);
       return;
     }
 
-    setSelectedItemIds((currentValue) => mergeSelectedItemIds(currentValue, itemIds));
+    selection.toggleMany(itemIds, true);
   }
 
   function handleReview(item: ConciliationItem) {
@@ -354,7 +344,7 @@ export function useConciliations() {
       });
       await revalidateConciliations();
       router.refresh();
-      setSelectedItemIds((currentValue) => removeSelectedItemIds(currentValue, [pendingDeleteItem.id]));
+      selection.toggle(pendingDeleteItem.id, false);
       setDeleteDialogMode(null);
       setPendingDeleteItem(null);
       toastManager.add({
@@ -406,7 +396,7 @@ export function useConciliations() {
       await revalidateConciliations();
       router.refresh();
       setDeleteDialogMode(null);
-      setSelectedItemIds((currentValue) => removeSelectedItemIds(currentValue, pendingBulkDeleteItemIds));
+      selection.toggleMany(pendingBulkDeleteItemIds, false);
       setPendingBulkDeleteItemIds([]);
       toastManager.add({
         type: "success",
@@ -422,6 +412,15 @@ export function useConciliations() {
     } finally {
       setIsDeleting(false);
     }
+  }
+
+  async function confirmDeleteDialog(): Promise<void> {
+    if (deleteDialogMode === "bulk") {
+      await confirmDeleteSelected();
+      return;
+    }
+
+    await confirmDelete();
   }
 
   async function handlePersist(item: ConciliationItem): Promise<void> {
@@ -480,7 +479,7 @@ export function useConciliations() {
       const payload = await response.json() as ConciliationBulkPersistResponse;
       await revalidateConciliations();
       router.refresh();
-      setSelectedItemIds((currentValue) => removeSelectedItemIds(currentValue, nextItemIds));
+      selection.toggleMany(nextItemIds, false);
       toastManager.add({
         type: "success",
         title: "Facturas enviadas",
@@ -493,6 +492,18 @@ export function useConciliations() {
         description: resolveActionErrorMessage(error, "No se pudieron enviar las facturas a guardar."),
       });
     }
+  }
+
+  function getSectionSelectionState(section: ConciliationSectionData): ConciliationSectionSelectionState {
+    return buildConciliationSectionSelectionState(section, selectedItemIds);
+  }
+
+  function handlePersistSection(section: ConciliationSectionData): void {
+    void handlePersistBatch(getSectionSelectionState(section).selectedValidatedItemIds);
+  }
+
+  function handleDeleteSection(section: ConciliationSectionData): void {
+    void handleDeleteSelected(getSectionSelectionState(section).selectedDiscardableItemIds);
   }
 
   return {
@@ -521,8 +532,7 @@ export function useConciliations() {
       ? `/api/conciliations/items/${reviewItemId}/source?companyId=${activeCompanyId}`
       : null,
     isVoucherSelected: (itemId: string) => selectedItemIds.includes(itemId),
-    getSelectedCount: (itemIds: string[]) => itemIds.filter((itemId) => selectedItemIds.includes(itemId)).length,
-    areAllSectionItemsSelected: (itemIds: string[]) => areAllVisibleDiscardableSelected(itemIds, selectedItemIds),
+    getSectionSelectionState,
     handleTabChange,
     handlePageChange,
     handleToggleItemSelection,
@@ -539,5 +549,8 @@ export function useConciliations() {
     handleDeleteSelected,
     confirmDelete,
     confirmDeleteSelected,
+    confirmDeleteDialog,
+    handlePersistSection,
+    handleDeleteSection,
   };
 }

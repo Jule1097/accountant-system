@@ -2,6 +2,7 @@ import { ClientRepository } from 'src/repositories/third-party/client.repository
 import { SupplierRepository } from 'src/repositories/third-party/supplier.repository'
 import { ClientService } from 'src/services/third-party/Client'
 import { SupplierService } from 'src/services/third-party/Supplier'
+import { applicationErrorCodes } from 'src/lib/constants/application-error'
 
 jest.mock('src/repositories/third-party/client.repository')
 jest.mock('src/repositories/third-party/supplier.repository')
@@ -38,7 +39,7 @@ describe('ClientService', () => {
       name: 'ACME',
     })
 
-    await expect(service.createClient(companyId, '  acme  ', '20-12345678-3')).rejects.toThrow('El cliente ya existe')
+    await expect(service.createClient(companyId, '  acme  ', '20-12345678-3')).rejects.toMatchObject({ code: applicationErrorCodes.duplicate, publicMessage: 'El cliente ya existe' })
     expect(repositoryMock.create).not.toHaveBeenCalled()
     expect(repositoryMock.findByNormalizedName).toHaveBeenCalledWith(companyId, 'acme')
   })
@@ -53,7 +54,7 @@ describe('ClientService', () => {
       updatedAt,
     })
 
-    await expect(service.createClient(companyId, 'Acme', '20-12345678-3')).rejects.toThrow('El CUIT ya existe')
+    await expect(service.createClient(companyId, 'Acme', '20-12345678-3')).rejects.toMatchObject({ code: applicationErrorCodes.duplicate, publicMessage: 'El CUIT ya existe' })
     expect(repositoryMock.create).not.toHaveBeenCalled()
   })
 
@@ -68,9 +69,7 @@ describe('ClientService', () => {
     })
     repositoryMock.hasVouchers.mockResolvedValue(true)
 
-    await expect(service.deleteClient(companyId, 'client-1')).rejects.toThrow(
-      'No se puede eliminar el cliente porque tiene comprobantes asociados.'
-    )
+    await expect(service.deleteClient(companyId, 'client-1')).rejects.toMatchObject({ code: applicationErrorCodes.conflict, publicMessage: 'No se puede eliminar el cliente porque tiene comprobantes asociados.' })
     expect(repositoryMock.delete).not.toHaveBeenCalled()
   })
 })
@@ -94,9 +93,7 @@ describe('SupplierService', () => {
       name: 'Servicios SRL',
     })
 
-    await expect(service.createSupplier(companyId, '  servicios srl ', '20-12345678-3')).rejects.toThrow(
-      'El proveedor ya existe'
-    )
+    await expect(service.createSupplier(companyId, '  servicios srl ', '20-12345678-3')).rejects.toMatchObject({ code: applicationErrorCodes.duplicate, publicMessage: 'El proveedor ya existe' })
     expect(repositoryMock.create).not.toHaveBeenCalled()
     expect(repositoryMock.findByNormalizedName).toHaveBeenCalledWith(companyId, 'servicios srl')
   })
@@ -111,9 +108,7 @@ describe('SupplierService', () => {
       updatedAt,
     })
 
-    await expect(service.createSupplier(companyId, 'Servicios SRL', '20-12345678-3')).rejects.toThrow(
-      'El CUIT ya existe'
-    )
+    await expect(service.createSupplier(companyId, 'Servicios SRL', '20-12345678-3')).rejects.toMatchObject({ code: applicationErrorCodes.duplicate, publicMessage: 'El CUIT ya existe' })
     expect(repositoryMock.create).not.toHaveBeenCalled()
   })
 
@@ -128,9 +123,7 @@ describe('SupplierService', () => {
     })
     repositoryMock.hasVouchers.mockResolvedValue(true)
 
-    await expect(service.deleteSupplier(companyId, 'supplier-1')).rejects.toThrow(
-      'No se puede eliminar el proveedor porque tiene comprobantes asociados.'
-    )
+    await expect(service.deleteSupplier(companyId, 'supplier-1')).rejects.toMatchObject({ code: applicationErrorCodes.conflict, publicMessage: 'No se puede eliminar el proveedor porque tiene comprobantes asociados.' })
     expect(repositoryMock.delete).not.toHaveBeenCalled()
   })
 })

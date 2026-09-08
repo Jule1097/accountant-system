@@ -1,44 +1,13 @@
 "use client";
 
-import { CheckCircle } from "lucide-react";
-import { ConciliationReviewModal } from "src/components/conciliations/conciliation-review-modal";
 import { ConciliationSection } from "src/components/conciliations/conciliation-section";
+import { ConciliationTabs } from "src/components/conciliations/conciliation-tabs";
+import { ConciliationsContentState } from "src/components/conciliations/conciliations-content-state";
+import { ConciliationsOverlays } from "src/components/conciliations/conciliations-overlays";
 import { ConciliationsPagination } from "src/components/conciliations/conciliations-pagination";
 import { ConciliationsToolbar } from "src/components/conciliations/conciliations-toolbar";
-import { VoucherDeleteDialog } from "src/components/vouchers/voucher-delete-dialog";
 import { useConciliations } from "src/hooks/conciliation/use-conciliations";
-import { ConciliationSectionData } from "src/types/conciliation/conciliations";
-
-function ConciliationsLoadingState() {
-  return (
-    <div className="space-y-4">
-      <div className="rounded-xl border border-border/50 bg-card px-4 py-3">
-        <div className="h-4 w-32 rounded bg-muted/70" />
-      </div>
-      {Array.from({ length: 3 }, (_, index) => (
-        <div key={index} className="rounded-xl border border-border/50 bg-card px-4 py-4">
-          <div className="space-y-3">
-            <div className="h-4 w-40 rounded bg-muted/70" />
-            <div className="h-4 w-60 rounded bg-muted/60" />
-            <div className="h-3 w-48 rounded bg-muted/50" />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function ConciliationsEmptyState() {
-  return (
-    <div className="flex flex-col items-center justify-center rounded-xl border border-border/50 bg-card p-12 text-center">
-      <CheckCircle className="mb-3 h-8 w-8 text-emerald-500" />
-      <div className="text-sm font-semibold text-foreground">¡Todo al día!</div>
-      <p className="mt-1 max-w-[280px] text-xs text-muted-foreground">
-        No hay facturas pendientes de conciliación en esta lista.
-      </p>
-    </div>
-  );
-}
+import type { ConciliationSectionData } from "src/types/conciliation/conciliations";
 
 export function ConciliationsView() {
   const {
@@ -66,74 +35,37 @@ export function ConciliationsView() {
     handleReviewSubmit,
     handleRegenerate,
     handlePersist,
-    handlePersistBatch,
     handleDelete,
-    handleDeleteSelected,
-    confirmDelete,
-    confirmDeleteSelected,
+    confirmDeleteDialog,
+    getSectionSelectionState,
+    handlePersistSection,
+    handleDeleteSection,
     isVoucherSelected,
-    getSelectedCount,
-    areAllSectionItemsSelected,
   } = useConciliations();
 
   return (
     <div className="flex-1 space-y-6">
       <ConciliationsToolbar />
-
-      <div className="flex w-full gap-4 border-b border-border/40">
-        <button
-          type="button"
-          onClick={() => handleTabChange("sales")}
-          className={`relative pb-2 text-sm font-medium transition-colors ${activeTab === "sales"
-            ? "text-[#FF5C00] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-[#FF5C00]"
-            : "text-muted-foreground hover:text-foreground"
-            }`}
-        >
-          Ventas
-        </button>
-        <button
-          type="button"
-          onClick={() => handleTabChange("purchases")}
-          className={`relative pb-2 text-sm font-medium transition-colors ${activeTab === "purchases"
-            ? "text-[#FF5C00] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-[#FF5C00]"
-            : "text-muted-foreground hover:text-foreground"
-            }`}
-        >
-          Compras
-        </button>
-      </div>
-
-      <div className="space-y-4">
-        {isPageLoading ? (
-          <ConciliationsLoadingState />
-        ) : sections.length === 0 ? (
-          <ConciliationsEmptyState />
-        ) : (
-          sections.map((section: ConciliationSectionData) => (
-            <ConciliationSection
-              key={section.key}
-              section={section}
-              loadingVouchers={loadingVouchers}
-              getSelectedCount={getSelectedCount}
-              areAllSectionItemsSelected={areAllSectionItemsSelected}
-              isVoucherSelected={isVoucherSelected}
-              onToggleVisibleSelection={handleToggleVisibleSelection}
-              onToggleItemSelection={handleToggleItemSelection}
-              onReview={handleReview}
-              onRegenerate={handleRegenerate}
-              onPersist={handlePersist}
-              onDelete={handleDelete}
-              onPersistSelected={(itemIds) => {
-                void handlePersistBatch(itemIds);
-              }}
-              onDeleteSelected={(itemIds) => {
-                void handleDeleteSelected(itemIds);
-              }}
-            />
-          ))
-        )}
-      </div>
-
+      <ConciliationTabs activeTab={activeTab} onTabChange={handleTabChange} />
+      <ConciliationsContentState isLoading={isPageLoading} sections={sections}>
+        {sections.map((section: ConciliationSectionData) => (
+          <ConciliationSection
+            key={section.key}
+            section={section}
+            selection={getSectionSelectionState(section)}
+            loadingVouchers={loadingVouchers}
+            isVoucherSelected={isVoucherSelected}
+            onToggleVisibleSelection={handleToggleVisibleSelection}
+            onToggleItemSelection={handleToggleItemSelection}
+            onReview={handleReview}
+            onRegenerate={handleRegenerate}
+            onPersist={handlePersist}
+            onDelete={handleDelete}
+            onPersistSelected={() => handlePersistSection(section)}
+            onDeleteSelected={() => handleDeleteSection(section)}
+          />
+        ))}
+      </ConciliationsContentState>
       <ConciliationsPagination
         currentPage={currentPage}
         totalPages={totalPages}
@@ -141,37 +73,19 @@ export function ConciliationsView() {
         startIndex={startIndex}
         onPageChange={handlePageChange}
       />
-
-      {isReviewModalOpen ? (
-        <ConciliationReviewModal
-          isOpen
-          type={activeTab}
-          item={reviewItem}
-          isLoading={isReviewItemLoading}
-          sourceUrl={reviewSourceUrl}
-          onOpenChange={handleReviewModalOpenChange}
-          onSubmit={handleReviewSubmit}
-        />
-      ) : null}
-
-      {deleteDialogState.isOpen ? (
-        <VoucherDeleteDialog
-          isOpen
-          voucher={null}
-          isDeleting={isDeleting}
-          title={deleteDialogState.title}
-          description={deleteDialogState.description}
-          onOpenChange={handleDeleteDialogOpenChange}
-          onConfirm={() => {
-            if (deleteDialogState.mode === "bulk") {
-              void confirmDeleteSelected();
-              return;
-            }
-
-            void confirmDelete();
-          }}
-        />
-      ) : null}
+      <ConciliationsOverlays
+        activeTab={activeTab}
+        isReviewModalOpen={isReviewModalOpen}
+        reviewItem={reviewItem}
+        isReviewItemLoading={isReviewItemLoading}
+        reviewSourceUrl={reviewSourceUrl}
+        onReviewModalOpenChange={handleReviewModalOpenChange}
+        onReviewSubmit={handleReviewSubmit}
+        deleteDialogState={deleteDialogState}
+        isDeleting={isDeleting}
+        onDeleteDialogOpenChange={handleDeleteDialogOpenChange}
+        onConfirmDelete={confirmDeleteDialog}
+      />
     </div>
   );
 }

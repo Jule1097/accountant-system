@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { UseFormReturn } from "react-hook-form";
-import { apiRequest } from "src/lib/api/api-client";
+import { apiRequest, parseJsonResponse } from "src/lib/api/api-client";
 import { buildClientSupplierCollectionPath } from "src/lib/helpers/third-party/third-party-management";
 import {
   mergeVoucherThirdPartyOptions,
@@ -14,13 +14,14 @@ import {
 import { fetchVoucherThirdParties, invalidateVoucherFormOptions } from "src/hooks/voucher/use-voucher-form-options";
 import { ClientSupplierFormValues, ClientSupplierRecord } from "src/types/third-party/third-party-resource";
 import { VoucherScreenType } from "src/types/voucher/voucher";
-import { VoucherParsedData, VoucherThirdPartyOption } from "src/types/voucher/voucher-form";
+import { ParsedVoucherData } from "src/types/parser/gemini-parser";
+import { VoucherThirdPartyOption } from "src/types/voucher/voucher-form";
 import { VoucherFormValues } from "src/lib/schemas/voucher/voucher-form-schemas";
 
 interface UseVoucherInlineThirdPartyProps {
   type: VoucherScreenType;
   form: UseFormReturn<VoucherFormValues>;
-  parsedData?: VoucherParsedData | null;
+  parsedData?: ParsedVoucherData | null;
   thirdParties: VoucherThirdPartyOption[];
   setThirdParties: (options: VoucherThirdPartyOption[]) => void;
 }
@@ -34,10 +35,6 @@ interface UseVoucherInlineThirdPartyResult {
   handleInlineModalOpenChange: (open: boolean) => void;
   handleInlineSuccess: (record?: ClientSupplierRecord) => Promise<void>;
   resolveDuplicateRecord: (values: ClientSupplierFormValues) => Promise<ClientSupplierRecord | null>;
-}
-
-async function parseResponseJson<T>(response: Response): Promise<T> {
-  return response.json() as Promise<T>;
 }
 
 export function useVoucherInlineThirdParty({
@@ -93,7 +90,7 @@ export function useVoucherInlineThirdParty({
         recordId: null,
       })
     );
-    const payload = await parseResponseJson<{
+    const payload = await parseJsonResponse<{
       items: ClientSupplierRecord[];
       page: number;
       pageSize: number;
