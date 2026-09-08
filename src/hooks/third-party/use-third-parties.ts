@@ -19,7 +19,9 @@ export function useClientsSuppliers(type: ClientSupplierEntityType, query: Clien
 
   return {
     data: resource.data,
-    isLoading: resource.isLoading || Boolean(resource.isValidating),
+    error: resource.error,
+    isLoading: resource.isLoading,
+    isValidating: resource.isValidating,
     mutate: resource.mutate,
   }
 }

@@ -7,12 +7,7 @@ import {
   thirdPartySortByOptions,
   thirdPartySortOrderOptions,
 } from 'src/lib/constants/third-party'
-import {
-  createNormalizedSearchParams,
-  readEnumParam,
-  readOptionalStringParam,
-  readPositiveIntegerParam,
-} from 'src/lib/helpers/platform/query-state'
+import { parseUrlState, updateUrlState } from 'src/lib/helpers/shared/url-state'
 import {
   ClientSupplierEntityType,
   ClientSupplierListQueryState,
@@ -20,44 +15,26 @@ import {
   ClientSupplierSortBy,
   ClientSupplierSortOrder,
 } from 'src/types/third-party/third-party-resource'
+import { UrlParameterConfigs } from 'src/types/shared/url-state'
 
 export const clientSupplierPageSizeOptions = thirdPartyPageSizeOptions
 export const clientSupplierSearchDebounceMs = thirdPartySearchDebounceMs
 
-const clientSupplierSortByOptions: ClientSupplierSortBy[] = [...thirdPartySortByOptions]
-const clientSupplierSortOrderOptions: ClientSupplierSortOrder[] = [...thirdPartySortOrderOptions]
+export const clientSupplierTableParameters = {
+  page: { defaultValue: thirdPartyQueryDefaults.page, parse: (value: string | null) => Number(value), normalize: (value: number) => Number.isInteger(value) && value > 0 ? value : thirdPartyQueryDefaults.page, serialize: (value: number) => value === thirdPartyQueryDefaults.page ? null : String(value) },
+  pageSize: { defaultValue: thirdPartyQueryDefaults.pageSize, parse: (value: string | null) => Number(value), normalize: (value: number) => clientSupplierPageSizeOptions.includes(value as typeof thirdPartyPageSizeOptions[number]) ? value : thirdPartyQueryDefaults.pageSize, serialize: (value: number) => value === thirdPartyQueryDefaults.pageSize ? null : String(value), allowedValues: thirdPartyPageSizeOptions },
+  search: { defaultValue: undefined as string | undefined, parse: (value: string | null) => value ?? undefined, serialize: (value: string | undefined) => value || null },
+  sortBy: { defaultValue: thirdPartyQueryDefaults.sortBy, serialize: (value: ClientSupplierSortBy) => value === thirdPartyQueryDefaults.sortBy ? null : value, allowedValues: thirdPartySortByOptions },
+  sortOrder: { defaultValue: thirdPartyQueryDefaults.sortOrder, serialize: (value: ClientSupplierSortOrder) => value === thirdPartyQueryDefaults.sortOrder ? null : value, allowedValues: thirdPartySortOrderOptions },
+  recordId: { defaultValue: null, parse: (value: string | null) => value },
+} satisfies UrlParameterConfigs
 
 export function readClientSupplierListQuery(searchParams: URLSearchParams): ClientSupplierListQueryState {
-  const pageSize = readPositiveIntegerParam(searchParams, thirdPartyQueryParams.pageSize, thirdPartyQueryDefaults.pageSize)
-  const normalizedPageSize = clientSupplierPageSizeOptions.includes(pageSize as typeof thirdPartyPageSizeOptions[number]) ? pageSize : thirdPartyQueryDefaults.pageSize
-
-  return {
-    page: readPositiveIntegerParam(searchParams, thirdPartyQueryParams.page, thirdPartyQueryDefaults.page),
-    pageSize: normalizedPageSize,
-    search: readOptionalStringParam(searchParams, thirdPartyQueryParams.search),
-    sortBy: readEnumParam(searchParams, thirdPartyQueryParams.sortBy, clientSupplierSortByOptions, thirdPartyQueryDefaults.sortBy),
-    sortOrder: readEnumParam(searchParams, thirdPartyQueryParams.sortOrder, clientSupplierSortOrderOptions, thirdPartyQueryDefaults.sortOrder),
-    recordId: readOptionalStringParam(searchParams, thirdPartyQueryParams.recordId) ?? null,
-  }
+  return parseUrlState(searchParams, clientSupplierTableParameters) as ClientSupplierListQueryState
 }
 
 export function buildClientSupplierSearchParams(query: ClientSupplierListQueryState): URLSearchParams {
-  return createNormalizedSearchParams(
-    {
-      page: query.page,
-      pageSize: query.pageSize,
-      search: query.search,
-      sortBy: query.sortBy,
-      sortOrder: query.sortOrder,
-      recordId: query.recordId,
-    },
-    {
-      page: thirdPartyQueryDefaults.page,
-      pageSize: thirdPartyQueryDefaults.pageSize,
-      sortBy: thirdPartyQueryDefaults.sortBy,
-      sortOrder: thirdPartyQueryDefaults.sortOrder,
-    }
-  )
+  return updateUrlState(new URLSearchParams(), clientSupplierTableParameters, query)
 }
 
 export function buildClientSupplierQuery(searchParams: URLSearchParams, nextQuery: ClientSupplierListQueryState): string {
@@ -99,10 +76,6 @@ export function buildClientSupplierMutationQuery(
     ...query,
     ...values,
   }
-}
-
-export function resetClientSupplierPage(query: ClientSupplierListQueryState): ClientSupplierListQueryState {
-  return buildClientSupplierMutationQuery(query, { page: 1 })
 }
 
 export function buildClientSupplierPageLabel(data: ClientSupplierListResponse<unknown>): string {

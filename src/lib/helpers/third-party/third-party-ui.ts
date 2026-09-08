@@ -67,6 +67,10 @@ export function resolveClientSupplierSearchPlaceholder(type: ClientSupplierEntit
   return `Buscar por ${type === thirdPartyEntityTypes.clients ? 'cliente' : 'proveedor'} o CUIT...`
 }
 
+export function resolveClientSupplierListErrorFallback(type: ClientSupplierEntityType): string {
+  return type === thirdPartyEntityTypes.clients ? 'No se pudieron cargar los clientes.' : 'No se pudieron cargar los proveedores.'
+}
+
 export function resolveClientSupplierAddButtonLabel(type: ClientSupplierEntityType): string {
   return type === thirdPartyEntityTypes.clients ? 'Agregar cliente' : 'Agregar proveedor'
 }

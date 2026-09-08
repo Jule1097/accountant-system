@@ -1,9 +1,8 @@
-import { VoucherForm } from "src/models/VoucherForm";
-import { Voucher } from "src/models/Voucher";
-import { normalizeVoucherFormPayload } from "src/lib/helpers/voucher/voucher-form";
-import { VoucherFormValues } from "src/lib/schemas/voucher/voucher-form-schemas";
+import { buildVoucherFormInitialValues, buildVoucherFormPayload, buildVoucherParsedPatch, normalizeVoucherFormPayload, resolveSalesSubtotal } from "src/lib/helpers/voucher/voucher-form";
+import { createVoucherFormSchema, VoucherFormValues } from "src/lib/schemas/voucher/voucher-form-schemas";
 import { VoucherFormPayload } from "src/types/voucher/voucher-form";
-import { VoucherParsedData } from "src/types/voucher/voucher-form";
+import { ParsedVoucherData } from "src/types/parser/gemini-parser";
+import { VoucherApiResponse } from "src/types/voucher/voucher-api";
 
 const basePayload: VoucherFormPayload = {
   type: "sale",
@@ -108,9 +107,9 @@ describe("normalizeVoucherFormPayload", () => {
   });
 });
 
-describe("VoucherForm.buildPayload", () => {
+describe("buildVoucherFormPayload", () => {
   it("preserves purchase voucher identifiers and maps the supplier correctly", () => {
-    const result = VoucherForm.buildPayload(purchaseFormValues, "purchases", formCatalogs);
+    const result = buildVoucherFormPayload(purchaseFormValues, "purchases", formCatalogs);
 
     expect(result.type).toBe("purchase");
     expect(result.posNumber).toBe("00003");
@@ -129,7 +128,7 @@ describe("VoucherForm.buildPayload", () => {
   });
 
   it("preserves the parsed exchange rate for foreign-currency vouchers", () => {
-    const result = VoucherForm.buildPayload(
+    const result = buildVoucherFormPayload(
       {
         ...purchaseFormValues,
         currency: "USD",
@@ -142,10 +141,67 @@ describe("VoucherForm.buildPayload", () => {
     expect(result.currency).toBe("USD");
     expect(result.exchangeRate).toBe(1087.45);
   });
+
+  it("removes jurisdictions from tax concepts that do not use them", () => {
+    const result = buildVoucherFormPayload(
+      {
+        ...purchaseFormValues,
+        perceptions: [{ perceptionConceptId: "perception-iva", taxJurisdictionId: "", amount: 12 }],
+      },
+      "purchases",
+      {
+        ...formCatalogs,
+        perceptionConcepts: [{ id: "perception-iva", name: "Percepción de IVA" }],
+      }
+    );
+
+    expect(result.perceptions).toEqual([{ perceptionConceptId: "perception-iva", taxJurisdictionId: null, amount: 12 }]);
+  });
 });
 
-describe("VoucherForm.buildParsedPatch", () => {
-  function createParsedData(overrides: Partial<VoucherParsedData>): VoucherParsedData {
+describe("voucher tax jurisdiction validation", () => {
+  it("requires a jurisdiction for income tax retention concepts", () => {
+    const result = createVoucherFormSchema({
+      ...formCatalogs,
+      retentionConcepts: [{ id: "retention-iibb", name: "Retención de Ingresos Brutos", type: "sale" }],
+    }).safeParse({
+      ...purchaseFormValues,
+      retentions: [{ retentionConceptId: "retention-iibb", taxJurisdictionId: "", amount: 10 }],
+      perceptions: [],
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error.issues).toEqual(expect.arrayContaining([expect.objectContaining({ path: ["retentions", 0, "taxJurisdictionId"] })]));
+  });
+
+  it("requires a jurisdiction for income tax perception concepts", () => {
+    const result = createVoucherFormSchema({
+      ...formCatalogs,
+      perceptionConcepts: [{ id: "perception-iibb", name: "Percepción de Ingresos Brutos" }],
+    }).safeParse({
+      ...purchaseFormValues,
+      perceptions: [{ perceptionConceptId: "perception-iibb", taxJurisdictionId: "", amount: 12 }],
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error.issues).toEqual(expect.arrayContaining([expect.objectContaining({ path: ["perceptions", 0, "taxJurisdictionId"] })]));
+  });
+
+  it("allows tax concepts that do not use jurisdictions without a jurisdiction", () => {
+    const result = createVoucherFormSchema({
+      ...formCatalogs,
+      perceptionConcepts: [{ id: "perception-iva", name: "Percepción de IVA" }],
+    }).safeParse({
+      ...purchaseFormValues,
+      perceptions: [{ perceptionConceptId: "perception-iva", taxJurisdictionId: "", amount: 12 }],
+    });
+
+    expect(result.success).toBe(true);
+  });
+});
+
+describe("buildVoucherParsedPatch", () => {
+  function createParsedData(overrides: Partial<ParsedVoucherData>): ParsedVoucherData {
     return {
       posNumber: null,
       number: null,
@@ -185,7 +241,7 @@ describe("VoucherForm.buildParsedPatch", () => {
   }
 
   it("resolves voucher type and letter when AI returns a combined invoice label", () => {
-    const result = VoucherForm.buildParsedPatch(
+    const result = buildVoucherParsedPatch(
       createParsedData({
         voucherType: "Factura A",
         voucherLetter: null,
@@ -201,7 +257,7 @@ describe("VoucherForm.buildParsedPatch", () => {
   });
 
   it("resolves credit note labels that include the invoice letter in the same parsed value", () => {
-    const result = VoucherForm.buildParsedPatch(
+    const result = buildVoucherParsedPatch(
       createParsedData({
         voucherType: "Nota de Crédito A",
         voucherLetter: null,
@@ -217,7 +273,7 @@ describe("VoucherForm.buildParsedPatch", () => {
   });
 
   it("resolves MiPyME wording variants to the corresponding voucher type", () => {
-    const result = VoucherForm.buildParsedPatch(
+    const result = buildVoucherParsedPatch(
       createParsedData({
         voucherType: "Factura Crédito MiPyME A",
         voucherLetter: null,
@@ -233,7 +289,7 @@ describe("VoucherForm.buildParsedPatch", () => {
   });
 
   it("resolves the exact FCE label to the electronic credit invoice type", () => {
-    const result = VoucherForm.buildParsedPatch(
+    const result = buildVoucherParsedPatch(
       createParsedData({
         voucherType: "Factura de Crédito Electrónica MiPyME (FCE)",
         voucherLetter: "A",
@@ -249,7 +305,7 @@ describe("VoucherForm.buildParsedPatch", () => {
   });
 
   it("does not derive an invalid letter token from the FCE acronym", () => {
-    const result = VoucherForm.buildParsedPatch(
+    const result = buildVoucherParsedPatch(
       createParsedData({
         voucherType: "Factura de Crédito Electrónica MiPyME (FCE)",
         voucherLetter: null,
@@ -264,13 +320,30 @@ describe("VoucherForm.buildParsedPatch", () => {
     expect(result.voucherLetterId).toBe("");
   });
 
+  it("calculates the net subtotal when the parser returns a sales total with included VAT", () => {
+    const result = buildVoucherParsedPatch(
+      createParsedData({
+        voucherType: "Factura B",
+        totalAmount: 121,
+        vatAmount: 21,
+        currency: "$",
+      }),
+      createCurrentValues(),
+      "sales",
+      parsedCatalogs,
+      [],
+    );
+
+    expect(result.subtotal).toBe(100);
+  });
+
   it.each([
     { voucherType: "Factura", voucherLetter: "Letra A", expectedLetterId: "letter-a" },
     { voucherType: "Factura", voucherLetter: "Letra B", expectedLetterId: "letter-b" },
     { voucherType: "Factura", voucherLetter: "Letra C", expectedLetterId: "letter-c" },
     { voucherType: "Factura", voucherLetter: "Letra M", expectedLetterId: "letter-m" },
   ])("resolves explicit parsed voucher letters for $voucherLetter", ({ voucherType, voucherLetter, expectedLetterId }) => {
-    const result = VoucherForm.buildParsedPatch(
+    const result = buildVoucherParsedPatch(
       createParsedData({
         voucherType,
         voucherLetter,
@@ -293,7 +366,7 @@ describe("VoucherForm.buildParsedPatch", () => {
     { voucherType: "Nota de Crédito B", expectedLetterId: "letter-b", expectedTypeId: "type-credit-note" },
     { voucherType: "Factura de Crédito Electrónica MiPyME (FCE) C", expectedLetterId: "letter-c", expectedTypeId: "type-fce" },
   ])("resolves embedded voucher letters from $voucherType", ({ voucherType, expectedLetterId, expectedTypeId }) => {
-    const result = VoucherForm.buildParsedPatch(
+    const result = buildVoucherParsedPatch(
       createParsedData({
         voucherType,
         voucherLetter: null,
@@ -309,9 +382,9 @@ describe("VoucherForm.buildParsedPatch", () => {
   });
 });
 
-describe("VoucherForm decimal rounding TDD", () => {
+describe("Voucher form decimal rounding", () => {
   it("should round the resolved subtotal to 2 decimals when total and vat amounts have float precision quirks", () => {
-    const subtotal = VoucherForm.resolveSalesSubtotal(
+    const subtotal = resolveSalesSubtotal(
       "sales",
       "letter-b",
       10.1,
@@ -328,24 +401,49 @@ describe("VoucherForm decimal rounding TDD", () => {
   });
 
   it("rounds float precision numbers to 2 decimal places in buildInitialValues", () => {
-    const initialVoucher = {
-      subtotal: 10.1234,
-      vatAmount: 2.126,
-      nonTaxableAmount: 1.0005,
-      exemptAmount: 0.1234,
-      otherTaxesAmount: 0.126,
-      totalAmount: 13.501,
+    const initialVoucher: VoucherApiResponse = {
+      id: "voucher-1",
+      companyId: "company-1",
+      type: "sale",
+      voucherTypeId: "voucher-type-1",
+      voucherLetterId: "voucher-letter-1",
+      posNumber: "00001",
+      number: "00000001",
+      date: "2026-08-08T00:00:00.000Z",
+      accountingPeriod: "2026-08-01T00:00:00.000Z",
+      subtotal: "10.1234",
+      vatAmount: "2.126",
+      nonTaxableAmount: "1.0005",
+      exemptAmount: "0.1234",
+      otherTaxesAmount: "0.126",
+      totalAmount: "13.501",
       currency: "ARS",
-      exchangeRate: 1,
+      exchangeRate: "1",
       retentions: [
-        { retentionConceptId: "ret-1", amount: 1.1234 }
+        { retentionConceptId: "ret-1", amount: "1.1234" }
       ],
       perceptions: [
-        { perceptionConceptId: "per-1", amount: 2.126 }
+        { perceptionConceptId: "per-1", amount: "2.126" }
       ],
-    } as unknown as Voucher;
+      netAmount: "13.501",
+      saldo: "13.501",
+      paidAmount: "0",
+      paymentMethod: "cash",
+      paymentDate: null,
+      status: "pending",
+      concept: null,
+      comments: null,
+      createdByUserId: "user-1",
+      clientId: "client-1",
+      supplierId: null,
+      client: { name: "Cliente", cuit: "20111111112" },
+      supplier: null,
+      voucherType: { name: "Factura" },
+      voucherLetter: { letter: "A" },
+      vatDetails: [],
+    };
     
-    const result = VoucherForm.buildInitialValues(initialVoucher, "user-1");
+    const result = buildVoucherFormInitialValues(initialVoucher, "user-1");
     expect(result.subtotal).toBe(10.12);
     expect(result.vatAmount).toBe(2.13);
     expect(result.nonTaxableAmount).toBe(1.00);

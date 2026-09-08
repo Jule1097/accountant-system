@@ -2,7 +2,10 @@ import * as z from "zod";
 import {
   normalizeVoucherExchangeRate,
   shouldRequireVoucherExchangeRate,
+  requiresVoucherTaxJurisdiction,
 } from "src/lib/helpers/voucher/voucher-form";
+import { voucherTaxJurisdictionRequiredMessage } from "src/lib/constants/voucher";
+import type { VoucherFormCatalogState } from "src/types/voucher/voucher-form";
 
 function normalizeOptionalNumberInput(value: unknown): number {
   if (value === "" || value === null || value === undefined) {
@@ -77,3 +80,34 @@ export const voucherFormSchema = z.object({
 });
 
 export type VoucherFormValues = z.infer<typeof voucherFormSchema>;
+
+export function createVoucherFormSchema(catalogs: VoucherFormCatalogState) {
+  const retentionConceptNames = new Map(catalogs.retentionConcepts.map((concept) => [concept.id, concept.name]));
+  const perceptionConceptNames = new Map(catalogs.perceptionConcepts.map((concept) => [concept.id, concept.name]));
+
+  return voucherFormSchema.superRefine((values, context) => {
+    values.retentions.forEach((retention, index) => {
+      if (!requiresVoucherTaxJurisdiction(retentionConceptNames.get(retention.retentionConceptId))) {
+        return;
+      }
+
+      if (z.string().uuid().safeParse(retention.taxJurisdictionId).success) {
+        return;
+      }
+
+      context.addIssue({ code: z.ZodIssueCode.custom, message: voucherTaxJurisdictionRequiredMessage, path: ["retentions", index, "taxJurisdictionId"] });
+    });
+
+    values.perceptions.forEach((perception, index) => {
+      if (!requiresVoucherTaxJurisdiction(perceptionConceptNames.get(perception.perceptionConceptId))) {
+        return;
+      }
+
+      if (z.string().uuid().safeParse(perception.taxJurisdictionId).success) {
+        return;
+      }
+
+      context.addIssue({ code: z.ZodIssueCode.custom, message: voucherTaxJurisdictionRequiredMessage, path: ["perceptions", index, "taxJurisdictionId"] });
+    });
+  });
+}

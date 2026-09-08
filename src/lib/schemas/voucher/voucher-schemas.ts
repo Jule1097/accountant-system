@@ -29,15 +29,20 @@ export const supplierSchema = z.object({
   companyId: z.string().uuid('ID de empresa inválido'),
 })
 
+const optionalVoucherTaxJurisdictionSchema = z.preprocess(
+  (value) => value === '' ? null : value,
+  z.string().uuid('ID de jurisdicción inválido').optional().nullable()
+)
+
 export const voucherRetentionSchema = z.object({
   retentionConceptId: z.string().uuid('ID de concepto de retención inválido'),
-  taxJurisdictionId: z.string().uuid('ID de jurisdicción inválido').optional().nullable(),
+  taxJurisdictionId: optionalVoucherTaxJurisdictionSchema,
   amount: z.coerce.number().nonnegative('El monto de retención no puede ser negativo'),
 })
 
 export const voucherPerceptionSchema = z.object({
   perceptionConceptId: z.string().uuid('ID de concepto de percepción inválido'),
-  taxJurisdictionId: z.string().uuid('ID de jurisdicción inválido').optional().nullable(),
+  taxJurisdictionId: optionalVoucherTaxJurisdictionSchema,
   amount: z.coerce.number().nonnegative('El monto de percepción no puede ser negativo'),
 })
 
@@ -145,6 +150,8 @@ export const voucherSchema = z
       accountingPeriod,
     }
   })
+
+export type VoucherSchemaOutput = z.output<typeof voucherSchema>
 
 export const voucherListQuerySchema = z.object({
   type: z.enum(['sale', 'purchase']),

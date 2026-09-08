@@ -130,6 +130,31 @@ describe("company-scoped hooks", () => {
     )
   })
 
+  it("does not expose cached resource revalidation as initial loading", () => {
+    useCompanyMock.mockReturnValue({
+      activeCompanyId: "company-1",
+      loading: false,
+    })
+    useSWRMock.mockReturnValue({
+      data: { items: [{ id: "client-1" }] },
+      error: undefined,
+      isLoading: false,
+      isValidating: true,
+      mutate: jest.fn(),
+    })
+
+    const { result } = renderHook(() => useClientsSuppliers("clients", {
+      page: 1,
+      pageSize: 10,
+      sortBy: "name",
+      sortOrder: "asc",
+      recordId: null,
+    }))
+
+    expect(result.current.isLoading).toBe(false)
+    expect(result.current.isValidating).toBe(true)
+  })
+
   it("keeps notifications requests disabled while the company context is still loading", () => {
     useCompanyMock.mockReturnValue({
       activeCompanyId: "company-1",

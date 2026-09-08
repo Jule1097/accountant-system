@@ -18,6 +18,8 @@ export interface VoucherExportResult {
   buffer: Buffer
 }
 
+export type VoucherExportRow = Record<string, string | number | null>
+
 export interface ExportColumnDefinition {
   header: string
   key: string

@@ -30,6 +30,7 @@ describe('ClientSupplierTable', () => {
     onSortChange: jest.fn(),
     onPageChange: jest.fn(),
     onPageSizeChange: jest.fn(),
+    onRetry: jest.fn(),
   }
 
   it('hides clear filters while the filtered response is loading', () => {
@@ -42,6 +43,12 @@ describe('ClientSupplierTable', () => {
     render(<ClientSupplierTable {...baseProps} isLoading={false} />)
 
     expect(screen.getByRole('button', { name: /borrar filtros/i })).toBeInTheDocument()
+  })
+
+  it('renders the empty state when the response contains no records', () => {
+    render(<ClientSupplierTable {...baseProps} isLoading={false} />)
+
+    expect(screen.getByText('No se encontraron registros.')).toBeInTheDocument()
   })
 
   it('hides clear filters while the local search value is waiting to be applied', () => {

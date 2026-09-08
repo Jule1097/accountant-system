@@ -1,0 +1,52 @@
+export const apiResponseMessages = {
+  common: {
+    invalidSearchParameters: "Parámetros de búsqueda inválidos.",
+    invalidData: "Datos inválidos",
+    internalServerError: "Error interno del servidor",
+    unauthorized: "Unauthorized",
+  },
+  auth: {
+    invalidSession: "Sesión inválida.",
+  },
+  dashboard: {
+    activeCompanyRequired: "Falta la empresa activa",
+    activityLoadFailed: "No se pudo cargar la actividad del dashboard",
+  },
+  notifications: {
+    invalid: "La notificación es inválida",
+    loadFailed: "No se pudieron cargar las notificaciones",
+    deleteFailed: "No se pudo borrar la notificación",
+  },
+  voucher: {
+    notFound: "Comprobante no encontrado",
+    notFoundWithPeriod: "Comprobante no encontrado.",
+    duplicate: "Comprobante duplicado detectado.",
+    parseContextInvalid: "El contexto del comprobante es inválido",
+    parseNoFiles: "No se proveyó ningún archivo",
+    parseFailed: "Error procesando el documento",
+    exportFailed: "Error interno del servidor al exportar Excel",
+  },
+  conciliation: {
+    searchInvalid: "La búsqueda de conciliaciones es inválida",
+    loadFailed: "No se pudieron cargar las conciliaciones",
+    invalidSelectedItems: "Las facturas seleccionadas son inválidas",
+    selectedItemsPersistFailed: "No se pudieron enviar las facturas seleccionadas a guardar",
+    selectedItemsDiscardFailed: "No se pudieron descartar las facturas seleccionadas",
+    invalidItem: "El ítem solicitado es inválido",
+    invalidValidatedData: "Los datos validados son inválidos",
+    itemDiscardFailed: "No se pudo descartar la factura",
+    itemPersistFailed: "No se pudo persistir la factura",
+    sourceLoadFailed: "No se pudo cargar el archivo fuente",
+    itemValidateFailed: "No se pudo validar la factura",
+    invalidBatch: "El lote solicitado es inválido",
+    batchPersistFailed: "No se pudieron enviar las facturas a persistencia",
+  },
+  parser: {
+    itemNotFound: "No se encontró el ítem solicitado",
+    itemQueryFailed: "No se pudo consultar el ítem",
+    itemRetryFailed: "No se pudo reintentar el ítem",
+    batchNotFound: "No se encontró el lote solicitado",
+    batchQueryFailed: "No se pudo consultar el lote",
+    batchRetryFailed: "No se pudo reintentar el batch",
+  },
+} as const

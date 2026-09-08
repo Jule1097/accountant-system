@@ -89,8 +89,8 @@ describe("VoucherPersistenceService", () => {
     batchRepositoryMock = new ParserBatchRepository() as jest.Mocked<ParserBatchRepository>;
     voucherServiceMock = new VoucherService() as jest.Mocked<VoucherService>;
 
-    (service as unknown as { batchRepository: ParserBatchRepository }).batchRepository = batchRepositoryMock;
-    (service as unknown as { voucherService: VoucherService }).voucherService = voucherServiceMock;
+    Object.defineProperty(service, "batchRepository", { value: batchRepositoryMock, writable: true });
+    Object.defineProperty(service, "voucherService", { value: voucherServiceMock, writable: true });
   });
 
   it("persists the validated purchase payload without losing voucher number or supplier", async () => {

@@ -1,7 +1,10 @@
 import prisma from 'src/lib/database/prisma'
 import { Prisma } from 'src/generated/prisma/client'
-import { Voucher } from 'src/models/Voucher'
-import { GeminiParserResponse } from 'src/types/parser/gemini-parser'
+import { voucherMoneyErrorMessages, voucherZeroAmount } from 'src/lib/constants/voucher'
+import { Voucher } from 'src/models/voucher/Voucher'
+import { VoucherFactory } from 'src/models/voucher/VoucherFactory'
+import { mapPrismaVoucherToDomainInput, mapVoucherToPrismaData } from 'src/lib/helpers/voucher/voucher-persistence'
+import { ParsedVoucherData } from 'src/types/parser/gemini-parser'
 import {
   DashboardRecentActivityData,
   DashboardRecentPurchaseEntry,
@@ -160,7 +163,7 @@ function resolveVoucherOrderBy(sortBy: string | undefined, sortOrder: VoucherSor
   const direction = sortOrder || 'desc'
 
   if (sortBy === 'status') {
-    return [{ status: direction }, { date: 'desc' }]
+    return [{ status: direction }, { date: 'desc' }, { id: 'desc' }]
   }
 
   if (sortBy === 'voucher') {
@@ -168,20 +171,30 @@ function resolveVoucherOrderBy(sortBy: string | undefined, sortOrder: VoucherSor
       { voucherLetter: { letter: direction } },
       { posNumber: direction },
       { number: direction },
+      { id: 'desc' },
     ]
   }
 
-  return [{ date: direction }]
+  return [{ date: direction }, { id: 'desc' }]
 }
 
-function mapVoucherListItem(rawVoucher: Prisma.VoucherGetPayload<{ include: typeof voucherInclude }>): VoucherListItem {
-  const voucher = new Voucher(rawVoucher)
-  const party = voucher.type === 'sale' ? voucher.client : voucher.supplier
+function rehydrateVoucher(rawVoucher: Prisma.VoucherGetPayload<{ include: typeof voucherInclude }>): Voucher {
+  return VoucherFactory.rehydrate(mapPrismaVoucherToDomainInput(rawVoucher))
+}
+
+function requireRelationId(value: string | undefined, message: string): string {
+  if (!value) throw new Error(message)
+  return value
+}
+
+function mapVoucherListItem(rawVoucher: Prisma.VoucherGetPayload<{ include: typeof voucherInclude }>): VoucherListItem<Voucher> {
+  const voucher = rehydrateVoucher(rawVoucher)
+  const party = voucher.getParty()
 
   return {
     rowKey: rawVoucher.id,
     voucher,
-    composedVoucherId: `${voucher.voucherLetter?.letter || ''} ${voucher.posNumber}-${voucher.number}`.trim(),
+    composedVoucherId: `${voucher.voucherLetter || ''} ${voucher.posNumber}-${voucher.number}`.trim(),
     partyName: party?.name || null,
     partyCuit: party?.cuit || null,
   }
@@ -266,23 +279,19 @@ export class VoucherRepository {
       return null
     }
 
-    return new Voucher(rawVoucher)
+    return rehydrateVoucher(rawVoucher)
   }
 
   async findDuplicate(voucher: Voucher): Promise<Voucher | null> {
-    const whereClause: Record<string, unknown> = {
+    const { duplicateCriteria } = voucher.getPersistenceData()
+    const whereClause: Prisma.VoucherWhereInput = {
       companyId: voucher.companyId,
       type: voucher.type,
       voucherTypeId: voucher.voucherTypeId,
       voucherLetterId: voucher.voucherLetterId,
       posNumber: voucher.posNumber,
       number: voucher.number,
-    }
-
-    if (voucher.type === 'sale') {
-      whereClause.clientId = voucher.clientId
-    } else {
-      whereClause.supplierId = voucher.supplierId
+      ...duplicateCriteria,
     }
 
     const rawVoucher = await prisma.voucher.findFirst({
@@ -294,13 +303,13 @@ export class VoucherRepository {
       return null
     }
 
-    return new Voucher(rawVoucher)
+    return rehydrateVoucher(rawVoucher)
   }
 
   async findDuplicateByParsedPayload(
     companyId: string,
     type: VoucherRecordType,
-    parsedPayload: GeminiParserResponse
+    parsedPayload: ParsedVoucherData
   ): Promise<Voucher | null> {
     if (!parsedPayload.thirdPartyId || !parsedPayload.voucherType || !parsedPayload.voucherLetter || !parsedPayload.posNumber || !parsedPayload.number) {
       return null
@@ -335,7 +344,7 @@ export class VoucherRepository {
       return null
     }
 
-    return new Voucher(rawVoucher)
+    return rehydrateVoucher(rawVoucher)
   }
 
   async findAll(companyId: string, filters: VoucherFilterParams = {}): Promise<Voucher[]> {
@@ -345,7 +354,7 @@ export class VoucherRepository {
       orderBy: resolveVoucherOrderBy(filters.sortBy, filters.sortOrder),
     })
 
-    return rawVouchers.map((voucher) => new Voucher(voucher))
+    return rawVouchers.map(rehydrateVoucher)
   }
 
   async findPage(
@@ -353,7 +362,7 @@ export class VoucherRepository {
     page: number,
     pageSize: number,
     filters: VoucherFilterParams = {}
-  ): Promise<VoucherListResponse> {
+  ): Promise<VoucherListResponse<Voucher>> {
     const whereClause = buildVoucherWhereClause(companyId, filters)
     const total = await prisma.voucher.count({
       where: whereClause,
@@ -367,9 +376,10 @@ export class VoucherRepository {
       skip: (currentPage - 1) * pageSize,
       take: pageSize,
     })
+    const items = rawVouchers.map(mapVoucherListItem)
 
     return {
-      items: rawVouchers.map(mapVoucherListItem),
+      items,
       page: currentPage,
       pageSize,
       total,
@@ -429,52 +439,28 @@ export class VoucherRepository {
   }
 
   async create(voucher: Voucher): Promise<Voucher> {
+    const persistenceData = voucher.getPersistenceData()
     const data: Prisma.VoucherUncheckedCreateInput = {
-      companyId: voucher.companyId,
-      type: voucher.type,
-      voucherTypeId: voucher.voucherTypeId,
-      voucherLetterId: voucher.voucherLetterId,
-      posNumber: voucher.posNumber,
-      number: voucher.number,
-      clientId: voucher.clientId,
-      supplierId: voucher.supplierId,
-      date: voucher.date,
-      accountingPeriod: voucher.accountingPeriod,
-      currency: voucher.currency,
-      exchangeRate: voucher.exchangeRate,
-      subtotal: voucher.subtotal,
-      vatAmount: voucher.vatAmount,
-      nonTaxableAmount: voucher.nonTaxableAmount,
-      exemptAmount: voucher.exemptAmount,
-      otherTaxesAmount: voucher.otherTaxesAmount,
-      totalAmount: voucher.totalAmount,
-      netAmount: voucher.netAmount,
-      concept: voucher.concept,
-      paymentMethod: voucher.paymentMethod,
-      status: voucher.status,
-      paymentDate: voucher.paymentDate,
-      paidAmount: voucher.paidAmount,
-      comments: voucher.comments,
-      createdByUserId: voucher.createdByUserId,
+      ...mapVoucherToPrismaData(voucher),
       retentions: {
-        create: voucher.retentions.map((retention) => ({
-          retentionConceptId: retention.retentionConceptId,
+        create: persistenceData.retentions.map((retention) => ({
+          retentionConceptId: requireRelationId(retention.retentionConceptId, voucherMoneyErrorMessages.missingRetentionConcept),
           taxJurisdictionId: retention.taxJurisdictionId,
-          amount: retention.amount,
+          amount: retention.amount.toString(),
         })),
       },
       perceptions: {
-        create: voucher.perceptions.map((perception) => ({
-          perceptionConceptId: perception.perceptionConceptId,
+        create: persistenceData.perceptions.map((perception) => ({
+          perceptionConceptId: requireRelationId(perception.perceptionConceptId, voucherMoneyErrorMessages.missingPerceptionConcept),
           taxJurisdictionId: perception.taxJurisdictionId,
-          amount: perception.amount,
+          amount: perception.amount.toString(),
         })),
       },
       vatDetails: {
         create: voucher.vatDetails.map((detail) => ({
-          vatRateId: detail.vatRateId,
-          subtotal: detail.subtotal,
-          vatAmount: detail.vatAmount,
+          vatRateId: requireRelationId(detail.vatRateId, voucherMoneyErrorMessages.missingVatRate),
+          subtotal: detail.subtotal?.toString() || detail.amount?.toString() || voucherZeroAmount,
+          vatAmount: detail.vatAmount?.toString() || voucherZeroAmount,
         })),
       },
     }
@@ -484,7 +470,7 @@ export class VoucherRepository {
       include: voucherInclude,
     })
 
-    return new Voucher(createdVoucher)
+    return rehydrateVoucher(createdVoucher)
   }
 
   async update(voucher: Voucher): Promise<Voucher> {
@@ -492,53 +478,44 @@ export class VoucherRepository {
       throw new Error('Voucher ID is required for update')
     }
 
-    const data: Prisma.VoucherUncheckedUpdateInput = {
-      type: voucher.type,
-      voucherTypeId: voucher.voucherTypeId,
-      voucherLetterId: voucher.voucherLetterId,
-      posNumber: voucher.posNumber,
-      number: voucher.number,
-      clientId: voucher.clientId,
-      supplierId: voucher.supplierId,
-      date: voucher.date,
-      accountingPeriod: voucher.accountingPeriod,
-      currency: voucher.currency,
-      exchangeRate: voucher.exchangeRate,
-      subtotal: voucher.subtotal,
-      vatAmount: voucher.vatAmount,
-      nonTaxableAmount: voucher.nonTaxableAmount,
-      exemptAmount: voucher.exemptAmount,
-      otherTaxesAmount: voucher.otherTaxesAmount,
-      totalAmount: voucher.totalAmount,
-      netAmount: voucher.netAmount,
-      concept: voucher.concept,
-      paymentMethod: voucher.paymentMethod,
-      status: voucher.status,
-      paymentDate: voucher.paymentDate,
-      paidAmount: voucher.paidAmount,
-      comments: voucher.comments,
+    const scalarData = mapVoucherToPrismaData(voucher)
+    const persistenceData = voucher.getPersistenceData()
+    Reflect.deleteProperty(scalarData, "id")
+    Reflect.deleteProperty(scalarData, "companyId")
+    Reflect.deleteProperty(scalarData, "voucherTypeId")
+    Reflect.deleteProperty(scalarData, "voucherLetterId")
+    Reflect.deleteProperty(scalarData, "clientId")
+    Reflect.deleteProperty(scalarData, "supplierId")
+    Reflect.deleteProperty(scalarData, "createdByUserId")
+    const data: Prisma.VoucherUpdateInput = {
+      ...scalarData,
+      voucherType: { connect: { id: voucher.voucherTypeId } },
+      voucherLetter: { connect: { id: voucher.voucherLetterId } },
+      createdByUser: { connect: { id: voucher.createdByUserId } },
+      client: persistenceData.clientId ? { connect: { id: persistenceData.clientId } } : { disconnect: true },
+      supplier: persistenceData.supplierId ? { connect: { id: persistenceData.supplierId } } : { disconnect: true },
       retentions: {
         deleteMany: {},
-        create: voucher.retentions.map((retention) => ({
-          retentionConceptId: retention.retentionConceptId,
-          taxJurisdictionId: retention.taxJurisdictionId,
-          amount: retention.amount,
+        create: persistenceData.retentions.map((retention) => ({
+          retentionConcept: { connect: { id: requireRelationId(retention.retentionConceptId, voucherMoneyErrorMessages.missingRetentionConcept) } },
+          ...(retention.taxJurisdictionId ? { taxJurisdiction: { connect: { id: retention.taxJurisdictionId } } } : {}),
+          amount: retention.amount.toString(),
         })),
       },
       perceptions: {
         deleteMany: {},
-        create: voucher.perceptions.map((perception) => ({
-          perceptionConceptId: perception.perceptionConceptId,
-          taxJurisdictionId: perception.taxJurisdictionId,
-          amount: perception.amount,
+        create: persistenceData.perceptions.map((perception) => ({
+          perceptionConcept: { connect: { id: requireRelationId(perception.perceptionConceptId, voucherMoneyErrorMessages.missingPerceptionConcept) } },
+          ...(perception.taxJurisdictionId ? { taxJurisdiction: { connect: { id: perception.taxJurisdictionId } } } : {}),
+          amount: perception.amount.toString(),
         })),
       },
       vatDetails: {
         deleteMany: {},
         create: voucher.vatDetails.map((detail) => ({
-          vatRateId: detail.vatRateId,
-          subtotal: detail.subtotal,
-          vatAmount: detail.vatAmount,
+          vatRate: { connect: { id: requireRelationId(detail.vatRateId, voucherMoneyErrorMessages.missingVatRate) } },
+          subtotal: detail.subtotal?.toString() || detail.amount?.toString() || voucherZeroAmount,
+          vatAmount: detail.vatAmount?.toString() || voucherZeroAmount,
         })),
       },
     }
@@ -549,7 +526,7 @@ export class VoucherRepository {
       include: voucherInclude,
     })
 
-    return new Voucher(updatedVoucher)
+    return rehydrateVoucher(updatedVoucher)
   }
 
   async delete(companyId: string, id: string): Promise<void> {
@@ -570,7 +547,7 @@ export class VoucherRepository {
       orderBy: { date: 'desc' },
     })
 
-    return rawVouchers.map((voucher) => new Voucher(voucher))
+    return rawVouchers.map(rehydrateVoucher)
   }
 
   async findDashboardRecentActivity(companyId: string): Promise<DashboardRecentActivityData> {

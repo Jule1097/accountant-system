@@ -1,20 +1,11 @@
 import { VoucherRepository } from 'src/repositories/voucher/voucher.repository'
-import { Voucher } from 'src/models/Voucher'
+import { VoucherFactory } from 'src/models/voucher/VoucherFactory'
+import { Voucher } from 'src/models/voucher/Voucher'
+import { VoucherFactoryInput } from 'src/types/voucher/domain'
 import { VoucherFilterParams, VoucherListResponse, VoucherSummaryResponse } from 'src/types/voucher/voucher'
-
-function resolveExplicitVoucherStatus(data: unknown): Voucher['status'] | null {
-  if (!data || typeof data !== 'object') {
-    return null
-  }
-
-  const status = (data as { status?: unknown }).status
-
-  if (status === 'pending' || status === 'partial' || status === 'paid') {
-    return status
-  }
-
-  return null
-}
+import { apiResponseMessages } from 'src/lib/constants/api-response'
+import { applicationErrorCodes } from 'src/lib/constants/application-error'
+import { ApplicationError } from 'src/lib/errors/application-error'
 
 export class VoucherService {
   private repository: VoucherRepository
@@ -36,7 +27,7 @@ export class VoucherService {
     page: number,
     pageSize: number,
     filters?: VoucherFilterParams
-  ): Promise<VoucherListResponse> {
+  ): Promise<VoucherListResponse<Voucher>> {
     return this.repository.findPage(companyId, page, pageSize, filters)
   }
 
@@ -44,37 +35,28 @@ export class VoucherService {
     return this.repository.summarize(companyId, filters)
   }
 
-  async createVoucher(data: unknown): Promise<Voucher> {
-    const voucher = new Voucher(data)
-    const explicitStatus = resolveExplicitVoucherStatus(data)
-    voucher.recalculate()
-    voucher.status = explicitStatus || voucher.status
+  async createVoucher(input: VoucherFactoryInput): Promise<Voucher> {
+    const voucher = VoucherFactory.create(input)
 
     const duplicate = await this.repository.findDuplicate(voucher)
     if (duplicate) {
-      throw new Error('Voucher is a duplicate of an existing record')
+      throw new ApplicationError(applicationErrorCodes.duplicate, apiResponseMessages.voucher.duplicate, 'Duplicate voucher detected')
     }
 
     return this.repository.create(voucher)
   }
 
-  async updateVoucher(companyId: string, id: string, data: unknown): Promise<Voucher> {
+  async updateVoucher(companyId: string, id: string, input: VoucherFactoryInput): Promise<Voucher> {
     const existing = await this.repository.findById(companyId, id)
     if (!existing) {
-      throw new Error('Voucher not found')
+      throw new ApplicationError(applicationErrorCodes.notFound, apiResponseMessages.voucher.notFoundWithPeriod, 'Voucher not found')
     }
 
-    const updatedData = { ...existing, ...((data as Voucher) ?? {}) }
-    updatedData.id = id
-
-    const updatedVoucher = new Voucher(updatedData)
-    const explicitStatus = resolveExplicitVoucherStatus(data)
-    updatedVoucher.recalculate()
-    updatedVoucher.status = explicitStatus || updatedVoucher.status
+    const updatedVoucher = VoucherFactory.create({ ...input, companyId, id })
 
     const duplicate = await this.repository.findDuplicate(updatedVoucher)
     if (duplicate && duplicate.id !== id) {
-      throw new Error('Voucher is a duplicate of an existing record')
+      throw new ApplicationError(applicationErrorCodes.duplicate, apiResponseMessages.voucher.duplicate, 'Duplicate voucher detected')
     }
 
     return this.repository.update(updatedVoucher)
@@ -83,7 +65,7 @@ export class VoucherService {
   async deleteVoucher(companyId: string, id: string): Promise<void> {
     const existing = await this.repository.findById(companyId, id)
     if (!existing) {
-      throw new Error('Voucher not found')
+      throw new ApplicationError(applicationErrorCodes.notFound, apiResponseMessages.voucher.notFoundWithPeriod, 'Voucher not found')
     }
 
     return this.repository.delete(companyId, id)

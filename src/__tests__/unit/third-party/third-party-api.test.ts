@@ -1,4 +1,6 @@
 import { NextRequest } from 'next/server'
+import { applicationErrorCodes } from 'src/lib/constants/application-error'
+import { ApplicationError } from 'src/lib/errors/application-error'
 import { GET as getClients, POST as postClient } from 'src/app/api/clients/route'
 import { DELETE as deleteClient } from 'src/app/api/clients/[id]/route'
 import { GET as getSuppliers, POST as postSupplier } from 'src/app/api/suppliers/route'
@@ -8,6 +10,17 @@ import { SupplierService } from 'src/services/third-party/Supplier'
 
 jest.mock('src/services/third-party/Client')
 jest.mock('src/services/third-party/Supplier')
+jest.mock('src/lib/helpers/auth/request-context', () => {
+  const { RequestContextError } = jest.requireActual('src/lib/errors/request-context')
+  const { requestContextErrorCodes } = jest.requireActual('src/lib/constants/auth')
+  return {
+    requireRequestContext: jest.fn(async (request: NextRequest) => {
+      const companyId = request.headers.get('x-company-id')
+      if (!companyId) throw new RequestContextError(requestContextErrorCodes.companyRequired)
+      return { userId: 'user-1', companyId }
+    }),
+  }
+})
 
 type ClientServiceMock = jest.MockedClass<typeof ClientService> & {
   prototype: {
@@ -35,11 +48,11 @@ function createRequest(overrides: Partial<NextRequest> = {}) {
     json: async () => ({}),
     nextUrl,
     ...overrides,
-  } as unknown as NextRequest
+  } as NextRequest
 }
 
 describe('Clients API Route Handlers', () => {
-  const clientServiceMock = ClientService as unknown as ClientServiceMock
+  const clientServiceMock = ClientService as ClientServiceMock
 
   beforeEach(() => {
     jest.clearAllMocks()
@@ -106,7 +119,7 @@ describe('Clients API Route Handlers', () => {
   })
 
   it('returns 409 when client creation detects a duplicate name', async () => {
-    clientServiceMock.prototype.createClient = jest.fn().mockRejectedValue(new Error('El cliente ya existe'))
+    clientServiceMock.prototype.createClient = jest.fn().mockRejectedValue(new ApplicationError(applicationErrorCodes.duplicate, 'El cliente ya existe'))
 
     const response = await postClient(
       createRequest({
@@ -123,7 +136,7 @@ describe('Clients API Route Handlers', () => {
 
   it('returns 409 when client deletion is blocked by related vouchers', async () => {
     clientServiceMock.prototype.deleteClient = jest.fn().mockRejectedValue(
-      new Error('No se puede eliminar el cliente porque tiene comprobantes asociados.')
+      new ApplicationError(applicationErrorCodes.conflict, 'No se puede eliminar el cliente porque tiene comprobantes asociados.')
     )
 
     const response = await deleteClient(createRequest(), {
@@ -138,7 +151,7 @@ describe('Clients API Route Handlers', () => {
 })
 
 describe('Suppliers API Route Handlers', () => {
-  const supplierServiceMock = SupplierService as unknown as SupplierServiceMock
+  const supplierServiceMock = SupplierService as SupplierServiceMock
 
   beforeEach(() => {
     jest.clearAllMocks()
@@ -189,7 +202,7 @@ describe('Suppliers API Route Handlers', () => {
   })
 
   it('returns 409 when supplier creation detects a duplicate cuit', async () => {
-    supplierServiceMock.prototype.createSupplier = jest.fn().mockRejectedValue(new Error('El CUIT ya existe'))
+    supplierServiceMock.prototype.createSupplier = jest.fn().mockRejectedValue(new ApplicationError(applicationErrorCodes.duplicate, 'El CUIT ya existe'))
 
     const response = await postSupplier(
       createRequest({
@@ -206,7 +219,7 @@ describe('Suppliers API Route Handlers', () => {
 
   it('returns 409 when supplier deletion is blocked by related vouchers', async () => {
     supplierServiceMock.prototype.deleteSupplier = jest.fn().mockRejectedValue(
-      new Error('No se puede eliminar el proveedor porque tiene comprobantes asociados.')
+      new ApplicationError(applicationErrorCodes.conflict, 'No se puede eliminar el proveedor porque tiene comprobantes asociados.')
     )
 
     const response = await deleteSupplier(createRequest(), {

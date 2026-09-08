@@ -9,10 +9,9 @@ describe("LocalAsyncBatchRunnerService", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useFakeTimers();
-    batchExecutionServiceMock = {
-      runParserBatch: jest.fn().mockResolvedValue(undefined),
-      runPersistenceBatch: jest.fn().mockResolvedValue(undefined),
-    } as unknown as jest.Mocked<VoucherBatchExecutionService>;
+    batchExecutionServiceMock = new VoucherBatchExecutionService() as jest.Mocked<VoucherBatchExecutionService>;
+    batchExecutionServiceMock.runParserBatch = jest.fn().mockResolvedValue(undefined);
+    batchExecutionServiceMock.runPersistenceBatch = jest.fn().mockResolvedValue(undefined);
 
     (VoucherBatchExecutionService as jest.MockedClass<typeof VoucherBatchExecutionService>).mockImplementation(
       () => batchExecutionServiceMock

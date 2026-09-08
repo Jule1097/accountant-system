@@ -1,62 +1,30 @@
 "use client";
 
-import type { ChangeEvent, MouseEvent } from "react";
-import { Eye, Pencil, Search, Trash2, X } from "lucide-react";
-import { useRef } from "react";
-import { VoucherExportButton } from "src/components/vouchers/voucher-export-button";
-
-import { Button } from "src/components/ui/button";
-import { Input } from "src/components/ui/input";
+import { DataTable } from "src/components/ui/data-table";
 import { PaginationControls } from "src/components/ui/pagination-controls";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "src/components/ui/table";
-import {
-  buildVoucherPageLabel,
-  getVoucherFormattedAmount,
-  getVoucherFormattedDate,
-  getVoucherFormattedExchangeRate,
-  getVoucherSortValue,
-  getVoucherStatusBadgeClassName,
-  getVoucherStatusLabel,
-  getVoucherTaxTotal,
-  voucherPageSizeOptions,
-} from "src/lib/helpers/voucher/voucher-management";
-import type { Voucher } from "src/models/Voucher";
-import type {
-  VoucherListItem,
-  VoucherListQueryState,
-  VoucherListResponse,
-  VoucherSortBy,
-  VoucherSortOrder,
-  VoucherScreenType,
-  VoucherStatus,
-} from "src/types/voucher/voucher";
+import { VoucherTableFilters } from "src/components/vouchers/voucher-table-filters";
+import { createVoucherTableColumns } from "src/components/vouchers/voucher-table-columns";
+import { VoucherTableToolbar } from "src/components/vouchers/voucher-table-toolbar";
+import { buildVoucherPageLabel, voucherPageSizeOptions } from "src/lib/helpers/voucher/voucher-management";
+import type { VoucherApiResponse } from "src/types/voucher/voucher-api";
+import type { VoucherListQueryState, VoucherListResponse, VoucherScreenType, VoucherSortBy, VoucherSortOrder, VoucherStatus } from "src/types/voucher/voucher";
 
-type VoucherTableProps = {
+interface VoucherTableProps {
   data?: VoucherListResponse;
   query: VoucherListQueryState;
   searchValue: string;
   type: VoucherScreenType;
   onAdd: () => void;
-  onSelectVoucher: (voucher: Voucher, action?: "view" | "edit") => void;
-  onDeleteVoucher: (voucher: Voucher) => void;
+  onSelectVoucher: (voucher: VoucherApiResponse, action?: "view" | "edit") => void;
+  onDeleteVoucher: (voucher: VoucherApiResponse) => void;
   onSearchChange: (value: string) => void;
   onClearFilters: () => void;
   onStatusChange: (value: VoucherStatus | undefined) => void;
   onDateRangeChange: (dateFrom: string, dateTo: string) => void;
-  onSortChange: (
-    sortBy: VoucherSortBy | undefined,
-    sortOrder: VoucherSortOrder | undefined,
-  ) => void;
+  onSortChange: (sortBy: VoucherSortBy | undefined, sortOrder: VoucherSortOrder | undefined) => void;
   onPageChange: (page: number) => void;
   onPageSizeChange: (pageSize: number) => void;
-};
+}
 
 export function VoucherTable({
   data,
@@ -74,283 +42,50 @@ export function VoucherTable({
   onPageChange,
   onPageSizeChange,
 }: VoucherTableProps) {
-  const dateDraftRef = useRef({
-    dateFrom: query.dateFrom || "",
-    dateTo: query.dateTo || "",
-  });
-
-  const vouchers: VoucherListItem[] = data?.items || [];
+  const rows = data?.items || [];
   const currentPage = data?.page || query.page || 1;
   const totalPages = data?.totalPages || 1;
-  const hasActiveFilters = Boolean(
-    query.search || query.status || query.dateFrom || query.dateTo,
+  const columns = createVoucherTableColumns({ type, onSelectVoucher, onDeleteVoucher });
+  const pageLabel = buildVoucherPageLabel(
+    data || { items: [], total: 0, page: query.page, pageSize: query.pageSize, totalPages: 1 },
   );
-  const dateInputsKey = `${query.dateFrom || ""}-${query.dateTo || ""}`;
-
-  const updateDateRange = (dateFrom: string, dateTo: string) => {
-    dateDraftRef.current = { dateFrom, dateTo };
-
-    if (!dateFrom && !dateTo) {
-      onDateRangeChange("", "");
-      return;
-    }
-
-    if (!dateFrom || !dateTo) {
-      if (!query.dateFrom && !query.dateTo) {
-        return;
-      }
-
-      onDateRangeChange("", "");
-      return;
-    }
-
-    onDateRangeChange(dateFrom, dateTo);
-  };
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 md:flex-row md:items-end md:justify-between">
-        <div className="grid flex-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
-          <div className="xl:col-span-2">
-            <label className="mb-2 block text-sm font-medium text-foreground">Buscar</label>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={searchValue}
-                placeholder="Buscar por nombre, CUIT..."
-                className="h-9 border-input bg-card pl-9 text-sm text-foreground placeholder:text-muted-foreground focus-visible:ring-[#FF5C00]"
-                onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                  onSearchChange(event.target.value)
-                }
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-medium text-foreground">Estado</label>
-            <select
-              className="flex h-9 w-full rounded-md border border-input bg-card px-3 py-2 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#FF5C00]"
-              value={query.status || ""}
-              onChange={(event: ChangeEvent<HTMLSelectElement>) =>
-                onStatusChange(event.target.value ? (event.target.value as VoucherStatus) : undefined)
-              }
-            >
-              <option value="">Todos</option>
-              <option value="pending">Pendiente</option>
-              <option value="partial">Parcial</option>
-              <option value="paid">Pagado</option>
-            </select>
-          </div>
-
-          <div key={dateInputsKey} className="contents">
-            <div>
-              <label className="mb-2 block text-sm font-medium text-foreground">Desde</label>
-              <Input
-                type="date"
-                defaultValue={query.dateFrom || ""}
-                className="h-9 border-input bg-card text-sm text-foreground focus-visible:ring-[#FF5C00]"
-                onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                  updateDateRange(event.target.value, dateDraftRef.current.dateTo)
-                }
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-foreground">Hasta</label>
-              <Input
-                type="date"
-                defaultValue={query.dateTo || ""}
-                className="h-9 border-input bg-card text-sm text-foreground focus-visible:ring-[#FF5C00]"
-                onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                  updateDateRange(dateDraftRef.current.dateFrom, event.target.value)
-                }
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 md:justify-end">
-          {hasActiveFilters ? (
-            <Button
-              variant="outline"
-              className="h-9 border-input bg-card px-3 text-foreground hover:bg-muted hover:text-foreground"
-              onClick={onClearFilters}
-            >
-              Borrar filtros
-              <X className="ml-2 h-4 w-4" />
-            </Button>
-          ) : null}
-        </div>
-      </div>
-
+      <VoucherTableFilters
+        query={query}
+        searchValue={searchValue}
+        onSearchChange={onSearchChange}
+        onClearFilters={onClearFilters}
+        onStatusChange={onStatusChange}
+        onDateRangeChange={onDateRangeChange}
+      />
       <div className="overflow-hidden rounded-[12px] border border-border bg-card">
-        <div className="flex flex-col gap-3 border-b border-border px-4 py-3 md:flex-row md:items-center md:justify-between">
-          <div className="text-sm text-muted-foreground">
-            {data?.total ?? 0} comprobantes encontrados
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 md:justify-end">
-            <label className="text-sm text-muted-foreground" htmlFor="voucher-sort">
-              Ordenar por
-            </label>
-            <select
-              id="voucher-sort"
-              className="flex h-9 rounded-md border border-input bg-card px-3 py-2 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#FF5C00]"
-              value={getVoucherSortValue(query.sortBy, query.sortOrder)}
-              onChange={(event: ChangeEvent<HTMLSelectElement>) => {
-                const [sortBy, sortOrder] = event.target.value.split(":");
-                onSortChange(sortBy as VoucherSortBy, sortOrder as VoucherSortOrder);
-              }}
-            >
-              <option value="date:desc">Fecha (más reciente)</option>
-              <option value="date:asc">Fecha (más antigua)</option>
-              <option value="status:asc">Estado</option>
-              <option value="voucher:asc">Comprobante</option>
-            </select>
-            <VoucherExportButton type={type} query={query} />
-            <Button
-              onClick={onAdd}
-              className="h-9 bg-[#FF5C00] px-3 text-[#FFFFFF] hover:bg-[#FF8A4C]"
-            >
-              {`Agregar ${type === "sales" ? "Venta" : "Compra"}`}
-            </Button>
-          </div>
-        </div>
-
-        <Table className="text-[13px] text-foreground">
-          <TableHeader className="bg-muted/30">
-            <TableRow className="border-b-border hover:bg-transparent">
-              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Fecha</TableHead>
-              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Letra</TableHead>
-              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Comprobante</TableHead>
-              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">{type === "sales" ? "Cliente" : "Proveedor"}</TableHead>
-              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">CUIT</TableHead>
-              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Concepto</TableHead>
-              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Medio Pago</TableHead>
-              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Estado</TableHead>
-              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">F. Pago</TableHead>
-              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">T/C</TableHead>
-              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">{type === "sales" ? "Retenciones" : "Percepciones"}</TableHead>
-              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Total</TableHead>
-              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Pagado</TableHead>
-              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Saldo</TableHead>
-              <TableHead className="text-[11px] font-semibold tracking-[0.5px] text-muted-foreground">Acciones</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {vouchers.length === 0 ? (
-              <TableRow className="border-b-border bg-card">
-                <TableCell colSpan={15} className="h-24 text-center text-muted-foreground">
-                  No se encontraron comprobantes.
-                </TableCell>
-              </TableRow>
-            ) : (
-              vouchers.map((item) => (
-                <TableRow
-                  key={item.rowKey}
-                  className="border-b-border bg-card transition-colors hover:bg-muted/30"
-                >
-                  <TableCell className="text-muted-foreground">{getVoucherFormattedDate(item.voucher.date)}</TableCell>
-                  <TableCell className="text-foreground">{item.voucher.voucherLetter?.letter || "—"}</TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {`${item.voucher.posNumber}-${item.voucher.number}`}
-                  </TableCell>
-                  <TableCell className="font-medium text-foreground">{item.partyName || "—"}</TableCell>
-                  <TableCell className="text-muted-foreground">{item.partyCuit || "—"}</TableCell>
-                  <TableCell className="text-muted-foreground">{item.voucher.concept || "—"}</TableCell>
-                  <TableCell className="text-muted-foreground">{item.voucher.paymentMethod || "—"}</TableCell>
-                  <TableCell>
-                    <span
-                      className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium ${getVoucherStatusBadgeClassName(item.voucher.status)}`}
-                    >
-                      {getVoucherStatusLabel(item.voucher.status)}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{getVoucherFormattedDate(item.voucher.paymentDate)}</TableCell>
-                  <TableCell className="text-right text-muted-foreground">
-                    {getVoucherFormattedExchangeRate(Number(item.voucher.exchangeRate))}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {getVoucherFormattedAmount(
-                      item.voucher.currency,
-                      getVoucherTaxTotal(item.voucher, type),
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right text-muted-foreground">
-                    {getVoucherFormattedAmount(item.voucher.currency, Number(item.voucher.totalAmount))}
-                  </TableCell>
-                  <TableCell className="text-right text-muted-foreground">
-                    {getVoucherFormattedAmount(item.voucher.currency, Number(item.voucher.paidAmount))}
-                  </TableCell>
-                  <TableCell className="text-right text-muted-foreground font-medium">
-                    {getVoucherFormattedAmount(item.voucher.currency, Number(item.voucher.saldo))}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center justify-end gap-1">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:bg-muted hover:text-[#FF5C00]"
-                        aria-label="Ver detalle del comprobante"
-                        onClick={(event: MouseEvent<HTMLButtonElement>) => {
-                          event.stopPropagation();
-                          onSelectVoucher(item.voucher, "view");
-                        }}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:bg-muted hover:text-[#FF5C00]"
-                        aria-label="Editar comprobante"
-                        onClick={(event: MouseEvent<HTMLButtonElement>) => {
-                          event.stopPropagation();
-                          onSelectVoucher(item.voucher, "edit");
-                        }}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                        aria-label="Eliminar comprobante"
-                        onClick={(event: MouseEvent<HTMLButtonElement>) => {
-                          event.stopPropagation();
-                          onDeleteVoucher(item.voucher);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-
-        <PaginationControls
-          currentPage={currentPage}
-          totalPages={totalPages}
-          pageSize={query.pageSize}
-          pageLabel={buildVoucherPageLabel(
-            data || {
-              items: [],
-              total: 0,
-              page: query.page,
-              pageSize: query.pageSize,
-              totalPages: 1,
-            },
-          )}
-          pageSizeOptions={voucherPageSizeOptions}
-          pageSizeAriaLabel="Mostrar comprobantes por página"
-          onPageChange={onPageChange}
-          onPageSizeChange={onPageSizeChange}
+        <VoucherTableToolbar
+          total={data?.total ?? 0}
+          query={query}
+          type={type}
+          onAdd={onAdd}
+          onSortChange={onSortChange}
+        />
+        <DataTable
+          data={rows}
+          columns={columns}
+          getRowId={(row) => row.rowKey}
+          emptyState="No se encontraron comprobantes."
+          className="rounded-none border-0"
+          footer={
+            <PaginationControls
+              currentPage={currentPage}
+              totalPages={totalPages}
+              pageSize={query.pageSize}
+              pageLabel={pageLabel}
+              pageSizeOptions={voucherPageSizeOptions}
+              pageSizeAriaLabel="Mostrar comprobantes por página"
+              onPageChange={onPageChange}
+              onPageSizeChange={onPageSizeChange}
+            />
+          }
         />
       </div>
     </div>

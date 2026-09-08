@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { httpStatusCodes } from 'src/lib/constants/http'
 import { buildClientSupplierFilters } from 'src/lib/helpers/third-party/third-party-persistence'
 import { clientSupplierListQuerySchema } from 'src/lib/schemas/third-party/third-party-schemas'
 import { ClientSupplierFilterParams } from 'src/types/third-party/third-party-resource'
@@ -43,15 +44,15 @@ export function resolveClientSupplierCollectionErrorResponse(message: string): N
     || message === supplierDuplicateNameError
     || message === clientDuplicateCuitError
   ) {
-    return NextResponse.json({ error: message }, { status: 409 })
+    return NextResponse.json({ error: message }, { status: httpStatusCodes.conflict })
   }
 
-  return NextResponse.json({ error: clientSupplierUnexpectedError }, { status: 500 })
+  return NextResponse.json({ error: clientSupplierUnexpectedError }, { status: httpStatusCodes.internalServerError })
 }
 
 export function resolveClientSupplierItemErrorResponse(message: string): NextResponse {
   if (message === clientNotFoundError || message === supplierNotFoundError) {
-    return NextResponse.json({ error: message }, { status: 404 })
+    return NextResponse.json({ error: message }, { status: httpStatusCodes.notFound })
   }
 
   if (
@@ -61,8 +62,8 @@ export function resolveClientSupplierItemErrorResponse(message: string): NextRes
     || message === clientDeleteBlockedError
     || message === supplierDeleteBlockedError
   ) {
-    return NextResponse.json({ error: message }, { status: 409 })
+    return NextResponse.json({ error: message }, { status: httpStatusCodes.conflict })
   }
 
-  return NextResponse.json({ error: clientSupplierUnexpectedError }, { status: 500 })
+  return NextResponse.json({ error: clientSupplierUnexpectedError }, { status: httpStatusCodes.internalServerError })
 }

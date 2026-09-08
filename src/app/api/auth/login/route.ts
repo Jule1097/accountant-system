@@ -13,9 +13,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const user = await authSessionService.login(supabase, payload)
 
     return createAuthJsonResponse(response, { user })
-  } catch (error: unknown) {
-    const err = error as Error
-    console.error("Error logging in:", err)
-    return resolveAuthErrorResponse(err.message, response)
+  } catch (error) {
+    console.error("Authentication login failed", { path: request.nextUrl.pathname, operation: "login", errorName: error instanceof Error ? error.name : "UnknownError" })
+    return resolveAuthErrorResponse(error, response)
   }
 }

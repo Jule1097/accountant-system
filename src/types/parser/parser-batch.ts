@@ -1,4 +1,4 @@
-import { GeminiParserResponse } from "src/types/parser/gemini-parser";
+import { ParsedVoucherData } from "src/types/parser/gemini-parser";
 import { VoucherFormPayload } from "src/types/voucher/voucher-form";
 
 export type ParserVoucherType = "sale" | "purchase";
@@ -41,7 +41,7 @@ export interface ParserBatchItemRecord {
   storagePath: string;
   inputStrategy: ParserInputStrategy | null;
   status: ParserBatchItemStatus;
-  parsedPayload: GeminiParserResponse | null;
+  parsedPayload: ParsedVoucherData | null;
   validatedPayload: VoucherFormPayload | null;
   currentError: string | null;
   currentAttempt: number;
@@ -102,7 +102,7 @@ export interface ParserBatchPersistenceJob {
 
 export interface ParserBatchSingleResponse {
   mode: "single";
-  data: GeminiParserResponse;
+  data: ParsedVoucherData;
 }
 
 export interface ParserBatchAsyncResponse {

@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { POST } from 'src/app/api/vouchers/parse/route'
 import { parseInvoiceImage, parseInvoiceMarkdown, parseInvoiceVisualFieldRepair } from 'src/lib/integrations/gemini'
-import * as parserAuthHelpers from 'src/lib/helpers/parser/parser-auth'
+import { requireRequestContext } from 'src/lib/helpers/auth/request-context'
 import { resolveParserPdfStrategy } from 'src/lib/helpers/parser/parser-pdf'
 import { CatalogRepository } from 'src/repositories/catalog/catalog.repository'
 import { ClientRepository } from 'src/repositories/third-party/client.repository'
@@ -17,9 +17,23 @@ jest.mock('src/repositories/catalog/catalog.repository')
 jest.mock('src/lib/helpers/parser/parser-pdf', () => ({
   resolveParserPdfStrategy: jest.fn(),
 }))
-jest.mock('src/lib/helpers/parser/parser-auth', () => ({
-  getParserAuthenticatedUserId: jest.fn(),
-}))
+jest.mock('src/lib/helpers/auth/request-context', () => {
+  const { RequestContextError } = jest.requireActual('src/lib/errors/request-context')
+  const { requestContextErrorCodes } = jest.requireActual('src/lib/constants/auth')
+  return {
+    requireRequestContext: jest.fn(async (request: NextRequest) => {
+      const companyId = request.headers.get('x-company-id')
+      if (!companyId) throw new RequestContextError(requestContextErrorCodes.companyRequired)
+      return { userId: 'user-1', companyId }
+    }),
+  }
+})
+
+function createParserRequest(request: object): NextRequest {
+  const nextRequest = new NextRequest('http://localhost')
+  Object.entries(request).forEach(([key, value]) => Object.defineProperty(nextRequest, key, { value, writable: true }))
+  return nextRequest
+}
 
 describe('Parser Route Handler', () => {
   const companyId = 'company-uuid'
@@ -65,9 +79,9 @@ describe('Parser Route Handler', () => {
   })
 
   it('should reject requests without active company header with 400', async () => {
-    const request = {
+    const request = createParserRequest({
       headers: { get: () => null },
-    } as unknown as NextRequest
+    })
 
     const response = await POST(request)
     expect(response.status).toBe(400)
@@ -75,7 +89,7 @@ describe('Parser Route Handler', () => {
   })
 
   it('should reject requests without file with 400', async () => {
-    const request = {
+    const request = createParserRequest({
       headers: { get: () => companyId },
       formData: async () => ({
         get: (key: string) => {
@@ -87,7 +101,7 @@ describe('Parser Route Handler', () => {
         },
         getAll: () => [],
       }),
-    } as unknown as NextRequest
+    })
 
     const response = await POST(request)
     expect(response.status).toBe(400)
@@ -95,7 +109,7 @@ describe('Parser Route Handler', () => {
   })
 
   it('should reject files exceeding 2MB with 400', async () => {
-    const request = {
+    const request = createParserRequest({
       headers: { get: () => companyId },
       formData: async () => ({
         get: (key: string) => {
@@ -116,7 +130,7 @@ describe('Parser Route Handler', () => {
         },
         getAll: () => [],
       }),
-    } as unknown as NextRequest
+    })
 
     const response = await POST(request)
     expect(response.status).toBe(400)
@@ -142,7 +156,7 @@ describe('Parser Route Handler', () => {
     ClientRepository.prototype.findByCuitAndCompany = jest.fn().mockResolvedValue({ id: 'client-uuid-123' })
     SupplierRepository.prototype.findByCuitAndCompany = jest.fn().mockResolvedValue(null)
 
-    const request = {
+    const request = createParserRequest({
       headers: { get: () => companyId },
       formData: async () => ({
         get: (key: string) => {
@@ -158,7 +172,7 @@ describe('Parser Route Handler', () => {
         },
         getAll: () => [],
       }),
-    } as unknown as NextRequest
+    })
 
     const response = await POST(request)
     const body = await response.json()
@@ -207,7 +221,7 @@ describe('Parser Route Handler', () => {
     ClientRepository.prototype.findByCuitAndCompany = jest.fn().mockResolvedValue({ id: 'client-uuid-123' })
     SupplierRepository.prototype.findByCuitAndCompany = jest.fn().mockResolvedValue(null)
 
-    const request = {
+    const request = createParserRequest({
       headers: { get: () => companyId },
       formData: async () => ({
         get: (key: string) => {
@@ -223,7 +237,7 @@ describe('Parser Route Handler', () => {
         },
         getAll: () => [],
       }),
-    } as unknown as NextRequest
+    })
 
     const response = await POST(request)
     const body = await response.json()
@@ -265,7 +279,7 @@ describe('Parser Route Handler', () => {
     ClientRepository.prototype.findByCuitAndCompany = jest.fn().mockResolvedValue(null)
     SupplierRepository.prototype.findByCuitAndCompany = jest.fn().mockResolvedValue(null)
 
-    const request = {
+    const request = createParserRequest({
       headers: { get: () => companyId },
       formData: async () => ({
         get: (key: string) => {
@@ -281,7 +295,7 @@ describe('Parser Route Handler', () => {
         },
         getAll: () => [],
       }),
-    } as unknown as NextRequest
+    })
 
     const response = await POST(request)
     const body = await response.json()
@@ -325,7 +339,7 @@ describe('Parser Route Handler', () => {
     ClientRepository.prototype.findByCuitAndCompany = jest.fn().mockResolvedValue(null)
     SupplierRepository.prototype.findByCuitAndCompany = jest.fn().mockResolvedValue(null)
 
-    const request = {
+    const request = createParserRequest({
       headers: { get: () => companyId },
       formData: async () => ({
         get: (key: string) => {
@@ -341,7 +355,7 @@ describe('Parser Route Handler', () => {
         },
         getAll: () => [],
       }),
-    } as unknown as NextRequest
+    })
 
     const response = await POST(request)
     const body = await response.json()
@@ -392,7 +406,7 @@ describe('Parser Route Handler', () => {
     ClientRepository.prototype.findByCuitAndCompany = jest.fn().mockResolvedValue(null)
     SupplierRepository.prototype.findByCuitAndCompany = jest.fn().mockResolvedValue(null)
 
-    const request = {
+    const request = createParserRequest({
       headers: { get: () => companyId },
       formData: async () => ({
         get: (key: string) => {
@@ -408,7 +422,7 @@ describe('Parser Route Handler', () => {
         },
         getAll: () => [],
       }),
-    } as unknown as NextRequest
+    })
 
     const response = await POST(request)
     const body = await response.json()
@@ -425,7 +439,7 @@ describe('Parser Route Handler', () => {
   })
 
   it('should reject images exceeding 4MB with 400', async () => {
-    const request = {
+    const request = createParserRequest({
       headers: { get: () => companyId },
       formData: async () => ({
         get: (key: string) => {
@@ -446,7 +460,7 @@ describe('Parser Route Handler', () => {
         },
         getAll: () => [],
       }),
-    } as unknown as NextRequest
+    })
 
     const response = await POST(request)
     expect(response.status).toBe(400)
@@ -454,7 +468,7 @@ describe('Parser Route Handler', () => {
   })
 
   it('should create an async batch when more than one file is submitted', async () => {
-    jest.spyOn(parserAuthHelpers, 'getParserAuthenticatedUserId').mockResolvedValue('user-uuid')
+    jest.mocked(requireRequestContext).mockResolvedValue({ userId: 'user-uuid', companyId })
     jest.spyOn(VoucherParserService.prototype, 'createBatch').mockResolvedValue({
       mode: 'batch',
       batch: {
@@ -477,7 +491,7 @@ describe('Parser Route Handler', () => {
       name: 'invoice-2.png',
       arrayBuffer: async () => new ArrayBuffer(8),
     }
-    const request = {
+    const request = createParserRequest({
       headers: { get: () => companyId },
       formData: async () => ({
         get: (key: string) => {
@@ -495,7 +509,7 @@ describe('Parser Route Handler', () => {
           return []
         },
       }),
-    } as unknown as NextRequest
+    })
 
     const response = await POST(request)
     const body = await response.json()

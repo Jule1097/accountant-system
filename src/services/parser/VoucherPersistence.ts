@@ -1,19 +1,22 @@
 import { ParserBatchRepository } from "src/repositories/parser/parser-batch.repository";
 import { voucherSchema } from "src/lib/schemas/voucher/voucher-schemas";
-import { normalizeVoucherFormPayload } from "src/lib/helpers/voucher/voucher-form";
+import { mapVoucherSchemaToDomainInput } from "src/lib/helpers/voucher/voucher-factory-input";
 import { VoucherService } from "src/services/voucher/Voucher";
 import { AsyncBatchRunner } from "src/types/parser/async-batch-runner";
 import { ConciliationPersistResult } from "src/types/conciliation/conciliations";
-import { GeminiParserResponse } from "src/types/parser/gemini-parser";
+import { ParsedVoucherData } from "src/types/parser/gemini-parser";
 import { ParserBatchItemContextRecord, ParserBatchPersistenceJob } from "src/types/parser/parser-batch";
-import { VoucherFormPayload } from "src/types/voucher/voucher-form";
 import { AsyncBatchRunnerService } from "./AsyncBatchRunner";
+import { applicationErrorCodes } from "src/lib/constants/application-error";
+import { conciliationErrorMessages } from "src/lib/constants/conciliation-error";
+import { ApplicationError, isApplicationError } from "src/lib/errors/application-error";
+import { isError } from "src/lib/helpers/shared/type-guards";
 
 function isDuplicateVoucherError(error: unknown): boolean {
-  return error instanceof Error && error.message.includes("duplicate");
+  return isApplicationError(error) && error.code === applicationErrorCodes.duplicate;
 }
 
-function buildParsedPayloadFallback(item: ParserBatchItemContextRecord): GeminiParserResponse {
+function buildParsedPayloadFallback(item: ParserBatchItemContextRecord): ParsedVoucherData {
   return item.parsedPayload || {
     posNumber: null,
     number: null,
@@ -56,7 +59,7 @@ export class VoucherPersistenceService {
 
   private getRequiredAsyncBatchRunner(): AsyncBatchRunner {
     if (!this.asyncBatchRunner) {
-      throw new Error("Async batch runner is not configured");
+      throw new ApplicationError(applicationErrorCodes.unexpected, "No se pudo enviar la factura a persistencia", "Async batch runner is not configured");
     }
 
     return this.asyncBatchRunner;
@@ -66,11 +69,11 @@ export class VoucherPersistenceService {
     const item = await this.batchRepository.findItemById(itemId);
 
     if (!item || item.batch.companyId !== companyId) {
-      throw new Error("No se encontró el ítem solicitado");
+      throw new ApplicationError(applicationErrorCodes.notFound, conciliationErrorMessages.itemNotFound, "Conciliation item not found");
     }
 
     if (item.status !== "validated" || !item.validatedPayload) {
-      throw new Error("La factura no está lista para guardarse");
+      throw new ApplicationError(applicationErrorCodes.conflict, "La factura no est\u00e1 lista para guardarse", "Conciliation item is not ready for persistence");
     }
 
     return item;
@@ -78,17 +81,13 @@ export class VoucherPersistenceService {
 
   private async persistStagedItem(item: ParserBatchItemContextRecord): Promise<ConciliationPersistResult> {
     try {
-      const normalizedPayload = {
-        ...normalizeVoucherFormPayload(item.validatedPayload as VoucherFormPayload),
-        companyId: item.batch.companyId,
-      };
-      const parsedPayload = voucherSchema.safeParse(normalizedPayload);
+      const parsedPayload = voucherSchema.safeParse({ ...item.validatedPayload, companyId: item.batch.companyId });
 
       if (!parsedPayload.success) {
-        throw new Error("Validated voucher payload is invalid");
+        throw new ApplicationError(applicationErrorCodes.validation, "Los datos validados son inv\u00e1lidos", "Validated voucher payload is invalid");
       }
 
-      await this.voucherService.createVoucher(parsedPayload.data);
+      await this.voucherService.createVoucher(mapVoucherSchemaToDomainInput(parsedPayload.data));
       await this.batchRepository.markItemPersisted(item.id);
       return {
         status: "persisted",
@@ -107,7 +106,7 @@ export class VoucherPersistenceService {
         };
       }
 
-      const errorMessage = error instanceof Error ? error.message : "Persistence failed";
+      const errorMessage = isApplicationError(error) ? error.diagnosticMessage : isError(error) ? error.message : "Persistence failed";
       await this.batchRepository.markItemPersistenceFailed(item.id, errorMessage);
       return {
         status: "failed",

@@ -1,8 +1,9 @@
-import { UseFieldArrayReturn, UseFormReturn } from "react-hook-form";
+import { Controller, UseFieldArrayReturn, UseFormReturn } from "react-hook-form";
 import { Button } from "src/components/ui/button";
-import { Input } from "src/components/ui/input";
+import { LocalizedDecimalInput } from "src/components/ui/localized-decimal-input";
 import { VoucherFormValues } from "src/hooks/voucher/use-voucher-form";
 import { cn } from "src/lib/shared/utils";
+import { requiresVoucherTaxJurisdiction } from "src/lib/helpers/voucher/voucher-form";
 
 interface VoucherModalPerceptionsProps {
   form: UseFormReturn<VoucherFormValues>;
@@ -24,7 +25,7 @@ export function VoucherModalPerceptions({
   catalogs,
   disabled = false,
 }: VoucherModalPerceptionsProps) {
-  const { register, watch } = form;
+  const { control, register, watch } = form;
 
   if (disabled && fields.length === 0) {
     return null;
@@ -56,7 +57,7 @@ export function VoucherModalPerceptions({
           {fields.map((field, index) => {
             const conceptId = watch(`perceptions.${index}.perceptionConceptId`);
             const selectedConcept = catalogs.perceptionConcepts.find((concept) => concept.id === conceptId);
-            const showJurisdiction = selectedConcept?.name.toLowerCase().includes("ingresos brutos");
+            const showJurisdiction = requiresVoucherTaxJurisdiction(selectedConcept?.name);
 
             return (
               <div key={field.id} className={cn("grid items-end gap-2 rounded-md bg-muted/30 p-2", disabled ? "grid-cols-11" : "grid-cols-12")}>
@@ -81,6 +82,7 @@ export function VoucherModalPerceptions({
                     <label className="text-[9px] font-medium uppercase text-muted-foreground">Jurisdicción</label>
                     <select
                       disabled={disabled}
+                      required={showJurisdiction}
                       className="w-full rounded-md border border-input bg-card px-2 py-1 text-xs focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                       {...register(`perceptions.${index}.taxJurisdictionId` as const)}
                     >
@@ -98,13 +100,10 @@ export function VoucherModalPerceptions({
 
                 <div className="col-span-3 grid gap-1">
                   <label className="text-[9px] font-medium uppercase text-muted-foreground">Importe</label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    disabled={disabled}
-                    className="h-8 px-2 py-1 text-xs bg-card"
-                    {...register(`perceptions.${index}.amount` as const, { valueAsNumber: true })}
+                  <Controller
+                    control={control}
+                    name={`perceptions.${index}.amount` as const}
+                    render={({ field }) => <LocalizedDecimalInput value={field.value} onChange={field.onChange} onBlur={() => field.onBlur()} disabled={disabled} className="h-8 px-2 py-1 text-xs bg-card" />}
                   />
                 </div>
 

@@ -8,7 +8,7 @@ function createRequest(overrides: Partial<NextRequest> = {}) {
   return {
     headers: new Headers({ "x-company-id": "company-1" }),
     ...overrides,
-  } as unknown as NextRequest
+  } as NextRequest
 }
 
 describe("Dashboard recent activity API Route Handler", () => {

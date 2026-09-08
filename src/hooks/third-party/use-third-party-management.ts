@@ -6,18 +6,17 @@ import { useToastManager } from 'src/components/ui/toast'
 import { thirdPartyEntityTypes, thirdPartyQueryDefaults, thirdPartyQueryParams, thirdPartyRecordActions, thirdPartyRoutes } from 'src/lib/constants/third-party'
 import { useCompany } from 'src/contexts/company-context'
 import { useClientSupplierById, useClientsSuppliers } from 'src/hooks/third-party/use-third-parties'
-import { useResourceMutation, useResourceQueryState } from 'src/hooks/shared/use-resource'
+import { useResourceMutation } from 'src/hooks/shared/use-resource'
+import { useTableQueryState } from 'src/hooks/shared/use-table-query-state'
 import { useResourceDeletionCoordinator } from 'src/hooks/shared/use-resource-deletion'
-import { replaceUrlState } from 'src/lib/helpers/platform/history-navigation'
 import { resolveResourceDeletionQuery } from 'src/lib/helpers/shared/resource-deletion'
 import { createClientSupplierMutationAdapter } from 'src/lib/helpers/third-party/third-party-resource-adapter'
 import {
   buildClientSupplierMutationQuery,
   buildClientSupplierQuery,
-  clientSupplierSearchDebounceMs,
+  clientSupplierTableParameters,
   moveClientSupplierPageBack,
   readClientSupplierListQuery,
-  resetClientSupplierPage,
   resolveClientSupplierManagementError,
 } from 'src/lib/helpers/third-party/third-party-management'
 import {
@@ -58,7 +57,6 @@ export function useClientsSuppliersManagement(type: ClientSupplierEntityType): U
     adapter: createClientSupplierMutationAdapter(type),
     scopeId: activeCompanyId,
   })
-  const currentQueryString = useMemo(() => searchParams.toString(), [searchParams])
   const query = useMemo(() => readClientSupplierListQuery(searchParams), [searchParams])
   const [companyScopeId, setCompanyScopeId] = useState(activeCompanyId)
   const isCompanyChanging = companyScopeId !== activeCompanyId
@@ -69,13 +67,15 @@ export function useClientsSuppliersManagement(type: ClientSupplierEntityType): U
     ...activeQuery,
     recordId: null,
   }), [activeQuery])
-  const { data, isLoading: isTableLoading, mutate } = useClientsSuppliers(type, listQuery)
+  const { data, error: tableError, isLoading: isTableLoading, mutate } = useClientsSuppliers(type, listQuery)
+  const tableQueryState = useTableQueryState({ pathname, parameters: clientSupplierTableParameters, pageKey: thirdPartyQueryParams.page, searchKey: thirdPartyQueryParams.search, totalPages: data?.totalPages })
+  const managementQuery = isCompanyChanging ? emptyQueryState : tableQueryState.query
   const {
     data: recordDetail,
     error: recordDetailError,
     isLoading: isRecordDetailLoading,
     mutate: mutateRecordDetail,
-  } = useClientSupplierById(type, activeQuery.recordId || '')
+  } = useClientSupplierById(type, managementQuery.recordId || '')
   const selectedRecordFromList = useMemo(() => {
     if (!viewRecordId) {
       return undefined
@@ -84,36 +84,8 @@ export function useClientsSuppliersManagement(type: ClientSupplierEntityType): U
     return data?.items?.find((item) => item.id === viewRecordId)
   }, [data?.items, viewRecordId])
 
-  const replaceQuery = useCallback((nextQuery: ClientSupplierListQueryState): void => {
-    const nextUrl = `${pathname}${buildClientSupplierQuery(new URLSearchParams(currentQueryString), nextQuery)}`
-    replaceUrlState(nextUrl)
-  }, [currentQueryString, pathname])
-
-  const handleDebouncedSearch = useCallback((value: string): void => {
-    if (isCompanyChanging || value === (activeQuery.search || '')) {
-      return
-    }
-
-    replaceQuery(
-      resetClientSupplierPage(
-        buildClientSupplierMutationQuery(activeQuery, {
-          search: value || undefined,
-        })
-      )
-    )
-  }, [activeQuery, isCompanyChanging, replaceQuery])
-
-  const {
-    searchValue,
-    setSearchValue,
-    cancelPendingSearch,
-  } = useResourceQueryState({
-    initialQuery: emptyQueryState,
-    sourceQuery: activeQuery,
-    searchKey: thirdPartyQueryParams.search,
-    debounceMs: clientSupplierSearchDebounceMs,
-    onDebouncedSearch: handleDebouncedSearch,
-  })
+  const replaceQuery = useCallback((nextQuery: ClientSupplierListQueryState): void => tableQueryState.update(nextQuery), [tableQueryState])
+  const { searchValue, setSearch, cancelSearch } = tableQueryState
 
   const syncCompanyScopeId = useCallback((nextCompanyId: string | null): void => {
     setCompanyScopeId(nextCompanyId)
@@ -131,8 +103,8 @@ export function useClientsSuppliersManagement(type: ClientSupplierEntityType): U
       return
     }
 
-    if (emptyQueryString !== `?${currentQueryString}` && currentQueryString !== '') {
-      replaceQuery(emptyQueryState)
+    if (emptyQueryString !== `?${searchParams.toString()}` && searchParams.toString() !== '') {
+      replaceQuery({ ...emptyQueryState, search: '' })
       return
     }
 
@@ -141,20 +113,20 @@ export function useClientsSuppliersManagement(type: ClientSupplierEntityType): U
     }, 0)
 
     return () => window.clearTimeout(timeoutId)
-  }, [activeCompanyId, currentQueryString, emptyQueryString, isCompanyChanging, replaceQuery, syncCompanyScopeId])
+  }, [activeCompanyId, emptyQueryString, isCompanyChanging, replaceQuery, searchParams, syncCompanyScopeId])
 
   const revalidateScope = async (): Promise<void> => {
     await mutate()
   }
 
   const resolveNextDeleteQuery = useCallback((): ClientSupplierListQueryState => {
-    const shouldMoveBack = activeQuery.page > 1 && data?.items.length === 1
-    const nextQuery = resolveResourceDeletionQuery(activeQuery, shouldMoveBack, moveClientSupplierPageBack)
+    const shouldMoveBack = managementQuery.page > 1 && data?.items.length === 1
+    const nextQuery = resolveResourceDeletionQuery(managementQuery, shouldMoveBack, moveClientSupplierPageBack)
 
-    return activeQuery.recordId === recordPendingDelete?.id
+    return managementQuery.recordId === recordPendingDelete?.id
       ? buildClientSupplierMutationQuery(nextQuery, { recordId: null })
       : nextQuery
-  }, [activeQuery, data?.items.length, recordPendingDelete?.id])
+  }, [managementQuery, data?.items.length, recordPendingDelete?.id])
 
   const deletion = useResourceDeletionCoordinator({
     pendingRecord: recordPendingDelete,
@@ -180,7 +152,7 @@ export function useClientsSuppliersManagement(type: ClientSupplierEntityType): U
       return
     }
 
-    replaceQuery(buildClientSupplierMutationQuery(activeQuery, { recordId: null }))
+    replaceQuery(buildClientSupplierMutationQuery(managementQuery, { recordId: null }))
     setViewRecordId(null)
   }
 
@@ -190,7 +162,7 @@ export function useClientsSuppliersManagement(type: ClientSupplierEntityType): U
     }
 
     if (action === thirdPartyRecordActions.edit) {
-      replaceQuery(buildClientSupplierMutationQuery(activeQuery, { recordId: record.id }))
+      replaceQuery(buildClientSupplierMutationQuery(managementQuery, { recordId: record.id }))
       return
     }
 
@@ -227,34 +199,35 @@ export function useClientsSuppliersManagement(type: ClientSupplierEntityType): U
           : 'No se pudo cargar el proveedor seleccionado.'
       )
     ))
-    replaceQuery(buildClientSupplierMutationQuery(activeQuery, { recordId: null }))
+    replaceQuery(buildClientSupplierMutationQuery(managementQuery, { recordId: null }))
     setViewRecordId(null)
   }
 
   const handleSearchChange = (value: string): void => {
-    setSearchValue(value)
+    setSearch(value)
   }
 
   const handleClearFilters = (): void => {
-    cancelPendingSearch()
-    setSearchValue('')
+    cancelSearch()
+    setSearch('')
     replaceQuery({
       ...emptyQueryState,
-      recordId: activeQuery.recordId,
+      search: '',
+      recordId: managementQuery.recordId,
     })
   }
 
   const handleSortChange = (sortBy: ClientSupplierSortBy, sortOrder: ClientSupplierSortOrder): void => {
-    replaceQuery(buildClientSupplierMutationQuery(activeQuery, { sortBy, sortOrder }))
+    replaceQuery(buildClientSupplierMutationQuery(managementQuery, { sortBy, sortOrder }))
   }
 
   const handlePageChange = (page: number): void => {
-    replaceQuery(buildClientSupplierMutationQuery(activeQuery, { page }))
+    replaceQuery(buildClientSupplierMutationQuery(managementQuery, { page }))
   }
 
   const handlePageSizeChange = (pageSize: number): void => {
     replaceQuery({
-      ...buildClientSupplierMutationQuery(activeQuery, { pageSize }),
+      ...buildClientSupplierMutationQuery(managementQuery, { pageSize }),
       page: 1,
     })
   }
@@ -287,16 +260,17 @@ export function useClientsSuppliersManagement(type: ClientSupplierEntityType): U
   return {
     isCreateModalOpen,
     isDeleting,
-    recordId: query.recordId || null,
+    recordId: managementQuery.recordId || null,
     viewRecordId,
     recordPendingDelete,
-    query: activeQuery,
+    query: managementQuery,
     searchValue,
     isTableLoading,
+    tableError,
     data,
-    recordDetail: activeQuery.recordId ? recordDetail : selectedRecordFromList,
+    recordDetail: managementQuery.recordId ? recordDetail : selectedRecordFromList,
     recordDetailError,
-    isRecordDetailLoading: activeQuery.recordId ? isRecordDetailLoading : false,
+    isRecordDetailLoading: managementQuery.recordId ? isRecordDetailLoading : false,
     openCreateModal,
     handleCreateModalOpenChange,
     handleEditModalOpenChange,
@@ -312,6 +286,7 @@ export function useClientsSuppliersManagement(type: ClientSupplierEntityType): U
     handlePageChange,
     handlePageSizeChange,
     confirmRecordDelete,
+    retryTable: revalidateScope,
     goToClients,
     goToSuppliers,
   }
