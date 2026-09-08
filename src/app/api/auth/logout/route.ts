@@ -13,9 +13,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     await authSessionService.logout(supabase)
 
     return createAuthJsonResponse(response, { success: true })
-  } catch (error: unknown) {
-    const err = error as Error
-    console.error("Error logging out:", err)
-    return resolveAuthErrorResponse(err.message, response)
+  } catch (error) {
+    console.error("Authentication logout failed", { path: request.nextUrl.pathname, operation: "logout", errorName: error instanceof Error ? error.name : "UnknownError" })
+    return resolveAuthErrorResponse(error, response)
   }
 }

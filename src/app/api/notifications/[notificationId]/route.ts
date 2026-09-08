@@ -1,30 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
+import { executeRequestWithContext } from "src/lib/helpers/api/request-handler";
+import { apiResponseMessages } from "src/lib/constants/api-response";
+import { httpStatusCodes } from "src/lib/constants/http";
 import { CompanyNotificationService } from "src/services/company/CompanyNotification";
+import { resolveApplicationErrorResponse } from "src/lib/helpers/api/application-error-response";
 
 export async function DELETE(
   request: NextRequest,
   context: { params: Promise<{ notificationId: string }> }
-): Promise<NextResponse> {
-  try {
-    const companyId = request.headers.get("x-company-id");
-
-    if (!companyId) {
-      return NextResponse.json({ error: "Falta la empresa activa" }, { status: 400 });
-    }
-
+): Promise<Response> {
+  return executeRequestWithContext(request, async ({ companyId }) => {
     const params = await context.params;
     const notificationId = params.notificationId;
 
     if (!notificationId) {
-      return NextResponse.json({ error: "La notificación es inválida" }, { status: 400 });
+      return NextResponse.json({ error: apiResponseMessages.notifications.invalid }, { status: httpStatusCodes.badRequest });
     }
 
     const notificationService = new CompanyNotificationService();
     await notificationService.deleteById(companyId, notificationId);
 
     return NextResponse.json({ success: true });
-  } catch (error: unknown) {
-    console.error("Error deleting notification:", error);
-    return NextResponse.json({ error: "No se pudo borrar la notificación" }, { status: 500 });
-  }
+  }, (error) => resolveApplicationErrorResponse(error, { request, operation: "delete notification", resource: "notification", workflow: "delete" }));
 }

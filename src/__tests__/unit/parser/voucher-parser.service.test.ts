@@ -48,8 +48,8 @@ describe("VoucherParserService", () => {
     batchRepositoryMock = new ParserBatchRepository() as jest.Mocked<ParserBatchRepository>;
     storageServiceMock = new ParserStorageService() as jest.Mocked<ParserStorageService>;
 
-    (service as unknown as { batchRepository: ParserBatchRepository }).batchRepository = batchRepositoryMock;
-    (service as unknown as { storageService: ParserStorageService }).storageService = storageServiceMock;
+    Object.defineProperty(service, "batchRepository", { value: batchRepositoryMock, writable: true });
+    Object.defineProperty(service, "storageService", { value: storageServiceMock, writable: true });
 
     (CompanyRepository as jest.MockedClass<typeof CompanyRepository>).prototype.findById = jest.fn().mockResolvedValue({
       id: companyId,

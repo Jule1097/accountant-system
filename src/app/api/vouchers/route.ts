@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { executeRequestWithContext } from 'src/lib/helpers/api/request-handler'
+import { apiResponseMessages } from 'src/lib/constants/api-response'
+import { httpStatusCodes } from 'src/lib/constants/http'
 import { VoucherService } from 'src/services/voucher/Voucher'
 import { voucherListQuerySchema, voucherSchema } from 'src/lib/schemas/voucher/voucher-schemas'
+import { mapVoucherSchemaToDomainInput } from 'src/lib/helpers/voucher/voucher-factory-input'
+import { serializeVoucher, serializeVoucherPage } from 'src/lib/helpers/voucher/voucher-serialization'
+import { resolveApplicationErrorResponse } from 'src/lib/helpers/api/application-error-response'
 
 export async function GET(request: NextRequest) {
-  try {
-    const companyId = request.headers.get('x-company-id')!
+  return executeRequestWithContext(request, async ({ companyId }) => {
     const queryParseResult = voucherListQuerySchema.safeParse({
       type: request.nextUrl.searchParams.get('type') || undefined,
       page: request.nextUrl.searchParams.get('page') || undefined,
@@ -18,42 +23,31 @@ export async function GET(request: NextRequest) {
     })
 
     if (!queryParseResult.success) {
-      return NextResponse.json({ error: 'Parámetros de búsqueda inválidos.' }, { status: 400 })
+      return NextResponse.json({ error: apiResponseMessages.common.invalidSearchParameters }, { status: httpStatusCodes.badRequest })
     }
 
     const voucherService = new VoucherService()
     const { page, pageSize, ...filters } = queryParseResult.data
     const vouchers = await voucherService.getVoucherPage(companyId, page, pageSize, filters)
 
-    return NextResponse.json(vouchers)
-  } catch (error) {
-    console.error('Error fetching vouchers:', error)
-    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
-  }
+    return NextResponse.json(serializeVoucherPage(vouchers))
+  }, (error) => resolveApplicationErrorResponse(error, { request, operation: 'fetch vouchers', resource: 'voucher' }))
 }
 
 export async function POST(request: NextRequest) {
-  try {
-    const companyId = request.headers.get('x-company-id')!
+  return executeRequestWithContext(request, async ({ companyId }) => {
     const body = await request.json()
 
     const payload = { ...body, companyId }
 
     const parsed = voucherSchema.safeParse(payload)
     if (!parsed.success) {
-      return NextResponse.json({ error: 'Datos inválidos', details: parsed.error.format() }, { status: 400 })
+      return NextResponse.json({ error: apiResponseMessages.common.invalidData, details: parsed.error.format() }, { status: httpStatusCodes.badRequest })
     }
 
     const voucherService = new VoucherService()
-    const newVoucher = await voucherService.createVoucher(parsed.data)
+    const newVoucher = await voucherService.createVoucher(mapVoucherSchemaToDomainInput(parsed.data))
 
-    return NextResponse.json(newVoucher, { status: 201 })
-  } catch (error: unknown) {
-    const err = error as Error
-    console.error('Error creating voucher:', err)
-    if (err.message.includes('duplicate')) {
-      return NextResponse.json({ error: 'Comprobante duplicado detectado.' }, { status: 409 })
-    }
-    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
-  }
+    return NextResponse.json(serializeVoucher(newVoucher), { status: httpStatusCodes.created })
+  }, (error) => resolveApplicationErrorResponse(error, { request, operation: 'create voucher', resource: 'voucher' }))
 }

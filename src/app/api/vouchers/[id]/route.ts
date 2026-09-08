@@ -1,78 +1,61 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { executeRequestWithContext } from 'src/lib/helpers/api/request-handler'
+import { apiResponseMessages } from 'src/lib/constants/api-response'
+import { httpStatusCodes } from 'src/lib/constants/http'
 import { VoucherService } from 'src/services/voucher/Voucher'
 import { voucherSchema } from 'src/lib/schemas/voucher/voucher-schemas'
+import { mapVoucherSchemaToDomainInput } from 'src/lib/helpers/voucher/voucher-factory-input'
+import { serializeVoucher } from 'src/lib/helpers/voucher/voucher-serialization'
+import { resolveApplicationErrorResponse } from 'src/lib/helpers/api/application-error-response'
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
+  return executeRequestWithContext(request, async ({ companyId }) => {
     const { id } = await params
-    const companyId = request.headers.get('x-company-id')!
     const voucherService = new VoucherService()
     const voucher = await voucherService.getVoucherById(companyId, id)
     
     if (!voucher) {
-      return NextResponse.json({ error: 'Comprobante no encontrado' }, { status: 404 })
+      return NextResponse.json({ error: apiResponseMessages.voucher.notFound }, { status: httpStatusCodes.notFound })
     }
     
-    return NextResponse.json(voucher)
-  } catch (error) {
-    console.error('Error fetching voucher:', error)
-    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
-  }
+    return NextResponse.json(serializeVoucher(voucher))
+  }, (error) => resolveApplicationErrorResponse(error, { request, operation: 'fetch voucher', resource: 'voucher' }))
 }
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
+  return executeRequestWithContext(request, async ({ companyId }) => {
     const { id } = await params
-    const companyId = request.headers.get('x-company-id')!
     const body = await request.json()
     
     const payload = { ...body, companyId }
     
     const parsed = voucherSchema.safeParse(payload)
     if (!parsed.success) {
-      return NextResponse.json({ error: 'Datos inválidos', details: parsed.error.format() }, { status: 400 })
+      return NextResponse.json({ error: apiResponseMessages.common.invalidData, details: parsed.error.format() }, { status: httpStatusCodes.badRequest })
     }
 
     const voucherService = new VoucherService()
-    const updatedVoucher = await voucherService.updateVoucher(companyId, id, parsed.data)
+    const updatedVoucher = await voucherService.updateVoucher(companyId, id, mapVoucherSchemaToDomainInput(parsed.data))
     
-    return NextResponse.json(updatedVoucher)
-  } catch (error: unknown) {
-    const err = error as Error
-    console.error('Error updating voucher:', err)
-    if (err.message === 'Voucher not found') {
-      return NextResponse.json({ error: 'Comprobante no encontrado.' }, { status: 404 })
-    }
-    if (err.message.includes('duplicate')) {
-      return NextResponse.json({ error: 'Comprobante duplicado detectado.' }, { status: 409 })
-    }
-    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
-  }
+    return NextResponse.json(serializeVoucher(updatedVoucher))
+  }, (error) => resolveApplicationErrorResponse(error, { request, operation: 'update voucher', resource: 'voucher' }))
 }
 
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
+  return executeRequestWithContext(request, async ({ companyId }) => {
     const { id } = await params
-    const companyId = request.headers.get('x-company-id')!
     const voucherService = new VoucherService()
     
     await voucherService.deleteVoucher(companyId, id)
-    return new NextResponse(null, { status: 204 })
-  } catch (error) {
-    const err = error as Error
-    console.error('Error deleting voucher:', err)
-    if (err.message === 'Voucher not found') {
-      return NextResponse.json({ error: 'Comprobante no encontrado.' }, { status: 404 })
-    }
-    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
-  }
+    return new NextResponse(null, { status: httpStatusCodes.noContent })
+  }, (error) => resolveApplicationErrorResponse(error, { request, operation: 'delete voucher', resource: 'voucher' }))
 }
