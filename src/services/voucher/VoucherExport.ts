@@ -12,6 +12,9 @@ import {
   ExportQueryParams,
   VoucherExportResult,
 } from 'src/types/voucher/voucher-export'
+import { apiResponseMessages } from 'src/lib/constants/api-response'
+import { applicationErrorCodes } from 'src/lib/constants/application-error'
+import { ApplicationError } from 'src/lib/errors/application-error'
 
 export class VoucherExportService {
   private companyRepository: CompanyRepository
@@ -27,7 +30,7 @@ export class VoucherExportService {
   async exportVouchers(companyId: string, params: ExportQueryParams): Promise<VoucherExportResult> {
     const company = await this.companyRepository.findById(companyId)
     if (!company) {
-      throw new Error('Company not found')
+      throw new ApplicationError(applicationErrorCodes.notFound, apiResponseMessages.voucher.notFound, 'Company not found while exporting vouchers')
     }
 
     const { filters, periodString } = buildExportFilters(params)

@@ -22,6 +22,8 @@ import { AsyncBatchRunnerService } from "./AsyncBatchRunner";
 import { CompanyNotificationService } from "src/services/company/CompanyNotification";
 import { ParserResponseService } from "./ParserResponse";
 import { ParserStorageService } from "./ParserStorage";
+import { applicationErrorCodes } from "src/lib/constants/application-error";
+import { ApplicationError } from "src/lib/errors/application-error";
 
 interface PreparedParserPayload {
   strategy: "pdf-text" | "pdf-visual" | "image-visual";
@@ -40,7 +42,7 @@ function isTerminalParserItemStatus(status: string | undefined): boolean {
 
 function ensureParserFileLimit(files: ParserAcceptedFile[]): void {
   if (files.length > getParserBatchMaxFiles()) {
-    throw new Error(`Se permiten hasta ${getParserBatchMaxFiles()} archivos por carga.`);
+    throw new ApplicationError(applicationErrorCodes.validation, `Se permiten hasta ${getParserBatchMaxFiles()} archivos por carga.`, "Parser batch file limit validation failed");
   }
 }
 
@@ -49,7 +51,7 @@ function ensureParserFilesAreUnique(files: ParserAcceptedFile[]): void {
 
   for (const file of files) {
     if (hashes.has(file.fileHash)) {
-      throw new Error(`El archivo ${file.fileName} está duplicado dentro del lote.`);
+      throw new ApplicationError(applicationErrorCodes.validation, `El archivo ${file.fileName} est\u00e1 duplicado dentro del lote.`, "Parser duplicate file validation failed");
     }
 
     hashes.add(file.fileHash);
@@ -75,7 +77,7 @@ export class VoucherParserService {
 
   private getRequiredAsyncBatchRunner(): AsyncBatchRunner {
     if (!this.asyncBatchRunner) {
-      throw new Error("Async batch runner is not configured");
+      throw new ApplicationError(applicationErrorCodes.unexpected, "Error procesando el documento", "Async batch runner is not configured");
     }
 
     return this.asyncBatchRunner;
@@ -101,7 +103,7 @@ export class VoucherParserService {
     }
 
     if (!isParserPdfMimeType(file.mimeType)) {
-      throw new Error(`El archivo ${file.fileName} tiene un tipo no soportado.`);
+      throw new ApplicationError(applicationErrorCodes.validation, `El archivo ${file.fileName} tiene un tipo no soportado.`, "Parser file type validation failed");
     }
 
     const strategy = await resolveParserPdfStrategy(file.buffer);
@@ -237,7 +239,7 @@ export class VoucherParserService {
     const batch = await this.batchRepository.findBatchById(companyId, batchId);
 
     if (!batch) {
-      throw new Error("No se encontró el batch solicitado");
+      throw new ApplicationError(applicationErrorCodes.notFound, "No se encontr\u00f3 el batch solicitado", "Parser batch not found");
     }
 
     await this.getRequiredAsyncBatchRunner().triggerParserBatch(batchId);
@@ -247,6 +249,7 @@ export class VoucherParserService {
     const item = await this.batchRepository.findItemById(itemId);
 
     if (!item || item.batch.companyId !== companyId) {
+      throw new ApplicationError(applicationErrorCodes.notFound, "No se encontr\u00f3 el \u00edtem solicitado", "Parser item not found");
       return null;
     }
 
@@ -257,7 +260,6 @@ export class VoucherParserService {
     const item = await this.batchRepository.findItemById(itemId);
 
     if (!item || item.batch.companyId !== companyId) {
-      throw new Error("No se encontró el ítem solicitado");
     }
 
     const requeuedItem = await this.batchRepository.requeueItem(itemId);

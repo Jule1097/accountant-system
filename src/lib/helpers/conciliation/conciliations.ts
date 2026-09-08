@@ -8,7 +8,7 @@ import {
   ConciliationTab,
   ConciliationVisibleStatus,
 } from "src/types/conciliation/conciliations";
-import { GeminiParserResponse } from "src/types/parser/gemini-parser";
+import { ParsedVoucherData } from "src/types/parser/gemini-parser";
 
 const itemsPerPage = 4;
 
@@ -87,7 +87,7 @@ function formatDocumentSegment(value: string | null, size: number): string {
   return value.padStart(size, "0");
 }
 
-function resolveDocumentId(payload: GeminiParserResponse | null): string {
+function resolveDocumentId(payload: ParsedVoucherData | null): string {
   if (!payload) {
     return "Comprobante sin identificar";
   }
@@ -103,15 +103,15 @@ function resolveDocumentId(payload: GeminiParserResponse | null): string {
   return `${voucherLetter} ${posNumber}-${number}`;
 }
 
-function resolveThirdPartyName(payload: GeminiParserResponse | null): string | null {
+function resolveThirdPartyName(payload: ParsedVoucherData | null): string | null {
   return payload?.thirdPartyName || null;
 }
 
-function resolveAmount(payload: GeminiParserResponse | null): number | null {
+function resolveAmount(payload: ParsedVoucherData | null): number | null {
   return typeof payload?.totalAmount === "number" ? payload.totalAmount : null;
 }
 
-function resolveCurrency(payload: GeminiParserResponse | null): string | null {
+function resolveCurrency(payload: ParsedVoucherData | null): string | null {
   return payload?.currency || null;
 }
 
@@ -150,7 +150,7 @@ function hasMeaningfulVatDetails(
   });
 }
 
-function hasReviewableParsedPayload(payload: GeminiParserResponse | null): boolean {
+function hasReviewableParsedPayload(payload: ParsedVoucherData | null): boolean {
   if (!payload) {
     return false;
   }

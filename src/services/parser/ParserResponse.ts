@@ -4,7 +4,7 @@ import { CompanyRepository } from "src/repositories/company/company.repository";
 import { ThirdPartyLookupService } from "src/services/third-party/ThirdPartyLookup";
 import { ThirdPartyLookup } from "src/types/third-party/third-party-lookup";
 import { ParserVoucherType } from "src/types/parser/parser-batch";
-import { GeminiParserResponse, RawGeminiParsedVoucher } from "src/types/parser/gemini-parser";
+import { ParsedVoucherData, RawGeminiParsedVoucher } from "src/types/parser/gemini-parser";
 
 export class ParserResponseService {
   private readonly companyRepository: CompanyRepository;
@@ -21,7 +21,7 @@ export class ParserResponseService {
     companyId: string,
     _voucherKind: ParserVoucherType,
     extractedData: RawGeminiParsedVoucher
-  ): Promise<GeminiParserResponse> {
+  ): Promise<ParsedVoucherData> {
     const company = await this.companyRepository.findById(companyId);
     const parsedVoucher = new GeminiParsedVoucher(extractedData, company?.cuit);
     const vatRates = await this.catalogRepository.getVatRates();

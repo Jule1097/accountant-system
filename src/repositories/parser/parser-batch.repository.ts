@@ -10,13 +10,17 @@ import {
   ParserBatchRecord,
   ParserInputStrategy,
 } from "src/types/parser/parser-batch";
-import { GeminiParserResponse } from "src/types/parser/gemini-parser";
+import { ParsedVoucherData } from "src/types/parser/gemini-parser";
 import { VoucherFormPayload } from "src/types/voucher/voucher-form";
 
 interface ParserBatchReviewFilter {
   companyId: string;
   voucherType: ParserBatchRecord["voucherType"];
   batchId?: string;
+}
+
+function toPrismaJsonValue(value: object): Prisma.InputJsonValue {
+  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue
 }
 
 const parserBatchInclude = {
@@ -78,7 +82,7 @@ function mapParserBatchItem(record: Prisma.ParserBatchItemGetPayload<{ include: 
     storagePath: record.storagePath,
     inputStrategy: record.inputStrategy as ParserInputStrategy | null,
     status: record.status as ParserBatchItemStatus,
-    parsedPayload: record.parsedPayload as GeminiParserResponse | null,
+    parsedPayload: record.parsedPayload as ParsedVoucherData | null,
     validatedPayload: record.validatedPayload as VoucherFormPayload | null,
     currentError: record.currentError,
     currentAttempt: record.currentAttempt,
@@ -319,7 +323,7 @@ export class ParserBatchRepository {
     });
   }
 
-  async markItemParsed(itemId: string, payload: GeminiParserResponse, inputStrategy: ParserInputStrategy): Promise<void> {
+  async markItemParsed(itemId: string, payload: ParsedVoucherData, inputStrategy: ParserInputStrategy): Promise<void> {
     await prisma.$transaction(async (tx) => {
       const item = await tx.parserBatchItem.update({
         where: {
@@ -328,7 +332,7 @@ export class ParserBatchRepository {
         data: {
           status: "parsed",
           inputStrategy,
-          parsedPayload: payload as unknown as Prisma.InputJsonValue,
+          parsedPayload: toPrismaJsonValue(payload),
           validatedPayload: Prisma.JsonNull,
           processedAt: new Date(),
           currentError: null,
@@ -352,7 +356,7 @@ export class ParserBatchRepository {
     });
   }
 
-  async markItemDuplicate(itemId: string, payload: GeminiParserResponse, inputStrategy: ParserInputStrategy): Promise<void> {
+  async markItemDuplicate(itemId: string, payload: ParsedVoucherData, inputStrategy: ParserInputStrategy): Promise<void> {
     await prisma.$transaction(async (tx) => {
       const item = await tx.parserBatchItem.update({
         where: {
@@ -361,7 +365,7 @@ export class ParserBatchRepository {
         data: {
           status: "duplicate",
           inputStrategy,
-          parsedPayload: payload as unknown as Prisma.InputJsonValue,
+          parsedPayload: toPrismaJsonValue(payload),
           validatedPayload: Prisma.JsonNull,
           processedAt: new Date(),
           currentError: null,
@@ -420,7 +424,7 @@ export class ParserBatchRepository {
         data: {
           status: "failed",
           errorMessage,
-          metadata: metadata as Prisma.InputJsonValue,
+          metadata: toPrismaJsonValue(metadata),
           completedAt: new Date(),
         },
       });
@@ -498,7 +502,7 @@ export class ParserBatchRepository {
         },
         data: {
           status: "validated",
-          validatedPayload: validatedPayload as unknown as Prisma.InputJsonValue,
+          validatedPayload: toPrismaJsonValue(validatedPayload),
         },
       });
 

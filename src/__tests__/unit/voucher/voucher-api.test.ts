@@ -1,9 +1,22 @@
 import { NextRequest } from 'next/server'
 import { DELETE, GET, PUT } from 'src/app/api/vouchers/[id]/route'
 import { POST } from 'src/app/api/vouchers/route'
+import { applicationErrorCodes } from 'src/lib/constants/application-error'
+import { ApplicationError } from 'src/lib/errors/application-error'
 import { VoucherService } from 'src/services/voucher/Voucher'
 
 jest.mock('src/services/voucher/Voucher')
+jest.mock('src/lib/helpers/auth/request-context', () => {
+  const { RequestContextError } = jest.requireActual('src/lib/errors/request-context')
+  const { requestContextErrorCodes } = jest.requireActual('src/lib/constants/auth')
+  return {
+    requireRequestContext: jest.fn(async (request: NextRequest) => {
+      const companyId = request.headers.get('x-company-id')
+      if (!companyId) throw new RequestContextError(requestContextErrorCodes.companyRequired)
+      return { userId: 'user-1', companyId }
+    }),
+  }
+})
 
 function createRequest(overrides: Partial<NextRequest> = {}) {
   return {
@@ -11,7 +24,7 @@ function createRequest(overrides: Partial<NextRequest> = {}) {
     json: async () => ({}),
     nextUrl: { searchParams: new URLSearchParams() },
     ...overrides,
-  } as unknown as NextRequest
+  } as NextRequest
 }
 
 describe('Voucher API Route Handlers', () => {
@@ -24,7 +37,7 @@ describe('Voucher API Route Handlers', () => {
   it('returns 409 when create detects a duplicate voucher', async () => {
     voucherServiceMock.prototype.createVoucher = jest
       .fn()
-      .mockRejectedValue(new Error('Voucher is a duplicate of an existing record'))
+      .mockRejectedValue(new ApplicationError(applicationErrorCodes.duplicate, 'Comprobante duplicado detectado.'))
 
     const request = createRequest({
       json: async () => ({
@@ -67,7 +80,7 @@ describe('Voucher API Route Handlers', () => {
   })
 
   it('returns 404 when update targets a missing voucher', async () => {
-    voucherServiceMock.prototype.updateVoucher = jest.fn().mockRejectedValue(new Error('Voucher not found'))
+    voucherServiceMock.prototype.updateVoucher = jest.fn().mockRejectedValue(new ApplicationError(applicationErrorCodes.notFound, 'Comprobante no encontrado.'))
 
     const request = createRequest({
       json: async () => ({
@@ -101,7 +114,7 @@ describe('Voucher API Route Handlers', () => {
   })
 
   it('returns 404 when delete targets a missing voucher', async () => {
-    voucherServiceMock.prototype.deleteVoucher = jest.fn().mockRejectedValue(new Error('Voucher not found'))
+    voucherServiceMock.prototype.deleteVoucher = jest.fn().mockRejectedValue(new ApplicationError(applicationErrorCodes.notFound, 'Comprobante no encontrado.'))
 
     const response = await DELETE(createRequest(), {
       params: Promise.resolve({ id: 'missing-id' }),

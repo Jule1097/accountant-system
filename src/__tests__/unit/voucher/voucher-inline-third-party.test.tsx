@@ -34,6 +34,7 @@ jest.mock("src/lib/api/api-client", () => ({
     }
   },
   apiRequest: (...args: unknown[]) => apiRequestMock(...args),
+  parseJsonResponse: async (response: Response) => response.json(),
 }))
 
 function createCatalogsResponse() {

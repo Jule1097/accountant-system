@@ -1,5 +1,17 @@
 import { NextRequest } from 'next/server'
 import { GET } from 'src/app/api/vouchers/export/route'
+
+jest.mock('src/lib/helpers/auth/request-context', () => {
+  const { RequestContextError } = jest.requireActual('src/lib/errors/request-context')
+  const { requestContextErrorCodes } = jest.requireActual('src/lib/constants/auth')
+  return {
+    requireRequestContext: jest.fn(async (request: NextRequest) => {
+      const companyId = request.headers.get('x-company-id')
+      if (!companyId) throw new RequestContextError(requestContextErrorCodes.companyRequired)
+      return { userId: 'user-1', companyId }
+    }),
+  }
+})
 import { VoucherExportService } from 'src/services/voucher/VoucherExport'
 
 jest.mock('src/services/voucher/VoucherExport')
@@ -18,7 +30,7 @@ function createRequest(companyId: string | null, queryParams: Record<string, str
     nextUrl: {
       searchParams,
     },
-  } as unknown as NextRequest
+  } as NextRequest
 }
 
 describe('Voucher Export API Handler', () => {
@@ -34,7 +46,7 @@ describe('Voucher Export API Handler', () => {
 
     expect(response.status).toBe(400)
     const json = await response.json()
-    expect(json.error).toContain('x-company-id')
+    expect(json.error).toBe('Falta la empresa activa')
   })
 
   it('returns 400 when query params are invalid', async () => {

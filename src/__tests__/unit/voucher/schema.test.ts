@@ -83,6 +83,21 @@ describe('Zod Validation Schemas', () => {
       }
     })
 
+    it('should normalize an empty tax jurisdiction to null', () => {
+      const result = voucherSchema.safeParse({
+        ...baseVoucher,
+        type: 'purchase',
+        supplierId: validUuid,
+        perceptions: [{ perceptionConceptId: validUuid, amount: 35, taxJurisdictionId: '' }],
+      })
+
+      expect(result.success).toBe(true)
+
+      if (result.success) {
+        expect(result.data.perceptions[0].taxJurisdictionId).toBeNull()
+      }
+    })
+
     it('should reject a sale voucher without a client ID', () => {
       expect(voucherSchema.safeParse({
         ...baseVoucher,

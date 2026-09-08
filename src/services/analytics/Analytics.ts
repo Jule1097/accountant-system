@@ -1,7 +1,10 @@
-import { Decimal } from 'decimal.js'
 import { VoucherRepository } from 'src/repositories/voucher/voucher.repository'
-import { Voucher } from 'src/models/Voucher'
+import { voucherZeroAmount } from 'src/lib/constants/voucher'
+import { Money } from 'src/models/voucher/Money'
+import { Sale } from 'src/models/voucher/Sale'
+import { Voucher } from 'src/models/voucher/Voucher'
 import { AnalyticsData, PeriodMetrics, TrendEntry } from 'src/types/analytics/analytics'
+import type { VoucherVisitor } from 'src/types/voucher/voucher-operations'
 
 export class AnalyticsService {
   private repository: VoucherRepository
@@ -23,7 +26,7 @@ export class AnalyticsService {
     concept: string,
     province: string,
     currency: 'ARS' | 'USD',
-    signedAmount: Decimal
+    signedAmount: Money
   ): void {
     const key = `${concept}_${province}_${currency}`
 
@@ -31,15 +34,11 @@ export class AnalyticsService {
       taxMap[key] = { concept, province, currency, total: 0 }
     }
 
-    taxMap[key].total += signedAmount.toNumber()
+    taxMap[key].total += Number(signedAmount.toString())
   }
 
-  private calculateRetentionTotal(voucher: Voucher): Decimal {
-    return voucher.retentions.reduce((sum, retention) => sum.plus(new Decimal(retention.amount.toString())), new Decimal(0))
-  }
-
-  private calculatePerceptionTotal(voucher: Voucher): Decimal {
-    return voucher.perceptions.reduce((sum, perception) => sum.plus(new Decimal(perception.amount.toString())), new Decimal(0))
+  private calculateRetentionTotal(voucher: Sale): Money {
+    return voucher.retentions.reduce((sum, retention) => sum.add(new Money(retention.amount.toString(), voucher.currency)), new Money(voucherZeroAmount, voucher.currency))
   }
 
   private calculatePeriodMetrics(vouchers: Voucher[]): PeriodMetrics {
@@ -54,26 +53,25 @@ export class AnalyticsService {
     const clientMap: Record<string, { name: string; cuit: string; total: number }> = {}
     const supplierMap: Record<string, { name: string; cuit: string; total: number }> = {}
 
-    for (const voucher of vouchers) {
-      const currency = this.getCurrencyKey(voucher.currency)
-      const baseAmount = voucher.getBaseAmountForAnalytics()
-      const signedBaseAmount = voucher.getSignedValue(baseAmount)
-      const signedVatAmount = voucher.getSignedValue(voucher.vatAmount)
-      const signedTotalAmount = voucher.getSignedValue(voucher.totalAmount)
-
-      if (voucher.type === 'sale') {
+    const visitor: VoucherVisitor<void> = {
+      visitSale: (voucher) => {
+        const currency = this.getCurrencyKey(voucher.currency)
+        const baseAmount = voucher.getBaseAmountForAnalytics()
+        const signedBaseAmount = voucher.getSignedValue(baseAmount)
+        const signedVatAmount = voucher.getSignedValue(voucher.vatAmount)
+        const signedTotalAmount = voucher.getSignedValue(voucher.totalAmount)
         const signedRetentionTotal = voucher.getSignedValue(this.calculateRetentionTotal(voucher))
-        netSales[currency] += signedBaseAmount.minus(signedRetentionTotal).toNumber()
-        vatDebit[currency] += signedVatAmount.toNumber()
+        netSales[currency] += Number(signedBaseAmount.subtract(signedRetentionTotal).toString())
+        vatDebit[currency] += Number(signedVatAmount.toString())
 
         for (const retention of voucher.retentions) {
-          const concept = retention.retentionConcept?.name || 'Otros'
-          const province = retention.taxJurisdiction?.name || 'Nacional'
-          this.updateTaxMap(retentionsMap, concept, province, currency, voucher.getSignedValue(retention.amount))
+          const concept = retention.conceptName || 'Otros'
+          const province = retention.taxJurisdictionName || 'Nacional'
+          this.updateTaxMap(retentionsMap, concept, province, currency, voucher.getSignedValue(new Money(retention.amount.toString(), voucher.currency)))
         }
 
         if (voucher.isCreditNote()) {
-          salesCreditNotes[currency] += Math.abs(signedTotalAmount.toNumber())
+          salesCreditNotes[currency] += Math.abs(Number(signedTotalAmount.toString()))
         }
 
         if (voucher.client && voucher.clientId) {
@@ -81,33 +79,39 @@ export class AnalyticsService {
             clientMap[voucher.clientId] = { name: voucher.client.name, cuit: voucher.client.cuit, total: 0 }
           }
 
-          clientMap[voucher.clientId].total += signedBaseAmount.toNumber()
+          clientMap[voucher.clientId].total += Number(signedBaseAmount.toString())
+        }
+      },
+      visitPurchase: (voucher) => {
+        const currency = this.getCurrencyKey(voucher.currency)
+        const baseAmount = voucher.getBaseAmountForAnalytics()
+        const signedBaseAmount = voucher.getSignedValue(baseAmount)
+        const signedVatAmount = voucher.getSignedValue(voucher.vatAmount)
+        const signedTotalAmount = voucher.getSignedValue(voucher.totalAmount)
+        netPurchases[currency] += Number(signedBaseAmount.toString())
+        vatCredit[currency] += Number(signedVatAmount.toString())
+
+        for (const perception of voucher.perceptions) {
+          const concept = perception.conceptName || 'Otros'
+          const province = perception.taxJurisdictionName || 'Nacional'
+          this.updateTaxMap(perceptionsMap, concept, province, currency, voucher.getSignedValue(new Money(perception.amount.toString(), voucher.currency)))
         }
 
-        continue
-      }
-
-      netPurchases[currency] += signedBaseAmount.toNumber()
-      vatCredit[currency] += signedVatAmount.toNumber()
-
-      for (const perception of voucher.perceptions) {
-        const concept = perception.perceptionConcept?.name || 'Otros'
-        const province = perception.taxJurisdiction?.name || 'Nacional'
-        this.updateTaxMap(perceptionsMap, concept, province, currency, voucher.getSignedValue(perception.amount))
-      }
-
-      if (voucher.isCreditNote()) {
-        purchasesCreditNotes[currency] += Math.abs(signedTotalAmount.toNumber())
-      }
-
-      if (voucher.supplier && voucher.supplierId) {
-        if (!supplierMap[voucher.supplierId]) {
-          supplierMap[voucher.supplierId] = { name: voucher.supplier.name, cuit: voucher.supplier.cuit, total: 0 }
+        if (voucher.isCreditNote()) {
+          purchasesCreditNotes[currency] += Math.abs(Number(signedTotalAmount.toString()))
         }
 
-        supplierMap[voucher.supplierId].total += signedBaseAmount.toNumber()
-      }
+        if (voucher.supplier && voucher.supplierId) {
+          if (!supplierMap[voucher.supplierId]) {
+            supplierMap[voucher.supplierId] = { name: voucher.supplier.name, cuit: voucher.supplier.cuit, total: 0 }
+          }
+
+          supplierMap[voucher.supplierId].total += Number(signedBaseAmount.toString())
+        }
+      },
     }
+
+    vouchers.forEach((voucher) => voucher.accept(visitor))
 
     return {
       netSales,
@@ -173,7 +177,7 @@ export class AnalyticsService {
     const now = new Date()
     const oneYearAgo = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate())
     const rawVouchers = await this.repository.findForAnalytics(companyId, oneYearAgo)
-    const vouchers = rawVouchers.map((voucher) => new Voucher(voucher))
+    const vouchers = rawVouchers
     const monthlyCutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
     const semiannualCutoff = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000)
 

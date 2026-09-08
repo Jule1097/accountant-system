@@ -8,6 +8,7 @@ const useVoucherSummaryMock = jest.fn()
 const useVoucherByIdMock = jest.fn()
 const useCompanyMock = jest.fn()
 const replaceStateMock = jest.fn()
+const replaceMock = jest.fn()
 
 const searchParamsState = {
   value: "page=2&pageSize=10&voucherId=voucher-1&status=pending",
@@ -15,6 +16,7 @@ const searchParamsState = {
 
 jest.mock("next/navigation", () => ({
   usePathname: () => "/sales",
+  useRouter: () => ({ replace: replaceMock }),
   useSearchParams: () => new URLSearchParams(searchParamsState.value),
 }))
 
@@ -38,7 +40,7 @@ describe("useVoucherManagement", () => {
   beforeEach(() => {
     jest.clearAllMocks()
     replaceStateMock.mockReset()
-    window.history.replaceState = replaceStateMock
+    replaceMock.mockReset()
     useCompanyMock.mockReturnValue({
       activeCompanyId: "company-1",
       loading: false,
@@ -77,7 +79,7 @@ describe("useVoucherManagement", () => {
     expect(useVoucherByIdMock).toHaveBeenLastCalledWith("")
 
     await waitFor(() => {
-      expect(replaceStateMock).toHaveBeenCalledWith(null, "", "/sales")
+      expect(replaceMock).toHaveBeenCalledWith("/sales", { scroll: false })
     })
   })
 

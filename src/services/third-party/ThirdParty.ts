@@ -2,6 +2,8 @@ import { ThirdParty } from "src/models/third-party/ThirdParty"
 import { ClientSupplierFilterParams, ClientSupplierListResponse } from "src/types/third-party/third-party-resource"
 import { ThirdPartyData } from "src/types/third-party/third-party"
 import { ThirdPartyServiceContract, ThirdPartyServiceMessages, ThirdPartyServiceOptions } from "src/types/third-party/third-party-service"
+import { applicationErrorCodes } from "src/lib/constants/application-error"
+import { ApplicationError } from "src/lib/errors/application-error"
 
 export class ThirdPartyService<TRecord, TCreate, TUpdate> implements ThirdPartyServiceContract<TRecord> {
   private readonly repository: ThirdPartyServiceOptions<TRecord, TCreate, TUpdate>["repository"]
@@ -48,7 +50,7 @@ export class ThirdPartyService<TRecord, TCreate, TUpdate> implements ThirdPartyS
     const existing = await this.repository.findById(companyId, id)
 
     if (!existing) {
-      throw new Error(this.messages.notFound)
+      throw new ApplicationError(applicationErrorCodes.notFound, this.messages.notFound, "Third-party record not found")
     }
 
     const model = this.createModel({ id, companyId, name, cuit })
@@ -61,11 +63,11 @@ export class ThirdPartyService<TRecord, TCreate, TUpdate> implements ThirdPartyS
     const existing = await this.repository.findById(companyId, id)
 
     if (!existing) {
-      throw new Error(this.messages.notFound)
+      throw new ApplicationError(applicationErrorCodes.notFound, this.messages.notFound, "Third-party record not found")
     }
 
     if (await this.repository.hasVouchers(companyId, id)) {
-      throw new Error(this.messages.deleteBlocked)
+      throw new ApplicationError(applicationErrorCodes.conflict, this.messages.deleteBlocked, "Third-party deletion is blocked")
     }
 
     return this.repository.delete(companyId, id)
@@ -77,12 +79,12 @@ export class ThirdPartyService<TRecord, TCreate, TUpdate> implements ThirdPartyS
       : await this.repository.findByNormalizedName(companyId, model.normalizedName)
 
     if (existingByName) {
-      throw new Error(this.messages.duplicateName)
+      throw new ApplicationError(applicationErrorCodes.duplicate, this.messages.duplicateName, "Duplicate third-party name")
     }
 
     const existingByCuit = await this.repository.findByCuitAndCompany(companyId, model.cuit)
     if (existingByCuit && this.getRecordId(existingByCuit) !== excludedId) {
-      throw new Error(this.messages.duplicateCuit)
+      throw new ApplicationError(applicationErrorCodes.duplicate, this.messages.duplicateCuit, "Duplicate third-party tax identifier")
     }
   }
 }
