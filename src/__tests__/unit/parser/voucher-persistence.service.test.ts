@@ -4,6 +4,7 @@ import { VoucherPersistenceService } from "src/services/parser/VoucherPersistenc
 import { AsyncBatchRunner } from "src/types/parser/async-batch-runner";
 import { ParserBatchItemContextRecord } from "src/types/parser/parser-batch";
 import { VoucherFormPayload } from "src/types/voucher/voucher-form";
+import { apiResponseMessages } from "src/lib/constants/api-response";
 
 jest.mock("src/repositories/parser/parser-batch.repository");
 jest.mock("src/services/voucher/Voucher");
@@ -138,8 +139,22 @@ describe("VoucherPersistenceService", () => {
     expect(voucherServiceMock.createVoucher).not.toHaveBeenCalled();
     expect(batchRepositoryMock.markItemPersistenceFailed).toHaveBeenCalledWith(
       "item-1",
-      "Validated voucher payload is invalid",
+      apiResponseMessages.conciliation.itemPersistFailed,
     );
+  });
+
+  it("stores a generic persistence error instead of provider details", async () => {
+    const item = createPersistingItem();
+    const secret = "database-password-token-user-email@example.com";
+
+    batchRepositoryMock.findItemById.mockResolvedValue(item);
+    batchRepositoryMock.markItemPersistenceFailed.mockResolvedValue();
+    voucherServiceMock.createVoucher.mockRejectedValue(new Error(secret));
+
+    await service.processJob({ batchId: "batch-1", itemId: "item-1" });
+
+    expect(batchRepositoryMock.markItemPersistenceFailed).toHaveBeenCalledWith("item-1", apiResponseMessages.conciliation.itemPersistFailed);
+    expect(batchRepositoryMock.markItemPersistenceFailed.mock.calls.flat()).not.toContain(secret);
   });
 
   it("triggers the async persistence runner for validated batch items", async () => {

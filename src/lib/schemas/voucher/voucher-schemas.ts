@@ -1,9 +1,37 @@
 import { z } from 'zod'
+import Decimal from 'decimal.js'
 import { normalizeCuit } from 'src/lib/domain/cuit'
+import { inputLimits } from 'src/lib/constants/input-limits'
+import {
+  voucherExchangeRateMaximum,
+  voucherExchangeRateScale,
+  voucherMoneyMaximum,
+  voucherPageSizeOptions,
+  voucherMoneyScale,
+  voucherValidationMessages,
+} from 'src/lib/constants/voucher'
 
 function isNonZeroVoucherValue(value: string): boolean {
   return Number(value) > 0
 }
+
+function hasDecimalScale(value: number, scale: number): boolean {
+  return new Decimal(value).decimalPlaces() <= scale
+}
+
+function createDecimalSchema(maximum: number, scale: number, invalidMessage: string, excessiveMessage: string, scaleMessage: string) {
+  return z.coerce.number()
+    .refine(Number.isFinite, invalidMessage)
+    .max(maximum, excessiveMessage)
+    .refine((value) => hasDecimalScale(value, scale), scaleMessage)
+}
+
+function createMoneySchema(message: string, positive = false) {
+  const schema = createDecimalSchema(voucherMoneyMaximum, voucherMoneyScale, voucherValidationMessages.invalidFiniteAmount, voucherValidationMessages.excessiveAmount, voucherValidationMessages.excessiveAmountScale)
+  return positive ? schema.positive(message) : schema.nonnegative(message)
+}
+
+const exchangeRateSchema = createDecimalSchema(voucherExchangeRateMaximum, voucherExchangeRateScale, voucherValidationMessages.invalidFiniteExchangeRate, voucherValidationMessages.excessiveExchangeRate, voucherValidationMessages.excessiveExchangeRateScale)
 
 export const cuitSchema = z
   .string()
@@ -13,18 +41,18 @@ export const cuitSchema = z
   .transform((value) => normalizeCuit(value))
 
 export const companySchema = z.object({
-  name: z.string().min(1, 'El nombre es obligatorio'),
+  name: z.string().trim().min(1, 'El nombre es obligatorio').max(inputLimits.maxNameLength, 'El nombre no puede superar los 255 caracteres'),
   cuit: cuitSchema,
-})
+}).strict()
 
-export const clientSchema = z.object({
-  name: z.string().min(1, 'El nombre es obligatorio'),
+export const clientSchema = z.strictObject({
+  name: z.string().trim().min(1, 'El nombre es obligatorio').max(inputLimits.maxNameLength, 'El nombre no puede superar los 255 caracteres'),
   cuit: cuitSchema,
   companyId: z.string().uuid('ID de empresa inválido'),
 })
 
-export const supplierSchema = z.object({
-  name: z.string().min(1, 'El nombre es obligatorio'),
+export const supplierSchema = z.strictObject({
+  name: z.string().trim().min(1, 'El nombre es obligatorio').max(inputLimits.maxNameLength, 'El nombre no puede superar los 255 caracteres'),
   cuit: cuitSchema,
   companyId: z.string().uuid('ID de empresa inválido'),
 })
@@ -34,22 +62,22 @@ const optionalVoucherTaxJurisdictionSchema = z.preprocess(
   z.string().uuid('ID de jurisdicción inválido').optional().nullable()
 )
 
-export const voucherRetentionSchema = z.object({
+export const voucherRetentionSchema = z.strictObject({
   retentionConceptId: z.string().uuid('ID de concepto de retención inválido'),
   taxJurisdictionId: optionalVoucherTaxJurisdictionSchema,
-  amount: z.coerce.number().nonnegative('El monto de retención no puede ser negativo'),
+  amount: createMoneySchema('El monto de retención no puede ser negativo'),
 })
 
-export const voucherPerceptionSchema = z.object({
+export const voucherPerceptionSchema = z.strictObject({
   perceptionConceptId: z.string().uuid('ID de concepto de percepción inválido'),
   taxJurisdictionId: optionalVoucherTaxJurisdictionSchema,
-  amount: z.coerce.number().nonnegative('El monto de percepción no puede ser negativo'),
+  amount: createMoneySchema('El monto de percepción no puede ser negativo'),
 })
 
-export const voucherVatDetailSchema = z.object({
+export const voucherVatDetailSchema = z.strictObject({
   vatRateId: z.string().uuid('ID de alícuota de IVA inválido'),
-  subtotal: z.coerce.number().nonnegative('El subtotal de IVA no puede ser negativo'),
-  vatAmount: z.coerce.number().nonnegative('El monto de IVA no puede ser negativo'),
+  subtotal: createMoneySchema('El subtotal de IVA no puede ser negativo'),
+  vatAmount: createMoneySchema('El monto de IVA no puede ser negativo'),
 })
 
 export const voucherSchema = z
@@ -77,30 +105,30 @@ export const voucherSchema = z
     currency: z.enum(['$', 'USD'], {
       message: "La moneda debe ser '$' o 'USD'",
     }),
-    exchangeRate: z.coerce
-      .number()
+    exchangeRate: exchangeRateSchema
       .positive('El tipo de cambio debe ser un número positivo')
       .optional()
       .default(1),
-    subtotal: z.coerce.number().nonnegative('El subtotal no puede ser negativo'),
-    vatAmount: z.coerce.number().nonnegative('El IVA no puede ser negativo'),
-    nonTaxableAmount: z.coerce.number().nonnegative('El monto no gravado no puede ser negativo').optional().default(0),
-    exemptAmount: z.coerce.number().nonnegative('El monto exento no puede ser negativo').optional().default(0),
-    otherTaxesAmount: z.coerce.number().nonnegative('El monto de otros impuestos no puede ser negativo').optional().default(0),
-    totalAmount: z.coerce.number().positive('El monto total debe ser mayor a cero'),
-    concept: z.string().optional(),
-    paymentMethod: z.string().min(1, 'El método de pago es obligatorio'),
+    subtotal: createMoneySchema('El subtotal no puede ser negativo'),
+    vatAmount: createMoneySchema('El IVA no puede ser negativo'),
+    nonTaxableAmount: createMoneySchema('El monto no gravado no puede ser negativo').optional().default(0),
+    exemptAmount: createMoneySchema('El monto exento no puede ser negativo').optional().default(0),
+    otherTaxesAmount: createMoneySchema('El monto de otros impuestos no puede ser negativo').optional().default(0),
+    totalAmount: createMoneySchema('El monto total debe ser mayor a cero', true),
+    concept: z.string().trim().max(inputLimits.maxFreeTextLength, 'El concepto no puede superar los 5000 caracteres').optional(),
+    paymentMethod: z.string().trim().min(1, 'El método de pago es obligatorio').max(inputLimits.maxNameLength, 'El medio de pago no puede superar los 255 caracteres'),
     status: z.enum(['pending', 'partial', 'paid'], {
       message: "El estado debe ser 'pending', 'partial' o 'paid'",
     }),
     paymentDate: z.coerce.date().nullable().optional(),
-    paidAmount: z.coerce.number().nonnegative().optional().default(0),
-    comments: z.string().optional(),
+    paidAmount: createMoneySchema('El monto pagado no puede ser negativo').optional().default(0),
+    comments: z.string().trim().max(inputLimits.maxFreeTextLength, 'Los comentarios no pueden superar los 5000 caracteres').optional(),
     createdByUserId: z.string().uuid('ID de usuario creador inválido'),
     retentions: z.array(voucherRetentionSchema).optional().default([]),
     perceptions: z.array(voucherPerceptionSchema).optional().default([]),
     vatDetails: z.array(voucherVatDetailSchema).optional().default([]),
   })
+  .strict()
   .refine(
     (data) => {
       if (data.type === 'sale') {
@@ -156,8 +184,8 @@ export type VoucherSchemaOutput = z.output<typeof voucherSchema>
 export const voucherListQuerySchema = z.object({
   type: z.enum(['sale', 'purchase']),
   page: z.coerce.number().int().min(1).default(1),
-  pageSize: z.coerce.number().int().refine((value) => [10, 20, 50].includes(value)).default(10),
-  search: z.string().trim().optional(),
+  pageSize: z.coerce.number().int().refine((value) => voucherPageSizeOptions.includes(value as typeof voucherPageSizeOptions[number])).default(voucherPageSizeOptions[0]),
+  search: z.string().trim().max(inputLimits.maxSearchLength, 'La búsqueda no puede superar los 255 caracteres').optional(),
   status: z.enum(['pending', 'partial', 'paid']).optional(),
   dateFrom: z.coerce.date().optional(),
   dateTo: z.coerce.date().optional(),
@@ -170,5 +198,5 @@ export const voucherSummaryQuerySchema = voucherListQuerySchema.omit({
   pageSize: true,
 }).extend({
   page: z.coerce.number().int().min(1).optional(),
-  pageSize: z.coerce.number().int().optional(),
+  pageSize: z.coerce.number().int().refine((value) => voucherPageSizeOptions.includes(value as typeof voucherPageSizeOptions[number]), 'El tamaño de página es inválido').optional(),
 })

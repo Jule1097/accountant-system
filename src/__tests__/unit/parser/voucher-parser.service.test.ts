@@ -8,6 +8,8 @@ import { ParserStorageService } from "src/services/parser/ParserStorage";
 import { AsyncBatchRunner } from "src/types/parser/async-batch-runner";
 import { ParserAcceptedFile } from "src/lib/helpers/parser/parser-file";
 import { parseInvoiceImage } from "src/lib/integrations/gemini";
+import { apiResponseMessages } from "src/lib/constants/api-response";
+import { ParserBatchItemContextRecord } from "src/types/parser/parser-batch";
 
 jest.mock("src/repositories/company/company.repository");
 jest.mock("src/repositories/parser/parser-batch.repository");
@@ -224,5 +226,45 @@ describe("VoucherParserService", () => {
       }),
       "image-visual",
     );
+  });
+
+  it("stores a generic parser error instead of provider details", async () => {
+    const item: ParserBatchItemContextRecord = {
+      id: itemId,
+      batchId,
+      fileName: "invoice.png",
+      mimeType: "image/png",
+      fileSize: 1000,
+      fileHash: "hash-1",
+      storagePath: "path",
+      inputStrategy: null,
+      status: "queued",
+      parsedPayload: null,
+      validatedPayload: null,
+      currentError: null,
+      currentAttempt: 0,
+      queuedAt: null,
+      processedAt: null,
+      expiresAt: "2026-09-30T00:00:00.000Z",
+      createdAt: "2026-08-20T00:00:00.000Z",
+      updatedAt: "2026-08-20T00:00:00.000Z",
+      batch: {
+        id: batchId,
+        companyId,
+        createdByUserId: userId,
+        voucherType: "sale",
+        status: "queued",
+        expiresAt: "2026-09-30T00:00:00.000Z",
+      },
+    };
+    const secret = "gemini-api-key-user-email@example.com";
+    batchRepositoryMock.findItemById.mockResolvedValueOnce(item).mockResolvedValueOnce(null);
+    storageServiceMock.downloadFile.mockResolvedValue(Buffer.from("content"));
+    (parseInvoiceImage as jest.Mock).mockRejectedValue(new Error(secret));
+
+    await service.processItem(itemId);
+
+    expect(batchRepositoryMock.markItemFailed).toHaveBeenCalledWith(itemId, apiResponseMessages.voucher.parseFailed, "image-visual", { attemptNumber: 1 });
+    expect(batchRepositoryMock.markItemFailed.mock.calls.flat()).not.toContain(secret);
   });
 });

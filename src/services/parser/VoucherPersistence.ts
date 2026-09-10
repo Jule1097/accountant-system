@@ -8,9 +8,9 @@ import { ParsedVoucherData } from "src/types/parser/gemini-parser";
 import { ParserBatchItemContextRecord, ParserBatchPersistenceJob } from "src/types/parser/parser-batch";
 import { AsyncBatchRunnerService } from "./AsyncBatchRunner";
 import { applicationErrorCodes } from "src/lib/constants/application-error";
+import { apiResponseMessages } from "src/lib/constants/api-response";
 import { conciliationErrorMessages } from "src/lib/constants/conciliation-error";
 import { ApplicationError, isApplicationError } from "src/lib/errors/application-error";
-import { isError } from "src/lib/helpers/shared/type-guards";
 
 function isDuplicateVoucherError(error: unknown): boolean {
   return isApplicationError(error) && error.code === applicationErrorCodes.duplicate;
@@ -106,8 +106,15 @@ export class VoucherPersistenceService {
         };
       }
 
-      const errorMessage = isApplicationError(error) ? error.diagnosticMessage : isError(error) ? error.message : "Persistence failed";
-      await this.batchRepository.markItemPersistenceFailed(item.id, errorMessage);
+      console.error("Parser item persistence failed", {
+        operation: "persist-parser-item",
+        workflowState: "failed",
+        providerName: "database",
+        entityId: item.id,
+        errorName: error instanceof Error ? error.name : "UnknownError",
+        errorCode: isApplicationError(error) ? error.code : undefined,
+      });
+      await this.batchRepository.markItemPersistenceFailed(item.id, apiResponseMessages.conciliation.itemPersistFailed);
       return {
         status: "failed",
         message: "No se pudo persistir la factura.",

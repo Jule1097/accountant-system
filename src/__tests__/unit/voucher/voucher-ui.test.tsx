@@ -38,8 +38,8 @@ jest.mock('src/components/ui/toast', () => ({
   useToastManager: () => ({ add: toastAdd }),
 }))
 
-jest.mock('src/lib/api/api-client', () => ({
-  ApiRequestError: class ApiRequestError extends Error {
+jest.mock('src/lib/api/api-client', () => {
+  class MockApiRequestError extends Error {
     status: number
     payload: unknown
 
@@ -48,10 +48,15 @@ jest.mock('src/lib/api/api-client', () => ({
       this.status = status
       this.payload = payload
     }
-  },
-  apiRequest: (...args: unknown[]) => apiRequestMock(...args),
-  parseJsonResponse: async (response: Response) => response.json(),
-}))
+  }
+
+  return {
+    ApiRequestError: MockApiRequestError,
+    isApiRequestError: (value: unknown) => value instanceof MockApiRequestError,
+    apiRequest: (...args: unknown[]) => apiRequestMock(...args),
+    parseJsonResponse: async (response: Response) => response.json(),
+  }
+})
 
 jest.mock('src/hooks/auth/use-auth', () => ({
   useAuth: () => ({
@@ -334,6 +339,8 @@ function createVoucherSummaryResponse(): VoucherSummaryResponse {
 describe('Voucher UI', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: jest.fn(() => 'blob:voucher-preview') })
+    Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: jest.fn() })
     searchParamsState.value = ''
     useVouchersMock.mockReturnValue({ data: createVoucherListResponse([]), isLoading: false, mutate: jest.fn() })
     useVoucherSummaryMock.mockReturnValue({ data: createVoucherSummaryResponse(), isLoading: false, mutate: jest.fn() })
@@ -701,6 +708,38 @@ describe('Voucher UI', () => {
         title: 'Comprobante guardado',
       })
     )
+  })
+
+  it('shows parser validation messages returned by the API in the toast', async () => {
+    apiRequestMock.mockImplementation((path: string) => {
+      if (path === '/api/catalogs') {
+        return Promise.resolve({ json: async () => ({ voucherTypes: [], voucherLetters: [], retentionConcepts: [], perceptionConcepts: [], taxJurisdictions: [] }) })
+      }
+
+      if (path === '/api/suppliers') {
+        return Promise.resolve({ json: async () => [] })
+      }
+
+      return Promise.reject(new ApiRequestError('El tamaño total de los archivos no puede superar los 24 MB.', 400, { error: 'El tamaño total de los archivos no puede superar los 24 MB.' }))
+    })
+
+    const { result } = renderHook(() => useVoucherForm({
+      isOpen: true,
+      onOpenChange: jest.fn(),
+      type: 'purchases',
+      mode: 'create',
+      ...createVoucherFormOptions(),
+      onSuccess: jest.fn(),
+    }))
+
+    const fileInput = document.createElement('input')
+    Object.defineProperty(fileInput, 'files', { configurable: true, value: [new File(['invoice'], 'invoice.pdf', { type: 'application/pdf' })] })
+    act(() => result.current.onFileChange({ target: fileInput } as React.ChangeEvent<HTMLInputElement>))
+
+    await waitFor(() => expect(toastAdd).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'error',
+      description: 'El tamaño total de los archivos no puede superar los 24 MB.',
+    })))
   })
 
   it('hydrates batch review parsed data when it arrives after opening the form', async () => {
