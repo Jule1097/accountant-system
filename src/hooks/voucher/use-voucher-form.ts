@@ -310,16 +310,10 @@ export function useVoucherForm({
         description: "Los campos detectados se completaron de manera automática.",
       });
     } catch (error: unknown) {
-      console.error("Voucher parsing failed", {
-        operation: "parse-voucher",
-        workflowState: "failed",
-        providerName: "gemini",
-        errorName: error instanceof Error ? error.name : "UnknownError",
-      });
       toastManager.add({
         type: "error",
         title: "Error al procesar",
-        description: "No se pudo procesar el comprobante por IA.",
+        description: error instanceof ApiRequestError ? error.message : "No se pudo procesar el comprobante por IA.",
       });
     } finally {
       setIsParsing(false);

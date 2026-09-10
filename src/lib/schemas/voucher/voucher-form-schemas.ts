@@ -5,6 +5,7 @@ import {
   requiresVoucherTaxJurisdiction,
 } from "src/lib/helpers/voucher/voucher-form";
 import { voucherTaxJurisdictionRequiredMessage } from "src/lib/constants/voucher";
+import { inputLimits } from "src/lib/constants/input-limits";
 import type { VoucherFormCatalogState } from "src/types/voucher/voucher-form";
 
 function normalizeOptionalNumberInput(value: unknown): number {
@@ -47,7 +48,7 @@ export const voucherFormSchema = z.object({
   exemptAmount: z.number({ message: "Debe ser un numero" }).min(0, "No puede ser negativo"),
   otherTaxesAmount: z.number({ message: "Debe ser un numero" }).min(0, "No puede ser negativo"),
   totalAmount: z.number({ message: "Debe ser un numero" }).min(0.01, "El total debe ser mayor a 0"),
-  concept: z.string().optional(),
+  concept: z.string().trim().max(inputLimits.maxFreeTextLength, "El concepto no puede superar los 5000 caracteres").optional(),
   paymentMethod: z.string().min(1, "El medio de pago es obligatorio"),
   status: z.enum(["pending", "partial", "paid"], { message: "El estado es obligatorio" }),
   paymentDate: z.string().optional(),
@@ -55,7 +56,7 @@ export const voucherFormSchema = z.object({
     normalizeOptionalNumberInput,
     z.number({ message: "Debe ser un numero" }).min(0, "No puede ser negativo")
   ),
-  comments: z.string().optional(),
+  comments: z.string().trim().max(inputLimits.maxFreeTextLength, "Los comentarios no pueden superar los 5000 caracteres").optional(),
   createdByUserId: z.string().min(1, "El usuario es obligatorio"),
   retentions: z.array(retentionFormSchema),
   perceptions: z.array(perceptionFormSchema),

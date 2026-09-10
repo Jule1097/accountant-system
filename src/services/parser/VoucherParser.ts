@@ -7,6 +7,7 @@ import {
 } from "src/lib/helpers/parser/parser-batch";
 import {
   buildParserStoragePath,
+  ensureParserTotalFileSize,
   isParserImageMimeType,
   isParserPdfMimeType,
   ParserAcceptedFile,
@@ -23,6 +24,7 @@ import { CompanyNotificationService } from "src/services/company/CompanyNotifica
 import { ParserResponseService } from "./ParserResponse";
 import { ParserStorageService } from "./ParserStorage";
 import { applicationErrorCodes } from "src/lib/constants/application-error";
+import { apiResponseMessages } from "src/lib/constants/api-response";
 import { ApplicationError } from "src/lib/errors/application-error";
 
 interface PreparedParserPayload {
@@ -164,6 +166,7 @@ export class VoucherParserService {
     files: ParserAcceptedFile[]
   ): Promise<ParserBatchAsyncResponse> {
     ensureParserFileLimit(files);
+    ensureParserTotalFileSize(files);
     ensureParserFilesAreUnique(files);
 
     const batchId = randomUUID();
@@ -249,20 +252,15 @@ export class VoucherParserService {
     const item = await this.batchRepository.findItemById(itemId);
 
     if (!item || item.batch.companyId !== companyId) {
-      throw new ApplicationError(applicationErrorCodes.notFound, "No se encontr\u00f3 el \u00edtem solicitado", "Parser item not found");
-      return null;
+      throw new ApplicationError(applicationErrorCodes.notFound, apiResponseMessages.parser.itemNotFound, "Parser item not found");
     }
 
     return item;
   }
 
   async retryItem(companyId: string, itemId: string): Promise<ParserBatchQueueJob> {
-    const item = await this.batchRepository.findItemById(itemId);
-
-    if (!item || item.batch.companyId !== companyId) {
-    }
-
-    const requeuedItem = await this.batchRepository.requeueItem(itemId);
+    const item = await this.getItem(companyId, itemId);
+    const requeuedItem = await this.batchRepository.requeueItem(item.id);
     const job = {
       batchId: requeuedItem.batchId,
       itemId: requeuedItem.id,
@@ -326,10 +324,10 @@ export class VoucherParserService {
       const rawResponse = await payload.execute();
       const response = await this.responseService.buildResponse(item.batch.companyId, item.batch.voucherType, rawResponse);
       await this.batchRepository.markItemParsed(item.id, response, payload.strategy);
-    } catch (error: unknown) {
+    } catch {
       await this.batchRepository.markItemFailed(
         item.id,
-        error instanceof Error ? error.message : "Unknown parser error",
+        apiResponseMessages.voucher.parseFailed,
         payload.strategy,
         { attemptNumber: nextAttempt }
       );

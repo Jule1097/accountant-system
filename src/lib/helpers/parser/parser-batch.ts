@@ -4,9 +4,10 @@ import {
   ParserBatchRecord,
   ParserBatchStatus,
 } from "src/types/parser/parser-batch";
+import { inputLimits } from "src/lib/constants/input-limits";
 
 const parserBatchExpirationHours = 24;
-const parserBatchMaxFiles = 20;
+const parserBatchMaxFiles = inputLimits.maxParserFiles;
 
 function hasItemsWithStatus(items: ParserBatchItemRecord[], statuses: ParserBatchItemStatus[]): boolean {
   return items.some((item) => statuses.includes(item.status));

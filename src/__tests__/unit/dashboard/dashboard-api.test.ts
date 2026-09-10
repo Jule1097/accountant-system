@@ -1,7 +1,16 @@
 import { NextRequest } from "next/server"
 import { GET } from "src/app/api/dashboard/recent-activity/route"
+import { requestContextErrorCodes } from "src/lib/constants/auth"
+import { RequestContextError } from "src/lib/errors/request-context"
 import { DashboardService } from "src/services/dashboard/Dashboard"
 
+jest.mock("src/lib/helpers/auth/request-context", () => ({
+  requireRequestContext: jest.fn(async (request: NextRequest) => {
+    const companyId = request.headers.get("x-company-id")
+    if (!companyId) throw new RequestContextError(requestContextErrorCodes.companyRequired)
+    return { userId: "user-1", companyId }
+  }),
+}))
 jest.mock("src/services/dashboard/Dashboard")
 
 function createRequest(overrides: Partial<NextRequest> = {}) {

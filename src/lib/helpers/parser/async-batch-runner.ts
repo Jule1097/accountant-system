@@ -1,3 +1,4 @@
+import { externalProviderValidationMessages, externalProviderOrigins, gcpWorkflowConfigPatterns } from "src/lib/constants/external-providers";
 import { AsyncBatchWorkloadKind, GcpWorkflowConfig, WorkflowDriver } from "src/types/parser/async-batch-runner";
 
 function normalizeWorkflowDriver(value: string | undefined): WorkflowDriver {
@@ -28,17 +29,27 @@ function getRequiredBatchIdArgValue(index: number, argv: string[]): string {
   return value;
 }
 
+function isValidGcpWorkflowConfig(config: GcpWorkflowConfig): boolean {
+  return gcpWorkflowConfigPatterns.projectId.test(config.projectId) && gcpWorkflowConfigPatterns.region.test(config.region) && gcpWorkflowConfigPatterns.jobName.test(config.parserJobName) && gcpWorkflowConfigPatterns.jobName.test(config.persistenceJobName);
+}
+
+function validateGcpWorkflowConfig(config: GcpWorkflowConfig): void {
+  if (!isValidGcpWorkflowConfig(config)) throw new Error(externalProviderValidationMessages.invalidGcpWorkflowConfiguration);
+}
+
 export function getWorkflowDriver(): WorkflowDriver {
   return normalizeWorkflowDriver(process.env.WORKFLOW_DRIVER);
 }
 
 export function getGcpWorkflowConfig(): GcpWorkflowConfig {
-  return {
+  const config = {
     projectId: getRequiredGcpValue("GCP_PROJECT_ID"),
     region: getRequiredGcpValue("GCP_REGION"),
     parserJobName: getRequiredGcpValue("GCP_PARSER_JOB_NAME"),
     persistenceJobName: getRequiredGcpValue("GCP_PERSISTENCE_JOB_NAME"),
   };
+  validateGcpWorkflowConfig(config);
+  return config;
 }
 
 export function validateWorkflowDriverConfiguration(): void {
@@ -54,8 +65,9 @@ export function getGcpJobName(workload: AsyncBatchWorkloadKind, config: GcpWorkf
 }
 
 export function buildGcpJobRunUrl(config: GcpWorkflowConfig, workload: AsyncBatchWorkloadKind): string {
+  validateGcpWorkflowConfig(config);
   const jobName = getGcpJobName(workload, config);
-  return `https://run.googleapis.com/v2/projects/${config.projectId}/locations/${config.region}/jobs/${jobName}:run`;
+  return new URL(`/v2/projects/${encodeURIComponent(config.projectId)}/locations/${encodeURIComponent(config.region)}/jobs/${encodeURIComponent(jobName)}:run`, externalProviderOrigins.gcpCloudRunApi).toString();
 }
 
 export function parseBatchIdArg(argv: string[]): string {
