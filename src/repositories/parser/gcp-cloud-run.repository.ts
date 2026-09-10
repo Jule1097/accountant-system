@@ -20,16 +20,6 @@ export class GcpCloudRunRepository {
     const accessToken = await getGcpWorkflowAccessToken();
     const jobRunUrl = buildGcpJobRunUrl(config, workload);
 
-    console.info("Triggering GCP batch job", {
-      operation: "trigger-gcp-batch-job",
-      workflowState: "triggering",
-      providerName: "gcp",
-      workload,
-      batchId,
-      projectId: config.projectId,
-      region: config.region,
-    });
-
     const response = await fetch(jobRunUrl, {
       method: "POST",
       headers: {
@@ -40,17 +30,9 @@ export class GcpCloudRunRepository {
     });
 
     if (response.ok) {
-      console.info("Triggered GCP batch job", {
-        operation: "trigger-gcp-batch-job",
-        workflowState: "triggered",
-        providerName: "gcp",
-        workload,
-        batchId,
-      });
       return;
     }
 
-    const errorBody = await response.text();
-    throw new Error(`Failed to trigger GCP ${workload} job: ${response.status} ${errorBody}`);
+    throw new Error(`Failed to trigger GCP ${workload} job: ${response.status}`);
   }
 }

@@ -54,6 +54,11 @@ function formatExcelCell(cell: ExcelJS.Cell, column: ExportColumnDefinition) {
   cell.alignment = { horizontal: 'left', vertical: 'middle' }
 }
 
+function neutralizeExcelFormula(value: ExcelJS.CellValue): ExcelJS.CellValue {
+  if (typeof value !== 'string' || !/^[=+\-@]/.test(value)) return value
+  return `'${value}`
+}
+
 export function buildExcelWorkbook(
   titleText: string,
   companyName: string,
@@ -103,7 +108,7 @@ function getExcelColumnLetter(colIndex: number): string {
 
   data.forEach((rowData, idx) => {
     const row = sheet.getRow(7 + idx)
-    row.values = columns.map((c) => rowData[c.key] as ExcelJS.CellValue)
+    row.values = columns.map((c) => c.isText ? neutralizeExcelFormula(rowData[c.key] as ExcelJS.CellValue) : rowData[c.key] as ExcelJS.CellValue)
     row.font = { name: 'Segoe UI', size: 10 }
     row.alignment = { vertical: 'middle' }
 

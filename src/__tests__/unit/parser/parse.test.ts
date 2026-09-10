@@ -35,13 +35,16 @@ function createParserRequest(request: object): NextRequest {
   return nextRequest
 }
 
+const pdfSignature = Uint8Array.from([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x37]).buffer
+const pngSignature = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).buffer
+
 describe('Parser Route Handler', () => {
   const companyId = 'company-uuid'
   const mockFile = {
     size: 1000,
     type: 'application/pdf',
     name: 'invoice.pdf',
-    arrayBuffer: async () => new ArrayBuffer(8),
+    arrayBuffer: async () => pdfSignature,
   }
 
   beforeEach(() => {
@@ -489,7 +492,7 @@ describe('Parser Route Handler', () => {
       size: 1000,
       type: 'image/png',
       name: 'invoice-2.png',
-      arrayBuffer: async () => new ArrayBuffer(8),
+      arrayBuffer: async () => pngSignature,
     }
     const request = createParserRequest({
       headers: { get: () => companyId },

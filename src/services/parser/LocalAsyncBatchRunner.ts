@@ -9,29 +9,13 @@ export class LocalAsyncBatchRunnerService implements AsyncBatchRunner {
   }
 
   private schedule(workload: AsyncBatchWorkloadKind, batchId: string): void {
-    console.info("Scheduled local batch execution", {
-      operation: "schedule-local-batch-execution",
-      workflowState: "scheduled",
-      providerName: "local",
-      workload,
-      batchId,
-    });
 
     setTimeout(() => {
       const execution = workload === "parser"
         ? this.batchExecutionService.runParserBatch(batchId)
         : this.batchExecutionService.runPersistenceBatch(batchId);
 
-      void execution.catch((error: unknown) => {
-        console.error("Local batch execution failed", {
-          operation: "local-batch-execution",
-          workflowState: "failed",
-          providerName: "local",
-          workload,
-          batchId,
-          errorMessage: error instanceof Error ? error.message : "Unknown batch execution error",
-        });
-      });
+      void execution.catch(() => {});
     }, 0);
   }
 

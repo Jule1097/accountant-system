@@ -1,4 +1,5 @@
 import { createSign } from "node:crypto";
+import { externalProviderOrigins } from "src/lib/constants/external-providers";
 
 function getDirectAccessToken(): string | null {
   return process.env.GCP_WORKFLOW_ACCESS_TOKEN || null;
@@ -45,7 +46,7 @@ function buildServiceAccountAssertion(email: string, privateKey: string): string
 
 async function requestServiceAccountAccessToken(email: string, privateKey: string): Promise<string> {
   const assertion = buildServiceAccountAssertion(email, privateKey);
-  const response = await fetch("https://oauth2.googleapis.com/token", {
+  const response = await fetch(`${externalProviderOrigins.gcpOAuthToken}/token`, {
     method: "POST",
     headers: {
       "content-type": "application/x-www-form-urlencoded",
@@ -70,7 +71,7 @@ async function requestServiceAccountAccessToken(email: string, privateKey: strin
 }
 
 async function requestMetadataAccessToken(): Promise<string> {
-  const response = await fetch("http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token", {
+  const response = await fetch(`${externalProviderOrigins.gcpMetadata}/computeMetadata/v1/instance/service-accounts/default/token`, {
     headers: {
       "Metadata-Flavor": "Google",
     },

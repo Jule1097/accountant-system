@@ -6,6 +6,7 @@ import { VoucherExportService } from 'src/services/voucher/VoucherExport'
 import { voucherExportQuerySchema } from 'src/lib/schemas/voucher/voucher-export-schemas'
 import { ExportQueryParams } from 'src/types/voucher/voucher-export'
 import { resolveApplicationErrorResponse } from 'src/lib/helpers/api/application-error-response'
+import { sanitizeParserFileName } from 'src/lib/helpers/parser/parser-file'
 
 export async function GET(request: NextRequest): Promise<Response> {
   return executeRequestWithContext(request, async ({ companyId }) => {
@@ -51,7 +52,7 @@ export async function GET(request: NextRequest): Promise<Response> {
       status: httpStatusCodes.ok,
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'Content-Disposition': `attachment; filename="${result.filename}"`,
+        'Content-Disposition': `attachment; filename="${sanitizeParserFileName(result.filename)}"`,
         'Access-Control-Expose-Headers': 'Content-Disposition',
       },
     })

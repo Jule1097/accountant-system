@@ -5,6 +5,7 @@ import { httpStatusCodes } from "src/lib/constants/http";
 import { conciliationItemParamsSchema } from "src/lib/schemas/conciliation/conciliations-schemas";
 import { ConciliationsService } from "src/services/conciliation/Conciliations";
 import { resolveApplicationErrorResponse } from "src/lib/helpers/api/application-error-response";
+import { sanitizeParserFileName } from "src/lib/helpers/parser/parser-file";
 
 export async function GET(
   request: NextRequest,
@@ -25,7 +26,7 @@ export async function GET(
       status: httpStatusCodes.ok,
       headers: {
         "Content-Type": sourceFile.mimeType,
-        "Content-Disposition": `inline; filename="${sourceFile.fileName}"`,
+        "Content-Disposition": `inline; filename="${sanitizeParserFileName(sourceFile.fileName)}"`,
       },
     });
   }, (error) => resolveApplicationErrorResponse(error, { request, operation: "fetch conciliation source file", resource: "conciliation", workflow: "source" }));

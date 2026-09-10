@@ -1,4 +1,5 @@
 import { createSupabaseAdminClient } from "src/lib/integrations/supabase-server";
+import { parserInternalMessages } from "src/lib/constants/parser";
 
 function getParserTempBucket(): string {
   const value = process.env.VOUCHER_PARSER_TEMP_BUCKET;
@@ -25,7 +26,7 @@ export class ParserStorageService {
     });
 
     if (error) {
-      throw new Error(`Failed to upload parser file: ${error.message}`);
+      throw new Error(parserInternalMessages.storageOperationFailed);
     }
   }
 
@@ -34,7 +35,7 @@ export class ParserStorageService {
     const { data, error } = await supabase.storage.from(this.bucketName).download(path);
 
     if (error || !data) {
-      throw new Error(`Failed to download parser file: ${error?.message || "missing file"}`);
+      throw new Error(parserInternalMessages.storageOperationFailed);
     }
 
     return Buffer.from(await data.arrayBuffer());
@@ -45,7 +46,7 @@ export class ParserStorageService {
     const { error } = await supabase.storage.from(this.bucketName).remove([path]);
 
     if (error) {
-      throw new Error(`Failed to delete parser file: ${error.message}`);
+      throw new Error(parserInternalMessages.storageOperationFailed);
     }
   }
 }
