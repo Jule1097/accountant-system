@@ -9,6 +9,8 @@ import {
   voucherPageSizeOptions,
   voucherMoneyScale,
   voucherValidationMessages,
+  voucherDocumentIdentificationModeValues,
+  voucherDocumentIdentificationModes,
 } from 'src/lib/constants/voucher'
 
 function isNonZeroVoucherValue(value: string): boolean {
@@ -29,6 +31,10 @@ function createDecimalSchema(maximum: number, scale: number, invalidMessage: str
 function createMoneySchema(message: string, positive = false) {
   const schema = createDecimalSchema(voucherMoneyMaximum, voucherMoneyScale, voucherValidationMessages.invalidFiniteAmount, voucherValidationMessages.excessiveAmount, voucherValidationMessages.excessiveAmountScale)
   return positive ? schema.positive(message) : schema.nonnegative(message)
+}
+
+function isFiscalNumberingComplete(data: { voucherLetterId: string | null; posNumber: string | null; number: string | null }): boolean {
+  return !!data.voucherLetterId && !!data.posNumber && !!data.number
 }
 
 const exchangeRateSchema = createDecimalSchema(voucherExchangeRateMaximum, voucherExchangeRateScale, voucherValidationMessages.invalidFiniteExchangeRate, voucherValidationMessages.excessiveExchangeRate, voucherValidationMessages.excessiveExchangeRateScale)
@@ -87,17 +93,18 @@ export const voucherSchema = z
       message: "El tipo debe ser 'sale' o 'purchase'",
     }),
     voucherTypeId: z.string().uuid('ID de tipo de comprobante inválido'),
-    voucherLetterId: z.string().uuid('ID de letra de comprobante inválido'),
-    posNumber: z
-      .string()
-      .regex(/^\d+$/, 'El punto de venta debe contener solo números')
-      .refine(isNonZeroVoucherValue, 'El punto de venta debe ser mayor a cero')
-      .transform((value) => value.padStart(5, '0')),
-    number: z
-      .string()
-      .regex(/^\d+$/, 'El número de comprobante debe contener solo números')
-      .refine(isNonZeroVoucherValue, 'El número de comprobante debe ser mayor a cero')
-      .transform((value) => value.padStart(8, '0')),
+    voucherLetterId: z.preprocess((value) => value === '' ? null : value, z.string().uuid('ID de letra de comprobante inválido').nullable()).default(null),
+    posNumber: z.preprocess(
+      (value) => value === '' ? null : value,
+      z.string().regex(/^\d+$/, 'El punto de venta debe contener solo números').refine(isNonZeroVoucherValue, 'El punto de venta debe ser mayor a cero').transform((value) => value.padStart(5, '0')).nullable()
+    ).default(null),
+    number: z.preprocess(
+      (value) => value === '' ? null : value,
+      z.string().regex(/^\d+$/, 'El número de comprobante debe contener solo números').refine(isNonZeroVoucherValue, 'El número de comprobante debe ser mayor a cero').transform((value) => value.padStart(8, '0')).nullable()
+    ).default(null),
+    documentIdentificationMode: z.enum(voucherDocumentIdentificationModeValues).optional(),
+    confirmNonFiscalDuplicate: z.boolean().optional(),
+    confirmIdentificationModeConversion: z.boolean().optional(),
     clientId: z.string().uuid('ID de cliente inválido').nullable().optional(),
     supplierId: z.string().uuid('ID de proveedor inválido').nullable().optional(),
     date: z.coerce.date({ message: 'Fecha inválida' }),
@@ -168,6 +175,12 @@ export const voucherSchema = z
       path: ['exchangeRate'],
     }
   )
+  .superRefine((data, context) => {
+    const mode = data.type === 'sale' ? voucherDocumentIdentificationModes.fiscal : data.documentIdentificationMode
+    if (mode === voucherDocumentIdentificationModes.nonFiscal && isFiscalNumberingComplete(data)) context.addIssue({ code: z.ZodIssueCode.custom, message: 'Las compras no fiscales no pueden tener numeración fiscal.', path: ['documentIdentificationMode'] })
+    if (data.type === 'sale' && !isFiscalNumberingComplete(data)) context.addIssue({ code: z.ZodIssueCode.custom, message: 'Las ventas requieren letra, punto de venta y número.', path: ['voucherLetterId'] })
+    if (mode === voucherDocumentIdentificationModes.fiscal && data.type === 'purchase' && !isFiscalNumberingComplete(data)) context.addIssue({ code: z.ZodIssueCode.custom, message: 'Las compras fiscales requieren letra, punto de venta y número.', path: ['documentIdentificationMode'] })
+  })
   .transform((data) => {
     const accountingPeriod = data.accountingPeriod
       ? new Date(data.accountingPeriod.getFullYear(), data.accountingPeriod.getMonth(), 1)

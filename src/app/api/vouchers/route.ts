@@ -7,6 +7,7 @@ import { voucherListQuerySchema, voucherSchema } from 'src/lib/schemas/voucher/v
 import { mapVoucherSchemaToDomainInput } from 'src/lib/helpers/voucher/voucher-factory-input'
 import { serializeVoucher, serializeVoucherPage } from 'src/lib/helpers/voucher/voucher-serialization'
 import { resolveApplicationErrorResponse } from 'src/lib/helpers/api/application-error-response'
+import { SupplierRepository } from 'src/repositories/third-party/supplier.repository'
 
 export async function GET(request: NextRequest) {
   return executeRequestWithContext(request, async ({ companyId }) => {
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: apiResponseMessages.common.invalidData, details: parsed.error.format() }, { status: httpStatusCodes.badRequest })
     }
 
-    const voucherService = new VoucherService()
+    const voucherService = new VoucherService(undefined, new SupplierRepository())
     const newVoucher = await voucherService.createVoucher(mapVoucherSchemaToDomainInput(parsed.data))
 
     return NextResponse.json(serializeVoucher(newVoucher), { status: httpStatusCodes.created })

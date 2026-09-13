@@ -10,6 +10,7 @@ import {
 } from "src/components/ui/dialog";
 import { Button } from "src/components/ui/button";
 import { VoucherApiResponse } from "src/types/voucher/voucher-api";
+import { voucherDocumentIdentificationModes, voucherNonFiscalDisplayValues } from "src/lib/constants/voucher";
 
 interface VoucherDeleteDialogProps {
   isOpen: boolean;
@@ -27,7 +28,8 @@ function resolveDeleteDescription(voucher: VoucherApiResponse | null, descriptio
   }
 
   if (voucher) {
-    return `Vas a eliminar el comprobante ${voucher.posNumber}-${voucher.number}. Esta acción no se puede deshacer.`;
+    const identifier = voucher.documentIdentificationMode === voucherDocumentIdentificationModes.nonFiscal ? voucherNonFiscalDisplayValues.number : `${voucher.posNumber}-${voucher.number}`;
+    return `Vas a eliminar el comprobante ${identifier}. Esta acción no se puede deshacer.`;
   }
 
   return "Esta acción no se puede deshacer.";

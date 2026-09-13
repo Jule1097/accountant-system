@@ -30,10 +30,8 @@ export class ParserResponseService {
     const taxJurisdictions = await this.catalogRepository.getTaxJurisdictions();
     let thirdPartyId: string | null = null;
     const lookupThirdPartyCuit = parsedVoucher.getLookupThirdPartyCuit();
-
-    if (lookupThirdPartyCuit) {
-      thirdPartyId = await this.thirdPartyLookup.findIdByCuit(companyId, lookupThirdPartyCuit);
-    }
+    const lookupThirdPartyName = parsedVoucher.getLookupThirdPartyName();
+    thirdPartyId = await this.thirdPartyLookup.findIdByIdentity(companyId, lookupThirdPartyCuit, lookupThirdPartyName, _voucherKind);
 
     return parsedVoucher.toResponse(
       {

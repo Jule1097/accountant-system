@@ -8,6 +8,7 @@ import { getVoucherFormattedExchangeRate, getVoucherStatusBadgeClassName, getVou
 import type { DataTableColumn } from "src/types/shared/data-table";
 import type { VoucherApiResponse } from "src/types/voucher/voucher-api";
 import type { VoucherListItem, VoucherScreenType } from "src/types/voucher/voucher";
+import { voucherDocumentIdentificationModes, voucherNonFiscalDisplayValues } from "src/lib/constants/voucher";
 
 interface VoucherTableColumnOptions {
   type: VoucherScreenType;
@@ -29,12 +30,12 @@ export function createVoucherTableColumns({
     {
       id: "letter",
       header: "Letra",
-      accessor: (row) => row.voucher.voucherLetter?.letter || "—",
+      accessor: (row) => row.voucher.voucherLetter?.letter || voucherNonFiscalDisplayValues.letter,
     },
     {
       id: "voucher",
       header: "Comprobante",
-      accessor: (row) => `${row.voucher.posNumber}-${row.voucher.number}`,
+      accessor: (row) => row.voucher.documentIdentificationMode === voucherDocumentIdentificationModes.nonFiscal ? voucherNonFiscalDisplayValues.number : `${row.voucher.posNumber}-${row.voucher.number}`,
     },
     {
       id: "party",
@@ -44,7 +45,7 @@ export function createVoucherTableColumns({
     {
       id: "cuit",
       header: "CUIT",
-      accessor: (row) => row.partyCuit || "—",
+      accessor: (row) => row.partyCuit || (type === "purchases" ? voucherNonFiscalDisplayValues.cuit : "—"),
     },
     {
       id: "concept",

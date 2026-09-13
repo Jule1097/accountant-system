@@ -2,10 +2,11 @@
 
 import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
 import { useEffect, useState } from 'react'
-import { useFieldArray, useForm } from 'react-hook-form'
+import { useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { VoucherManagementView } from 'src/components/vouchers/voucher-management-view'
 import { VoucherModalPerceptions } from 'src/components/vouchers/voucher-modal-perceptions'
 import { VoucherModalActions } from 'src/components/vouchers/voucher-modal-actions'
+import { VoucherModalCoreFields } from 'src/components/vouchers/voucher-modal-core-fields'
 import { VoucherTableFilters } from 'src/components/vouchers/voucher-table-filters'
 import { VoucherTableToolbar } from 'src/components/vouchers/voucher-table-toolbar'
 import { useVoucherForm, VoucherFormValues } from 'src/hooks/voucher/use-voucher-form'
@@ -232,6 +233,59 @@ function createVoucherFormOptions() {
     },
     thirdParties: [{ id: '123e4567-e89b-12d3-a456-426614174014', name: 'Proveedor Uno', cuit: '30-22222222-3' }],
   }
+}
+
+function FiscalPurchaseCoreFieldsHarness() {
+  const [hasValidated, setHasValidated] = useState(false)
+  const catalogs = {
+    voucherTypes: [{ id: 'voucher-type-invoice', name: 'Factura', applicability: 'purchase' as const }],
+    voucherLetters: [{ id: 'voucher-letter-a', letter: 'A' }],
+    retentionConcepts: [],
+    perceptionConcepts: [],
+    taxJurisdictions: [],
+  }
+  const thirdParties = [{ id: 'supplier-with-cuit', name: 'Proveedor Fiscal', cuit: '30-22222222-3', taxIdentificationMode: 'with_cuit' as const }]
+  const voucherForm = useVoucherForm({
+    isOpen: true,
+    onOpenChange: jest.fn(),
+    type: 'purchases',
+    mode: 'create',
+    catalogs,
+    thirdParties,
+  })
+  const documentIdentificationMode = useWatch({ control: voucherForm.form.control, name: 'documentIdentificationMode' })
+
+  useEffect(() => {
+    voucherForm.form.reset({
+      ...createBaseFormValues(),
+      voucherLetterId: '',
+      posNumber: '',
+      number: '',
+      thirdPartyId: '',
+      thirdPartyCuit: '',
+      documentIdentificationMode: undefined,
+      perceptions: [],
+    })
+  }, [voucherForm.form])
+
+  return (
+    <>
+      <output data-testid="form-valid">{String(voucherForm.form.formState.isValid)}</output>
+      <output data-testid="identification-mode">{documentIdentificationMode || ''}</output>
+      <output data-testid="validated">{String(hasValidated)}</output>
+      <button type="button" data-testid="validate-form" onClick={async () => { await voucherForm.form.trigger(); setHasValidated(true) }}>Validar</button>
+      <VoucherModalCoreFields
+        form={voucherForm.form}
+        isProcessing={false}
+        catalogs={catalogs}
+        thirdParties={thirdParties}
+        type="purchases"
+        mode="create"
+        handlePosBlur={voucherForm.handlePosBlur}
+        handleNumberBlur={voucherForm.handleNumberBlur}
+      />
+    </>
+  )
 }
 
 function PerceptionsHarness() {
@@ -740,6 +794,30 @@ describe('Voucher UI', () => {
       type: 'error',
       description: 'El tamaño total de los archivos no puede superar los 24 MB.',
     })))
+  })
+
+  it('keeps fiscal numbering validation active without showing a premature letter error', async () => {
+    render(<FiscalPurchaseCoreFieldsHarness />)
+
+    const supplierSelect = document.querySelector('select[name="thirdPartyId"]') as HTMLSelectElement
+    const letterSelect = document.querySelector('select[name="voucherLetterId"]') as HTMLSelectElement
+    const posInput = screen.getByPlaceholderText('00001')
+    const numberInput = screen.getByPlaceholderText('00000000')
+
+    fireEvent.change(supplierSelect, { target: { value: 'supplier-with-cuit' } })
+    await waitFor(() => expect(screen.getByTestId('identification-mode')).toHaveTextContent('fiscal'))
+
+    fireEvent.change(posInput, { target: { value: '' } })
+    fireEvent.change(numberInput, { target: { value: '' } })
+    fireEvent.change(letterSelect, { target: { value: 'voucher-letter-a' } })
+    fireEvent.click(screen.getByTestId('validate-form'))
+
+    await waitFor(() => {
+      expect(letterSelect.value).toBe('voucher-letter-a')
+      expect(screen.getByTestId('validated')).toHaveTextContent('true')
+      expect(Array.from(document.querySelectorAll('p')).some((element) => element.textContent?.includes('Las compras fiscales requieren'))).toBe(false)
+      expect(screen.getByTestId('form-valid')).toHaveTextContent('false')
+    })
   })
 
   it('hydrates batch review parsed data when it arrives after opening the form', async () => {

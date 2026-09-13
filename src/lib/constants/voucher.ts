@@ -19,6 +19,21 @@ export const voucherZeroAmount = "0"
 export const voucherDefaultExchangeRate = "1"
 export const voucherDefaultAccountingPeriodDay = "01"
 export const voucherTypeValues = { sale: "sale", purchase: "purchase" } as const
+export const voucherDocumentIdentificationModes = { fiscal: "fiscal", nonFiscal: "non_fiscal" } as const
+export const voucherDocumentIdentificationModeValues = [voucherDocumentIdentificationModes.fiscal, voucherDocumentIdentificationModes.nonFiscal] as const
+export const voucherTypeApplicabilityValues = { sale: "sale", purchase: "purchase", both: "both" } as const
+export const voucherTypeApplicabilityOptions = [voucherTypeApplicabilityValues.sale, voucherTypeApplicabilityValues.purchase, voucherTypeApplicabilityValues.both] as const
+export const possibleNonFiscalDuplicateMessage = "Posible comprobante duplicado"
+export const voucherTypeNotApplicableMessage = "El tipo de comprobante no corresponde al circuito seleccionado."
+export const purchaseSupplierNotFoundMessage = "El proveedor seleccionado no existe."
+export const purchaseIdentificationModeMismatchMessage = "La identificación del comprobante no coincide con el proveedor seleccionado."
+export const purchaseIdentificationConversionMessage = "Debés confirmar la conversión de identificación del comprobante."
+export const nonFiscalDuplicateConfirmationField = "confirmNonFiscalDuplicate"
+export const voucherIdentificationConversionField = "confirmIdentificationModeConversion"
+export const voucherConfirmationKinds = { nonFiscalDuplicate: "non_fiscal_duplicate", identificationConversion: "identification_conversion" } as const
+export const voucherConfirmationKindValues = [voucherConfirmationKinds.nonFiscalDuplicate, voucherConfirmationKinds.identificationConversion] as const
+export const voucherNonFiscalDisplayValues = { letter: "—", number: "Sin numeración fiscal", fiscalField: "No aplica", cuit: "Sin CUIT" } as const
+export const voucherExportIdentificationValues = { fiscal: "Fiscal", nonFiscal: "" } as const
 export const voucherTypeCategories = { standard: "standard", creditNote: "credit_note" } as const
 export const voucherCreditNoteNameTokens = ["credito", "crédito", "crÃ©dito"] as const
 export const voucherStatusValues = { pending: "pending", partial: "partial", paid: "paid" } as const
@@ -43,6 +58,8 @@ export const voucherMoneyErrorMessages = {
   missingVatRate: "VAT rate is required",
   missingVoucherInput: "Voucher input is required",
   missingVoucherDate: "Voucher date is required",
+  nonFiscalNumbering: "Non-fiscal purchases cannot contain fiscal numbering",
+  fiscalNumbering: "Fiscal purchases require fiscal numbering",
 } as const
 
 export const voucherValidationMessages = {

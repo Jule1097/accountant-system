@@ -1,4 +1,4 @@
-import { voucherCreditNoteNameTokens, voucherExchangeRateScale, voucherMoneyScale, voucherStatusValues, voucherTypeCategories } from "src/lib/constants/voucher"
+import { voucherCreditNoteNameTokens, voucherDocumentIdentificationModes, voucherExchangeRateScale, voucherMoneyScale, voucherStatusValues, voucherTypeCategories } from "src/lib/constants/voucher"
 import { normalizeMoneyAmount, normalizeScaledDecimal } from "src/lib/helpers/voucher/money"
 import { Voucher } from "src/models/voucher/Voucher"
 import { VoucherDomainStatus, VoucherFactoryInput, VoucherTypeCategory } from "src/types/voucher/domain"
@@ -16,15 +16,25 @@ function normalizeVoucherStatus(status: string): VoucherDomainStatus | null {
   return null
 }
 
+function normalizeVoucherDocumentIdentificationMode(mode?: string | null): "fiscal" | "non_fiscal" {
+  return mode === voucherDocumentIdentificationModes.nonFiscal ? voucherDocumentIdentificationModes.nonFiscal : voucherDocumentIdentificationModes.fiscal
+}
+
+function normalizeSupplierSnapshot(supplier: { name: string; cuit: string | null; taxIdentificationMode?: string } | null): { name: string; cuit: string | null; taxIdentificationMode: "with_cuit" | "without_cuit" } | null {
+  if (!supplier) return null
+  return { ...supplier, taxIdentificationMode: supplier.taxIdentificationMode === "without_cuit" ? "without_cuit" : "with_cuit" }
+}
+
 function resolveVoucherTypeCategory(name: string): VoucherTypeCategory {
   const normalizedName = name.toLowerCase()
   return voucherCreditNoteNameTokens.some((token) => normalizedName.includes(token)) ? voucherTypeCategories.creditNote : voucherTypeCategories.standard
 }
 
 function mapVoucherPersistenceRecord(record: VoucherPersistenceRecord): VoucherFactoryInput {
-  const { retentions, perceptions, vatDetails, voucherType, voucherLetter, client, supplier, date, accountingPeriod, paymentDate, ...scalarFields } = record
+  const { retentions, perceptions, vatDetails, voucherType, voucherLetter, client, supplier, date, accountingPeriod, paymentDate, documentIdentificationMode, ...scalarFields } = record
   return {
     ...scalarFields,
+    documentIdentificationMode: normalizeVoucherDocumentIdentificationMode(documentIdentificationMode),
     status: normalizeVoucherStatus(record.status),
     voucherTypeCategory: resolveVoucherTypeCategory(voucherType.name),
     date: date.toISOString(),
@@ -40,9 +50,9 @@ function mapVoucherPersistenceRecord(record: VoucherPersistenceRecord): VoucherF
     netAmount: decimalValue(record.netAmount, voucherMoneyScale),
     paidAmount: decimalValue(record.paidAmount, voucherMoneyScale),
     voucherTypeName: voucherType.name,
-    voucherLetter: voucherLetter.letter,
+    voucherLetter: voucherLetter?.letter ?? null,
     client,
-    supplier,
+    supplier: normalizeSupplierSnapshot(supplier),
     retentions: retentions.map((item) => ({ retentionConceptId: item.retentionConceptId, taxJurisdictionId: item.taxJurisdictionId, amount: normalizeMoneyAmount(item.amount.toString()), conceptName: item.retentionConcept.name, taxJurisdictionName: item.taxJurisdiction?.name ?? null })),
     perceptions: perceptions.map((item) => ({ perceptionConceptId: item.perceptionConceptId, taxJurisdictionId: item.taxJurisdictionId, amount: normalizeMoneyAmount(item.amount.toString()), conceptName: item.perceptionConcept.name, taxJurisdictionName: item.taxJurisdiction?.name ?? null })),
     vatDetails: vatDetails.map((item) => ({ vatRateId: item.vatRateId, subtotal: normalizeMoneyAmount(item.subtotal.toString()), vatAmount: normalizeMoneyAmount(item.vatAmount.toString()), vatRateName: item.vatRate.name })),
@@ -64,6 +74,7 @@ export function mapVoucherToPrismaData(voucher: Voucher): Prisma.VoucherUnchecke
     voucherLetterId: snapshot.voucherLetterId,
     posNumber: snapshot.posNumber,
     number: snapshot.number,
+    documentIdentificationMode: snapshot.documentIdentificationMode,
     clientId,
     supplierId,
     date: new Date(snapshot.date),

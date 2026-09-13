@@ -109,10 +109,7 @@ export class GeminiParsedVoucher {
   }
 
   private normalizeThirdPartyName(thirdPartyCuit: string | null): string | null {
-    if (!thirdPartyCuit) {
-      return null
-    }
-
+    if (!thirdPartyCuit) return null
     return this.normalizeTextValue(this.extractedData.thirdPartyName)
   }
 
@@ -179,6 +176,10 @@ export class GeminiParsedVoucher {
 
   getLookupThirdPartyCuit(): string | null {
     return this.normalizeThirdPartyCuit(this.extractedData.thirdPartyCuit)
+  }
+
+  getLookupThirdPartyName(): string | null {
+    return this.normalizeTextValue(this.extractedData.thirdPartyName)
   }
 
   toResponse(catalogs: GeminiParserCatalogs, thirdPartyId: string | null): ParsedVoucherData {

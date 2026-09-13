@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "src/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "src/components/ui/dialog";
 import { ClientSupplierModal } from "src/components/third-party/third-party-modal";
 import { ConciliationReviewPreview } from "src/components/conciliations/conciliation-review-preview";
 import { VoucherModalActions } from "src/components/vouchers/voucher-modal-actions";
@@ -14,6 +15,7 @@ import type { UseVoucherFormProps } from "src/hooks/voucher/use-voucher-form";
 import { useVoucherInlineThirdParty } from "src/hooks/voucher/use-voucher-inline-third-party";
 import type { VoucherFormOptionsData } from "src/hooks/voucher/use-voucher-form-options";
 import type { VoucherModalMode } from "src/types/voucher/voucher";
+import { voucherConfirmationKinds } from "src/lib/constants/voucher";
 
 export interface VoucherModalFormProps extends Omit<UseVoucherFormProps, "catalogs" | "thirdParties"> {
   options: VoucherFormOptionsData;
@@ -62,6 +64,9 @@ export function VoucherModalForm({
     appendPerception,
     removePerception,
     isProcessing,
+    pendingConfirmation,
+    confirmPendingSubmission,
+    cancelPendingSubmission,
     fileInputRef,
     handleDrop,
     handleDragOver,
@@ -196,6 +201,18 @@ export function VoucherModalForm({
         onSuccess={handleInlineSuccess}
         onResolveDuplicate={resolveDuplicateRecord}
       />
+      <Dialog open={!!pendingConfirmation} onOpenChange={(open) => { if (!open) cancelPendingSubmission(); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{pendingConfirmation?.kind === voucherConfirmationKinds.nonFiscalDuplicate ? "Posible comprobante duplicado" : "Confirmar conversión"}</DialogTitle>
+            <DialogDescription>{pendingConfirmation?.kind === voucherConfirmationKinds.nonFiscalDuplicate ? "Ya existe una compra no fiscal con el mismo proveedor, fecha e importe total." : "El proveedor seleccionado usa una identificación incompatible con este comprobante."}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={cancelPendingSubmission}>Cancelar</Button>
+            <Button type="button" className="bg-[#FF5C00] text-white hover:bg-[#FF8A4C]" onClick={() => void confirmPendingSubmission()}>Guardar de todos modos</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </form>
   );
 }
