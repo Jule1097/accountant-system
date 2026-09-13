@@ -2,13 +2,14 @@
 
 import { useEffect } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useForm, useWatch } from 'react-hook-form'
+import { Resolver, useForm, useWatch } from 'react-hook-form'
 import { useToastManager } from 'src/components/ui/toast'
 import { ApiRequestError } from 'src/lib/api/api-client'
 import { clientSupplierUnexpectedError } from 'src/lib/constants/messages'
 import { useResourceMutation } from 'src/hooks/shared/use-resource'
 import { createClientSupplierMutationAdapter } from 'src/lib/helpers/third-party/third-party-resource-adapter'
-import { clientSupplierSchema } from 'src/lib/schemas/third-party/third-party-schemas'
+import { clientSupplierSchema, supplierSchema } from 'src/lib/schemas/third-party/third-party-schemas'
+import { supplierTaxIdentificationModes } from 'src/lib/constants/third-party'
 import {
   buildClientSupplierResolvedFeedback,
   buildClientSupplierSaveFeedback,
@@ -31,11 +32,12 @@ export function useClientSupplierForm({
     adapter: createClientSupplierMutationAdapter(type),
   })
   const form = useForm<ClientSupplierFormValues>({
-    resolver: zodResolver(clientSupplierSchema),
+    resolver: zodResolver(type === 'suppliers' ? supplierSchema : clientSupplierSchema) as Resolver<ClientSupplierFormValues>,
     mode: 'onChange',
     defaultValues: {
       name: '',
       cuit: '',
+      ...(type === 'suppliers' ? { taxIdentificationMode: supplierTaxIdentificationModes.withCuit } : {}),
     },
   })
   const {
@@ -43,11 +45,18 @@ export function useClientSupplierForm({
     control,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors, isSubmitting, isValid },
   } = form
   const nameValue = useWatch({ control, name: 'name' })
   const cuitValue = useWatch({ control, name: 'cuit' })
-  const isSubmitDisabled = !nameValue?.trim() || !cuitValue?.trim() || !isValid || isSubmitting
+  const taxIdentificationMode = useWatch({ control, name: 'taxIdentificationMode' })
+  const isCuitRequired = type === 'clients' || taxIdentificationMode !== supplierTaxIdentificationModes.withoutCuit
+  const isSubmitDisabled = !nameValue?.trim() || (isCuitRequired && !cuitValue?.trim()) || !isValid || isSubmitting
+
+  useEffect(() => {
+    if (type === 'suppliers' && taxIdentificationMode === supplierTaxIdentificationModes.withoutCuit && cuitValue) setValue('cuit', '', { shouldValidate: true })
+  }, [cuitValue, setValue, taxIdentificationMode, type])
 
   useEffect(() => {
     if (!isOpen) {
@@ -57,8 +66,9 @@ export function useClientSupplierForm({
     reset({
       name: record?.name || initialValues?.name || '',
       cuit: record?.cuit || initialValues?.cuit || '',
+      ...(type === 'suppliers' ? { taxIdentificationMode: record && 'taxIdentificationMode' in record && record.taxIdentificationMode === supplierTaxIdentificationModes.withoutCuit ? supplierTaxIdentificationModes.withoutCuit : initialValues?.taxIdentificationMode || supplierTaxIdentificationModes.withCuit } : {}),
     })
-  }, [initialValues?.cuit, initialValues?.name, isOpen, record?.cuit, record?.name, reset])
+  }, [initialValues?.cuit, initialValues?.name, initialValues?.taxIdentificationMode, isOpen, record, reset, type])
 
   const onSubmit = handleSubmit(async (values) => {
     try {
@@ -92,6 +102,7 @@ export function useClientSupplierForm({
     errors,
     isSubmitting,
     isSubmitDisabled,
+    taxIdentificationMode,
     onSubmit,
   }
 }

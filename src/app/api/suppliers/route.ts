@@ -8,7 +8,7 @@ import {
   parseClientSupplierListQuery,
 } from 'src/lib/helpers/third-party/third-party-api'
 import { resolveApplicationErrorResponse } from 'src/lib/helpers/api/application-error-response'
-import { clientSupplierSchema } from 'src/lib/schemas/third-party/third-party-schemas'
+import { supplierSchema } from 'src/lib/schemas/third-party/third-party-schemas'
 
 export async function GET(request: NextRequest) {
   return executeRequestWithContext(request, async ({ companyId }) => {
@@ -38,13 +38,13 @@ export async function POST(request: NextRequest) {
   return executeRequestWithContext(request, async ({ companyId }) => {
     const body = await request.json()
 
-    const parsed = clientSupplierSchema.safeParse(body)
+    const parsed = supplierSchema.safeParse(body)
     if (!parsed.success) {
       return NextResponse.json({ error: apiResponseMessages.common.invalidData, details: parsed.error.format() }, { status: httpStatusCodes.badRequest })
     }
 
     const supplierService = new SupplierService()
-    const newSupplier = await supplierService.createSupplier(companyId, parsed.data.name, parsed.data.cuit)
+    const newSupplier = await supplierService.createSupplier(companyId, parsed.data.name, parsed.data.taxIdentificationMode, parsed.data.cuit)
 
     return NextResponse.json(newSupplier, { status: httpStatusCodes.created })
   }, (error) => resolveApplicationErrorResponse(error, { request, operation: 'create supplier', resource: 'supplier' }))

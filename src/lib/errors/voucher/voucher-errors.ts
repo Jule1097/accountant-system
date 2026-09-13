@@ -1,4 +1,6 @@
-import { voucherMoneyErrorMessages } from "src/lib/constants/voucher"
+import { possibleNonFiscalDuplicateMessage, purchaseIdentificationConversionMessage, voucherMoneyErrorMessages } from "src/lib/constants/voucher"
+import { applicationErrorCodes } from "src/lib/constants/application-error"
+import { ApplicationError } from "src/lib/errors/application-error"
 import { isError } from "src/lib/helpers/shared/type-guards"
 
 export const voucherDomainErrorCodes = {
@@ -6,6 +8,24 @@ export const voucherDomainErrorCodes = {
   unsupportedType: "UNSUPPORTED_VOUCHER_TYPE",
   incompatibleCurrency: "INCOMPATIBLE_CURRENCY",
 } as const
+
+export class PossibleNonFiscalDuplicateError extends ApplicationError {
+  readonly requiresConfirmation = true
+
+  constructor() {
+    super(applicationErrorCodes.conflict, possibleNonFiscalDuplicateMessage, "Possible non-fiscal duplicate requires confirmation")
+    this.name = "ApplicationError"
+  }
+}
+
+export class IdentificationModeConversionRequiredError extends ApplicationError {
+  readonly requiresConfirmation = true
+
+  constructor() {
+    super(applicationErrorCodes.conflict, purchaseIdentificationConversionMessage, "Purchase identification mode conversion requires confirmation")
+    this.name = "ApplicationError"
+  }
+}
 
 export type VoucherDomainErrorCode = typeof voucherDomainErrorCodes[keyof typeof voucherDomainErrorCodes]
 

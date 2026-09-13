@@ -4,7 +4,7 @@ import {
   shouldRequireVoucherExchangeRate,
   requiresVoucherTaxJurisdiction,
 } from "src/lib/helpers/voucher/voucher-form";
-import { voucherTaxJurisdictionRequiredMessage } from "src/lib/constants/voucher";
+import { voucherDocumentIdentificationModes, voucherTaxJurisdictionRequiredMessage } from "src/lib/constants/voucher";
 import { inputLimits } from "src/lib/constants/input-limits";
 import type { VoucherFormCatalogState } from "src/types/voucher/voucher-form";
 
@@ -35,11 +35,12 @@ const perceptionFormSchema = z.object({
 export const voucherFormSchema = z.object({
   date: z.string().min(1, "La fecha es obligatoria"),
   voucherTypeId: z.string().min(1, "El tipo de comprobante es obligatorio"),
-  voucherLetterId: z.string().min(1, "La letra es obligatoria"),
-  posNumber: z.string().regex(/^\d{1,5}$/, "El punto de venta debe tener hasta 5 digitos"),
-  number: z.string().regex(/^\d{1,20}$/, "El numero de comprobante debe tener hasta 20 digitos"),
+  voucherLetterId: z.string(),
+  posNumber: z.string().regex(/^$|^\d{1,5}$/, "El punto de venta debe tener hasta 5 digitos"),
+  number: z.string().regex(/^$|^\d{1,20}$/, "El numero de comprobante debe tener hasta 20 digitos"),
   thirdPartyId: z.string().min(1, "El cliente o proveedor es obligatorio"),
-  thirdPartyCuit: z.string().min(1, "El CUIT es obligatorio"),
+  thirdPartyCuit: z.string(),
+  documentIdentificationMode: z.enum([voucherDocumentIdentificationModes.fiscal, voucherDocumentIdentificationModes.nonFiscal]).optional(),
   currency: z.enum(["$", "USD"], { message: "La moneda es obligatoria" }),
   exchangeRate: z.number({ message: "Debe ser un numero" }).positive("El tipo de cambio debe ser mayor a 0"),
   subtotal: z.number({ message: "Debe ser un numero" }).min(0, "No puede ser negativo"),
@@ -62,6 +63,13 @@ export const voucherFormSchema = z.object({
   perceptions: z.array(perceptionFormSchema),
 }).superRefine((values, context) => {
   const normalizedExchangeRate = normalizeVoucherExchangeRate(values.currency, values.exchangeRate);
+
+  const isNonFiscalPurchase = values.documentIdentificationMode === voucherDocumentIdentificationModes.nonFiscal;
+  const requiresFiscalIdentification = values.documentIdentificationMode === voucherDocumentIdentificationModes.fiscal;
+
+  if (isNonFiscalPurchase && (values.voucherLetterId || values.posNumber || values.number)) context.addIssue({ code: z.ZodIssueCode.custom, message: "Las compras no fiscales no llevan numeración fiscal.", path: ["documentIdentificationMode"] });
+  if (requiresFiscalIdentification && (!values.voucherLetterId || !values.posNumber || !values.number)) context.addIssue({ code: z.ZodIssueCode.custom, message: "Las compras fiscales requieren numeración fiscal.", path: ["voucherLetterId"] });
+  if (!values.thirdPartyCuit && !isNonFiscalPurchase) context.addIssue({ code: z.ZodIssueCode.custom, message: "El CUIT es obligatorio.", path: ["thirdPartyCuit"] });
 
   if (!shouldRequireVoucherExchangeRate(values.currency) && normalizedExchangeRate !== 1) {
     context.addIssue({

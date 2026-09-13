@@ -5,6 +5,7 @@ export interface AnalyticsDataPoint {
 }
 
 export interface ExpenseCategoryData {
+  id: string
   category: string
   amount: number
   percentage: number

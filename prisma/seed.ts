@@ -3,6 +3,7 @@ import { PrismaPg } from '@prisma/adapter-pg'
 import pg from 'pg'
 import 'dotenv/config'
 import { getCurrentTaxJurisdictionNames } from '../src/lib/domain/tax-jurisdictions'
+import { voucherTypeApplicabilityValues } from '../src/lib/constants/voucher'
 
 const connectionString = process.env.DIRECT_URL || process.env.DATABASE_URL
 const pool = new pg.Pool({ connectionString })
@@ -50,6 +51,10 @@ async function main() {
 
   const voucherTypes = [
     { name: 'Factura' },
+    { name: 'Liquidación de expensas', applicability: voucherTypeApplicabilityValues.purchase },
+    { name: 'Pago de impuesto', applicability: voucherTypeApplicabilityValues.purchase },
+    { name: 'Resumen bancario', applicability: voucherTypeApplicabilityValues.purchase },
+    { name: 'Otro comprobante', applicability: voucherTypeApplicabilityValues.purchase },
     { name: 'Nota de Débito' },
     { name: 'Nota de Crédito' },
     { name: 'Recibo' },
@@ -59,8 +64,8 @@ async function main() {
   for (const voucherType of voucherTypes) {
     await prisma.voucherType.upsert({
       where: { name: voucherType.name },
-      update: {},
-      create: { name: voucherType.name },
+      update: { applicability: voucherType.applicability || voucherTypeApplicabilityValues.both },
+      create: { name: voucherType.name, applicability: voucherType.applicability || voucherTypeApplicabilityValues.both },
     })
   }
 

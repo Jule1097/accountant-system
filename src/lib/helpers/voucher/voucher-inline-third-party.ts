@@ -47,6 +47,7 @@ export function toVoucherThirdPartyOption(record: ClientSupplierRecord): Voucher
     id: record.id,
     name: record.name,
     cuit: record.cuit,
+    taxIdentificationMode: "taxIdentificationMode" in record ? record.taxIdentificationMode as VoucherThirdPartyOption["taxIdentificationMode"] : undefined,
   }
 }
 
@@ -70,7 +71,7 @@ export function resolveMatchingVoucherThirdPartyRecord(
 ): ClientSupplierRecord | null {
   const normalizedName = normalizeThirdPartyName(values.name)
   const exactMatches = records.filter((record) => {
-    const sameCuit = values.cuit ? compareCuit(record.cuit, values.cuit) : false
+    const sameCuit = values.cuit && record.cuit ? compareCuit(record.cuit, values.cuit) : false
     const sameName = values.name ? normalizeThirdPartyName(record.name) === normalizedName : false
 
     if (values.name && values.cuit) {

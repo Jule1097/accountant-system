@@ -3,7 +3,7 @@ import { apiResponseMessages } from "src/lib/constants/api-response"
 import { applicationErrorCodes, ApplicationErrorCode } from "src/lib/constants/application-error"
 import { httpStatusCodes } from "src/lib/constants/http"
 import { isApplicationError } from "src/lib/errors/application-error"
-import { isVoucherDomainError } from "src/lib/errors/voucher/voucher-errors"
+import { IdentificationModeConversionRequiredError, isVoucherDomainError, PossibleNonFiscalDuplicateError } from "src/lib/errors/voucher/voucher-errors"
 import { resolveRequestContextError } from "src/lib/helpers/auth/request-context-response"
 import { isError } from "src/lib/helpers/shared/type-guards"
 
@@ -35,6 +35,7 @@ function logUnexpectedApplicationError(error: unknown, context: ApplicationError
 export function resolveApplicationErrorResponse(error: unknown, context: ApplicationErrorResponseContext): NextResponse {
   const requestContextResponse = resolveRequestContextError(error)
   if (requestContextResponse) return requestContextResponse
+  if (error instanceof PossibleNonFiscalDuplicateError || error instanceof IdentificationModeConversionRequiredError) return NextResponse.json({ error: error.publicMessage, requiresConfirmation: error.requiresConfirmation }, { status: applicationErrorStatuses[error.code] })
   if (isApplicationError(error) && error.code !== applicationErrorCodes.unexpected) return NextResponse.json({ error: error.publicMessage }, { status: applicationErrorStatuses[error.code] })
   if (isVoucherDomainError(error)) return NextResponse.json({ error: apiResponseMessages.common.invalidData }, { status: httpStatusCodes.badRequest })
   logUnexpectedApplicationError(error, context)

@@ -76,7 +76,7 @@ export class AnalyticsService {
 
         if (voucher.client && voucher.clientId) {
           if (!clientMap[voucher.clientId]) {
-            clientMap[voucher.clientId] = { name: voucher.client.name, cuit: voucher.client.cuit, total: 0 }
+            clientMap[voucher.clientId] = { name: voucher.client.name, cuit: voucher.client.cuit || "", total: 0 }
           }
 
           clientMap[voucher.clientId].total += Number(signedBaseAmount.toString())
@@ -103,7 +103,7 @@ export class AnalyticsService {
 
         if (voucher.supplier && voucher.supplierId) {
           if (!supplierMap[voucher.supplierId]) {
-            supplierMap[voucher.supplierId] = { name: voucher.supplier.name, cuit: voucher.supplier.cuit, total: 0 }
+            supplierMap[voucher.supplierId] = { name: voucher.supplier.name, cuit: voucher.supplier.cuit || "", total: 0 }
           }
 
           supplierMap[voucher.supplierId].total += Number(signedBaseAmount.toString())

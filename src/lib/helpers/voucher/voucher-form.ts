@@ -3,6 +3,7 @@ import {
   VoucherFormDateValue,
   VoucherFormNullableDateValue,
   VoucherFormPayload,
+  VoucherThirdPartyOption,
 } from "src/types/voucher/voucher-form";
 import { voucherTaxJurisdictionConceptToken, voucherTypeValues } from "src/lib/constants/voucher";
 import { resolveGeminiCatalogMatch } from "src/lib/helpers/parser/gemini-parser";
@@ -23,7 +24,7 @@ export function requiresVoucherTaxJurisdiction(conceptName?: string | null): boo
   return conceptName?.toLowerCase().includes(voucherTaxJurisdictionConceptToken) ?? false;
 }
 
-export function buildVoucherViewOptions(voucher: VoucherApiResponse, type: VoucherScreenType): { catalogs: VoucherFormCatalogState; thirdParties: { id: string; name: string; cuit: string }[] } {
+export function buildVoucherViewOptions(voucher: VoucherApiResponse, type: VoucherScreenType): { catalogs: VoucherFormCatalogState; thirdParties: VoucherThirdPartyOption[] } {
   const thirdParty = type === "sales" ? voucher.client : voucher.supplier;
   const thirdPartyId = type === "sales" ? voucher.clientId : voucher.supplierId;
   const recordType = type === "sales" ? voucherTypeValues.sale : voucherTypeValues.purchase;
@@ -42,13 +43,13 @@ export function buildVoucherViewOptions(voucher: VoucherApiResponse, type: Vouch
 
   return {
     catalogs: {
-      voucherTypes: voucher.voucherType ? [{ id: voucher.voucherTypeId, name: voucher.voucherType.name }] : [],
-      voucherLetters: voucher.voucherLetter ? [{ id: voucher.voucherLetterId, letter: voucher.voucherLetter.letter }] : [],
+      voucherTypes: voucher.voucherType ? [{ id: voucher.voucherTypeId, name: voucher.voucherType.name, applicability: voucher.voucherType.applicability }] : [],
+      voucherLetters: voucher.voucherLetter && voucher.voucherLetterId ? [{ id: voucher.voucherLetterId, letter: voucher.voucherLetter.letter }] : [],
       retentionConcepts,
       perceptionConcepts,
       taxJurisdictions,
     },
-    thirdParties: thirdParty && thirdPartyId ? [{ id: thirdPartyId, name: thirdParty.name, cuit: thirdParty.cuit }] : [],
+    thirdParties: thirdParty && thirdPartyId ? [{ id: thirdPartyId, name: thirdParty.name, cuit: thirdParty.cuit, taxIdentificationMode: thirdParty.taxIdentificationMode }] : [],
   };
 }
 
@@ -311,6 +312,7 @@ const defaultVoucherFormValues: VoucherFormValues = {
   number: "",
   thirdPartyId: "",
   thirdPartyCuit: "",
+  documentIdentificationMode: undefined,
   currency: "$",
   exchangeRate: 1,
   subtotal: 0,
@@ -379,7 +381,7 @@ function resolveVoucherLetterById(voucherLetterId: string, catalogs: VoucherForm
   return catalogs.voucherLetters.find((voucherLetter) => voucherLetter.id === voucherLetterId);
 }
 
-function resolveVoucherThirdPartyId(parsedData: ParsedVoucherData, thirdParties: { id: string; cuit: string }[]): string | undefined {
+function resolveVoucherThirdPartyId(parsedData: ParsedVoucherData, thirdParties: VoucherThirdPartyOption[]): string | undefined {
   if (parsedData.thirdPartyId) return parsedData.thirdPartyId;
   if (!parsedData.thirdPartyCuit) return undefined;
   return thirdParties.find((thirdParty) => thirdParty.cuit === parsedData.thirdPartyCuit)?.id;
@@ -395,11 +397,12 @@ export function buildVoucherFormInitialValues(initialVoucher?: VoucherApiRespons
   return {
     date: formatVoucherFormDate(initialVoucher.date),
     voucherTypeId: initialVoucher.voucherTypeId,
-    voucherLetterId: initialVoucher.voucherLetterId,
-    posNumber: initialVoucher.posNumber,
-    number: initialVoucher.number,
+    voucherLetterId: initialVoucher.voucherLetterId || "",
+    posNumber: initialVoucher.posNumber || "",
+    number: initialVoucher.number || "",
     thirdPartyId: initialVoucher.type === "sale" ? initialVoucher.clientId || "" : initialVoucher.supplierId || "",
     thirdPartyCuit: initialVoucher.type === "sale" ? initialVoucher.client?.cuit || "" : initialVoucher.supplier?.cuit || "",
+    documentIdentificationMode: initialVoucher.documentIdentificationMode,
     currency,
     exchangeRate: normalizeVoucherExchangeRate(currency, Number(initialVoucher.exchangeRate || 1)),
     subtotal: roundToTwoDecimals(Number(initialVoucher.subtotal || 0)),
@@ -434,9 +437,10 @@ export function buildVoucherFormPayload(values: VoucherFormValues, type: Voucher
   return {
     type: voucherApiType,
     voucherTypeId: values.voucherTypeId,
-    voucherLetterId: values.voucherLetterId,
-    posNumber: values.posNumber,
-    number: values.number,
+    voucherLetterId: values.documentIdentificationMode === "non_fiscal" ? null : values.voucherLetterId || null,
+    posNumber: values.documentIdentificationMode === "non_fiscal" ? null : values.posNumber || null,
+    number: values.documentIdentificationMode === "non_fiscal" ? null : values.number || null,
+    documentIdentificationMode: values.documentIdentificationMode,
     clientId: voucherApiType === "sale" ? values.thirdPartyId : null,
     supplierId: voucherApiType === "purchase" ? values.thirdPartyId : null,
     date: values.date,
@@ -461,7 +465,7 @@ export function buildVoucherFormPayload(values: VoucherFormValues, type: Voucher
   };
 }
 
-export function buildVoucherParsedPatch(parsedData: ParsedVoucherData, currentValues: VoucherFormValues, type: VoucherScreenType, catalogs: VoucherFormCatalogState, thirdParties: { id: string; cuit: string }[]): Partial<VoucherFormValues> {
+export function buildVoucherParsedPatch(parsedData: ParsedVoucherData, currentValues: VoucherFormValues, type: VoucherScreenType, catalogs: VoucherFormCatalogState, thirdParties: VoucherThirdPartyOption[]): Partial<VoucherFormValues> {
   const voucherTypeId = resolveParsedVoucherTypeId(parsedData.voucherType, catalogs);
   const voucherLetterId = resolveParsedVoucherLetterId(parsedData.voucherLetter, catalogs, parsedData.voucherType);
   const thirdPartyId = resolveVoucherThirdPartyId(parsedData, thirdParties);

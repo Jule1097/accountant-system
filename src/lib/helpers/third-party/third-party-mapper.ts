@@ -6,6 +6,7 @@ import {
   ThirdPartyPersistenceRecord,
   ThirdPartyView,
 } from "src/types/third-party/third-party"
+import { thirdPartyRoles } from "src/lib/constants/third-party"
 
 export function toClient(record: ThirdPartyPersistenceRecord): Client {
   return new Client(record)
@@ -21,6 +22,7 @@ export function toThirdPartyView(model: ThirdParty, metadata: ThirdPartyPersiste
     companyId: model.companyId,
     name: model.name,
     cuit: model.cuit,
+    ...(model.role === thirdPartyRoles.supplier ? { taxIdentificationMode: model.taxIdentificationMode } : {}),
     role: model.role,
     createdAt: metadata.createdAt,
     updatedAt: metadata.updatedAt,
