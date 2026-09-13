@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { AnalyticsData, TrendEntry, TaxBreakdownEntry } from "src/types/analytics/analytics";
+import { AnalyticsData, ExpenseCategoryData, TrendEntry, TaxBreakdownEntry } from "src/types/analytics/analytics";
 
 export function useAnalyticsChart(data: AnalyticsData, currency: "ARS" | "USD", period: "6_months" | "year") {
   return useMemo(() => {
@@ -49,10 +49,11 @@ export function useAnalyticsChart(data: AnalyticsData, currency: "ARS" | "USD", 
     const totalMonthlyExpenses = netPurchasesVal + vatVal + perceptionsTotal;
 
     const colors = ["#FF5C00", "#FF8A4C", "#6B6B70", "#ADADB0", "#3F3F46", "#18181B"];
-    const categoriesList = [];
+    const categoriesList: Array<Omit<ExpenseCategoryData, "percentage">> = [];
 
     if (netPurchasesVal > 0) {
       categoriesList.push({
+        id: "net-purchases",
         category: "Compras Netas",
         amount: netPurchasesVal,
         color: colors[0],
@@ -62,6 +63,7 @@ export function useAnalyticsChart(data: AnalyticsData, currency: "ARS" | "USD", 
     if (vatVal > 0) {
       categoriesList.push({
         category: "Crédito Fiscal IVA",
+        id: "vat-credit",
         amount: vatVal,
         color: colors[1],
       });
@@ -69,6 +71,7 @@ export function useAnalyticsChart(data: AnalyticsData, currency: "ARS" | "USD", 
 
     perceptionsList.forEach((p: TaxBreakdownEntry, idx: number) => {
       categoriesList.push({
+        id: `perception:${p.concept}:${p.province}:${p.currency}`,
         category: p.concept,
         amount: p.total,
         color: colors[(idx + 2) % colors.length],
