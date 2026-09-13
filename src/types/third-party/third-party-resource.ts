@@ -1,4 +1,5 @@
 import { Client, Supplier, Prisma } from 'src/generated/prisma/client'
+import { SupplierTaxIdentificationMode } from 'src/types/third-party/third-party'
 
 export type ClientSupplierEntityType = 'clients' | 'suppliers'
 
@@ -12,12 +13,14 @@ export type ClientSupplierRecord = Client | Supplier
 
 export interface ClientSupplierFormValues {
   name: string
-  cuit: string
+  cuit: string | null
+  taxIdentificationMode?: SupplierTaxIdentificationMode
 }
 
 export interface ClientSupplierModalInitialValues {
   name?: string
-  cuit?: string
+  cuit?: string | null
+  taxIdentificationMode?: SupplierTaxIdentificationMode
 }
 
 export type ClientSupplierWhereInput = Prisma.ClientWhereInput & Prisma.SupplierWhereInput

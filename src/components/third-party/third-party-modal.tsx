@@ -14,7 +14,13 @@ import {
 import {
   ClientSupplierDetailModalProps,
   ClientSupplierModalProps,
+  ClientSupplierRecord,
 } from 'src/types/third-party/third-party-resource'
+import { supplierTaxIdentificationModes, supplierTaxIdentificationModeLabels } from 'src/lib/constants/third-party'
+
+function isSupplierWithoutCuit(record?: ClientSupplierRecord | null): boolean {
+  return !!record && 'taxIdentificationMode' in record && record.taxIdentificationMode === supplierTaxIdentificationModes.withoutCuit
+}
 
 export function ClientSupplierModal({
   isOpen,
@@ -32,6 +38,7 @@ export function ClientSupplierModal({
     errors,
     isSubmitting,
     isSubmitDisabled,
+    taxIdentificationMode,
     onSubmit,
   } = useClientSupplierForm({
     isOpen,
@@ -43,6 +50,8 @@ export function ClientSupplierModal({
     onSuccess,
     onResolveDuplicate,
   })
+
+  const isSupplierWithoutCuitSelected = type === 'suppliers' && taxIdentificationMode === supplierTaxIdentificationModes.withoutCuit
 
   if (isLoading) {
     return (
@@ -80,9 +89,22 @@ export function ClientSupplierModal({
             {errors.name ? <p className="text-xs text-destructive">{errors.name.message}</p> : null}
           </div>
           <div className="grid gap-2">
-            <label htmlFor="client-supplier-cuit" className="text-sm font-medium text-foreground">CUIT</label>
-            <Input id="client-supplier-cuit" {...register('cuit')} />
-            {errors.cuit ? <p className="text-xs text-destructive">{errors.cuit.message}</p> : null}
+            {type === 'suppliers' ? (
+              <>
+                <label htmlFor="supplier-tax-identification-mode" className="text-sm font-medium text-foreground">Identificación tributaria</label>
+                <select id="supplier-tax-identification-mode" className="h-10 rounded-md border border-input bg-background px-3 text-sm" {...register('taxIdentificationMode')}>
+                  <option value={supplierTaxIdentificationModes.withCuit}>{supplierTaxIdentificationModeLabels.with_cuit}</option>
+                  <option value={supplierTaxIdentificationModes.withoutCuit}>{supplierTaxIdentificationModeLabels.without_cuit}</option>
+                </select>
+              </>
+            ) : null}
+            {!isSupplierWithoutCuitSelected ? (
+              <>
+                <label htmlFor="client-supplier-cuit" className="text-sm font-medium text-foreground">CUIT</label>
+                <Input id="client-supplier-cuit" disabled={type === 'suppliers' && isSupplierWithoutCuit(record)} placeholder={type === 'suppliers' ? 'Opcional para proveedores sin CUIT' : undefined} {...register('cuit')} />
+                {errors.cuit ? <p className="text-xs text-destructive">{errors.cuit.message}</p> : null}
+              </>
+            ) : null}
           </div>
           <Button type="submit" className="w-full bg-[#FF5C00] text-white hover:bg-[#FF8A4C]" disabled={isSubmitDisabled}>
             {isSubmitting ? 'Guardando...' : mode === 'edit' ? 'Guardar cambios' : 'Guardar'}
@@ -130,7 +152,7 @@ export function ClientSupplierDetailModal({
             </div>
             <div className="grid gap-1">
               <span className="text-xs text-muted-foreground">CUIT</span>
-              <span className="text-sm text-foreground">{record?.cuit || '—'}</span>
+              <span className="text-sm text-foreground">{record?.cuit || (type === 'suppliers' ? 'Sin CUIT' : '—')}</span>
             </div>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cerrar</Button>
           </div>

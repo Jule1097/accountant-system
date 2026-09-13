@@ -104,6 +104,7 @@ describe('SupplierService', () => {
       companyId,
       name: 'Servicios SRL',
       cuit: '20123456783',
+      taxIdentificationMode: 'with_cuit',
       createdAt,
       updatedAt,
     })
@@ -118,6 +119,7 @@ describe('SupplierService', () => {
       companyId,
       name: 'Servicios SRL',
       cuit: '20123456783',
+      taxIdentificationMode: 'with_cuit',
       createdAt,
       updatedAt,
     })

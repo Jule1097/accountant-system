@@ -5,6 +5,10 @@ import { supplierDuplicateCuitError, supplierDuplicateNameError, supplierDeleteB
 import { Supplier as SupplierModel } from 'src/models/third-party/Supplier'
 import { SupplierRepositoryContract } from 'src/types/third-party/supplier-repository'
 import { ThirdPartyService } from 'src/services/third-party/ThirdParty'
+import { SupplierTaxIdentificationMode } from 'src/types/third-party/third-party'
+import { ApplicationError } from 'src/lib/errors/application-error'
+import { applicationErrorCodes } from 'src/lib/constants/application-error'
+import { supplierCuitRemovalBlockedError, supplierTaxIdentificationModes, supplierTaxIdentificationModeValues } from 'src/lib/constants/third-party'
 
 export class SupplierService {
 
@@ -41,12 +45,23 @@ export class SupplierService {
         return this.service.getById(companyId, id)
     }
 
-    async createSupplier(companyId: string, name: string, cuit: string): Promise<Supplier> {
-        return this.service.create(companyId, name, cuit)
+    async createSupplier(companyId: string, name: string, modeOrCuit: SupplierTaxIdentificationMode | string | null, cuit?: string | null): Promise<Supplier> {
+        const isMode = supplierTaxIdentificationModeValues.includes(modeOrCuit as SupplierTaxIdentificationMode)
+        const taxIdentificationMode = isMode ? modeOrCuit as SupplierTaxIdentificationMode : modeOrCuit ? supplierTaxIdentificationModes.withCuit : supplierTaxIdentificationModes.withoutCuit
+        const resolvedCuit = isMode ? cuit ?? null : modeOrCuit
+        return this.service.create(companyId, name, resolvedCuit, taxIdentificationMode)
     }
 
-    async updateSupplier(companyId: string, id: string, name: string, cuit: string): Promise<Supplier> {
-        return this.service.update(companyId, id, name, cuit)
+    async updateSupplier(companyId: string, id: string, name: string, modeOrCuit: SupplierTaxIdentificationMode | string | null, cuit?: string | null): Promise<Supplier> {
+        const isMode = supplierTaxIdentificationModeValues.includes(modeOrCuit as SupplierTaxIdentificationMode)
+        const taxIdentificationMode = isMode ? modeOrCuit as SupplierTaxIdentificationMode : modeOrCuit ? supplierTaxIdentificationModes.withCuit : supplierTaxIdentificationModes.withoutCuit
+        const resolvedCuit = isMode ? cuit ?? null : modeOrCuit
+        const existing = await this.service.getById(companyId, id)
+        if (existing && existing.cuit && taxIdentificationMode === supplierTaxIdentificationModes.withoutCuit && await this.service.hasVouchers(companyId, id)) {
+            throw new ApplicationError(applicationErrorCodes.conflict, supplierCuitRemovalBlockedError, "Supplier CUIT removal is blocked after purchases exist")
+        }
+
+        return this.service.update(companyId, id, name, resolvedCuit, taxIdentificationMode)
     }
 
     async deleteSupplier(companyId: string, id: string): Promise<Supplier> {
