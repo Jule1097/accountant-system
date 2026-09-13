@@ -1,4 +1,4 @@
-import { voucherMoneyErrorMessages } from "src/lib/constants/voucher"
+import { voucherDocumentIdentificationModes, voucherMoneyErrorMessages } from "src/lib/constants/voucher"
 import { InvalidVoucherError } from "src/lib/errors/voucher/voucher-errors"
 import { PurchaseVoucherInput, SaleVoucherInput, VoucherFactoryInput } from "src/types/voucher/domain"
 
@@ -18,4 +18,9 @@ export function validateVoucherCreationInput(input: VoucherFactoryInput): void {
 export function validatePurchaseInvariants(input: PurchaseVoucherInput): void {
   if (!input.supplierId) throw new InvalidVoucherError(voucherMoneyErrorMessages.missingPurchaseSupplier)
   if (input.retentions.length > 0) throw new InvalidVoucherError(voucherMoneyErrorMessages.purchaseRetentions)
+  if (input.documentIdentificationMode === voucherDocumentIdentificationModes.nonFiscal) {
+    if (input.voucherLetterId || input.posNumber || input.number) throw new InvalidVoucherError(voucherMoneyErrorMessages.nonFiscalNumbering)
+    return
+  }
+  if (!input.voucherLetterId || !input.posNumber || !input.number) throw new InvalidVoucherError(voucherMoneyErrorMessages.fiscalNumbering)
 }

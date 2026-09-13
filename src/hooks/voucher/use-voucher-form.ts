@@ -20,8 +20,14 @@ import {
   VoucherThirdPartyOption,
 } from "src/types/voucher/voucher-form";
 import { resolveVoucherRecordType } from "src/lib/helpers/voucher/voucher-management";
+import { possibleNonFiscalDuplicateMessage, purchaseIdentificationConversionMessage, voucherConfirmationKinds, voucherDocumentIdentificationModes } from "src/lib/constants/voucher";
 
 export type { VoucherFormValues } from "src/lib/schemas/voucher/voucher-form-schemas";
+
+export interface PendingVoucherConfirmation {
+  kind: typeof voucherConfirmationKinds[keyof typeof voucherConfirmationKinds];
+  values: VoucherFormValues;
+}
 
 export interface UseVoucherFormProps {
   isOpen: boolean;
@@ -76,6 +82,13 @@ function buildEmptyVoucherFormValues(userId?: string): VoucherFormValues {
   return buildVoucherFormInitialValues(undefined, userId);
 }
 
+function resolveVoucherConfirmationKind(payload: unknown): PendingVoucherConfirmation["kind"] | null {
+  if (!payload || typeof payload !== "object" || !("error" in payload) || typeof payload.error !== "string") return null;
+  if (payload.error === possibleNonFiscalDuplicateMessage) return voucherConfirmationKinds.nonFiscalDuplicate;
+  if (payload.error === purchaseIdentificationConversionMessage) return voucherConfirmationKinds.identificationConversion;
+  return null;
+}
+
 export function useVoucherForm({
   isOpen,
   onOpenChange,
@@ -91,6 +104,7 @@ export function useVoucherForm({
 }: UseVoucherFormProps) {
   const [isParsing, setIsParsing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pendingConfirmation, setPendingConfirmation] = useState<PendingVoucherConfirmation | null>(null);
   const [previewFile, setPreviewFile] = useState<File | null>(null);
   const [sessionCycle, setSessionCycle] = useState(0);
   const [parsedDataOverride, setParsedDataOverride] = useState<{
@@ -214,12 +228,26 @@ export function useVoucherForm({
       return;
     }
 
-    if (getValues("thirdPartyCuit") === matchedThirdParty.cuit) {
+    const keepsHistoricalPurchaseMode = type === "purchases" && mode === "edit" && initialVoucher?.supplierId === matchedThirdParty.id;
+    if (keepsHistoricalPurchaseMode) {
+      if (matchedThirdParty.cuit === getValues("thirdPartyCuit")) return;
+      setValue("thirdPartyCuit", matchedThirdParty.cuit || "", { shouldValidate: true });
       return;
     }
 
-    setValue("thirdPartyCuit", matchedThirdParty.cuit, { shouldValidate: true });
-  }, [getValues, selectedThirdPartyId, setValue, thirdParties]);
+    const nextIdentificationMode = type === "purchases" && matchedThirdParty.taxIdentificationMode === "without_cuit" ? voucherDocumentIdentificationModes.nonFiscal : voucherDocumentIdentificationModes.fiscal;
+    if (getValues("thirdPartyCuit") === (matchedThirdParty.cuit || "") && getValues("documentIdentificationMode") === nextIdentificationMode) {
+      return;
+    }
+
+    setValue("thirdPartyCuit", matchedThirdParty.cuit || "", { shouldValidate: true });
+    setValue("documentIdentificationMode", nextIdentificationMode, { shouldValidate: true });
+    if (nextIdentificationMode === voucherDocumentIdentificationModes.nonFiscal) {
+      setValue("voucherLetterId", "", { shouldValidate: true });
+      setValue("posNumber", "", { shouldValidate: true });
+      setValue("number", "", { shouldValidate: true });
+    }
+  }, [getValues, initialVoucher?.supplierId, mode, selectedThirdPartyId, setValue, thirdParties, type]);
 
   useEffect(() => {
     if (!user?.id) {
@@ -338,65 +366,53 @@ export function useVoucherForm({
     event.target.value = "";
   };
 
-  const onSubmit = async (values: VoucherFormValues): Promise<void> => {
-    if (!values.createdByUserId) {
-      toastManager.add({
-        type: "error",
-        title: "Sesión inválida",
-        description: "No se pudo identificar al usuario actual.",
-      });
-      return;
-    }
-
-    if (mode === "edit" && !initialVoucher?.id) {
-      toastManager.add({
-        type: "error",
-        title: "Comprobante no disponible",
-        description: "No se pudo identificar el comprobante a editar.",
-      });
-      return;
-    }
-
+  const submitVoucherValues = async (values: VoucherFormValues, confirmation?: PendingVoucherConfirmation["kind"]): Promise<void> => {
     setIsSubmitting(true);
-
     try {
-      const payload = buildVoucherFormPayload(values, type, catalogs);
+      const basePayload = buildVoucherFormPayload(values, type, catalogs);
+      const payload: VoucherFormPayload = { ...basePayload, confirmNonFiscalDuplicate: confirmation === voucherConfirmationKinds.nonFiscalDuplicate || undefined, confirmIdentificationModeConversion: confirmation === voucherConfirmationKinds.identificationConversion || undefined };
       const endpoint = mode === "edit" ? `/api/vouchers/${initialVoucher?.id}` : "/api/vouchers";
-
       if (submitAction) {
         await submitAction(payload, values);
         return;
       }
-
-      const response = await apiRequest(endpoint, {
-        method: mode === "edit" ? "PUT" : "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+      const response = await apiRequest(endpoint, { method: mode === "edit" ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const savedVoucher = await parseJsonResponse<VoucherApiResponse>(response);
-
-      toastManager.add({
-        type: "success",
-        title: mode === "edit" ? "Comprobante actualizado" : "Comprobante guardado",
-        description: resolveVoucherSuccessMessage(mode, type),
-      });
-
-      if (mode !== "edit") {
-        handleOpenChange(false);
-      }
+      toastManager.add({ type: "success", title: mode === "edit" ? "Comprobante actualizado" : "Comprobante guardado", description: resolveVoucherSuccessMessage(mode, type) });
+      if (mode !== "edit") handleOpenChange(false);
       onSuccess?.(savedVoucher, mode);
     } catch (error: unknown) {
-      toastManager.add({
-        type: "error",
-        title: mode === "edit" ? "No se pudo actualizar" : "No se pudo guardar",
-        description: resolveVoucherErrorMessage(error, mode),
-      });
+      const confirmationKind = error instanceof ApiRequestError ? resolveVoucherConfirmationKind(error.payload) : null;
+      if (confirmationKind) {
+        setPendingConfirmation({ kind: confirmationKind, values });
+        return;
+      }
+      toastManager.add({ type: "error", title: mode === "edit" ? "No se pudo actualizar" : "No se pudo guardar", description: resolveVoucherErrorMessage(error, mode) });
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  const onSubmit = async (values: VoucherFormValues): Promise<void> => {
+    if (!values.createdByUserId) {
+      toastManager.add({ type: "error", title: "Sesión inválida", description: "No se pudo identificar al usuario actual." });
+      return;
+    }
+    if (mode === "edit" && !initialVoucher?.id) {
+      toastManager.add({ type: "error", title: "Comprobante no disponible", description: "No se pudo identificar el comprobante a editar." });
+      return;
+    }
+    await submitVoucherValues(values);
+  };
+
+  const confirmPendingSubmission = async (): Promise<void> => {
+    if (!pendingConfirmation) return;
+    const confirmation = pendingConfirmation;
+    setPendingConfirmation(null);
+    await submitVoucherValues(confirmation.values, confirmation.kind);
+  };
+
+  const cancelPendingSubmission = (): void => setPendingConfirmation(null);
 
   const handlePosBlur = (event: React.FocusEvent<HTMLInputElement>): void => {
     const value = event.target.value;
@@ -427,6 +443,9 @@ export function useVoucherForm({
     appendPerception: perceptionFieldArray.append,
     removePerception: perceptionFieldArray.remove,
     isProcessing,
+    pendingConfirmation,
+    confirmPendingSubmission,
+    cancelPendingSubmission,
     fileInputRef,
     handleDrop,
     handleDragOver,

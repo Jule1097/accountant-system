@@ -1,8 +1,9 @@
-import { voucherStatusValues, voucherTypeCategories, voucherTypeValues } from "src/lib/constants/voucher"
+import { voucherDocumentIdentificationModes, voucherStatusValues, voucherTypeCategories, voucherTypeValues } from "src/lib/constants/voucher"
 import { CurrencyCode } from "src/types/voucher/money"
 
 export type VoucherDomainStatus = typeof voucherStatusValues[keyof typeof voucherStatusValues]
 export type VoucherTypeCategory = typeof voucherTypeCategories[keyof typeof voucherTypeCategories]
+export type VoucherDocumentIdentificationMode = typeof voucherDocumentIdentificationModes[keyof typeof voucherDocumentIdentificationModes]
 export type VoucherAmountInput = string | number
 
 export interface VoucherTaxAmountInput {
@@ -24,7 +25,8 @@ export interface VoucherVatDetailInput {
 
 export interface VoucherPartySnapshot {
   name: string
-  cuit: string
+  cuit: string | null
+  taxIdentificationMode?: "with_cuit" | "without_cuit"
 }
 
 export interface VoucherSnapshot {
@@ -32,9 +34,10 @@ export interface VoucherSnapshot {
   companyId: string
   type: string
   voucherTypeId: string
-  voucherLetterId: string
-  posNumber: string
-  number: string
+  voucherLetterId: string | null
+  posNumber: string | null
+  number: string | null
+  documentIdentificationMode?: VoucherDocumentIdentificationMode
   date: string
   accountingPeriod: string
   currency: CurrencyCode
@@ -62,10 +65,11 @@ export interface VoucherCommonInput {
   voucherTypeId: string
   voucherTypeCategory?: VoucherTypeCategory
   voucherTypeName?: string | null
-  voucherLetterId: string
+  voucherLetterId: string | null
   voucherLetter?: string | null
-  posNumber: string
-  number: string
+  posNumber: string | null
+  number: string | null
+  documentIdentificationMode?: VoucherDocumentIdentificationMode
   date: string
   accountingPeriod?: string | null
   currency: CurrencyCode
@@ -114,4 +118,6 @@ export interface VoucherFactoryInput extends VoucherCommonInput {
   supplier?: VoucherPartySnapshot | null
   retentions?: VoucherTaxAmountInput[]
   perceptions?: VoucherTaxAmountInput[]
+  confirmNonFiscalDuplicate?: boolean
+  confirmIdentificationModeConversion?: boolean
 }

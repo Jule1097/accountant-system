@@ -7,15 +7,18 @@ import { getFormattedAmount } from "src/lib/helpers/platform/formatting";
 import { VoucherApiResponse } from "src/types/voucher/voucher-api";
 import { VoucherModalMode } from "src/types/voucher/voucher";
 import { cn } from "src/lib/shared/utils";
+import { filterVoucherTypesByApplicability } from "src/lib/helpers/catalog/voucher-type-applicability";
+import { voucherDocumentIdentificationModes, voucherTypeApplicabilityValues, voucherNonFiscalDisplayValues } from "src/lib/constants/voucher";
+import type { VoucherThirdPartyOption } from "src/types/voucher/voucher-form";
 
 interface VoucherModalCoreFieldsProps {
   form: UseFormReturn<VoucherFormValues>;
   isProcessing: boolean;
   catalogs: {
-    voucherTypes: { id: string; name: string }[];
+    voucherTypes: { id: string; name: string; applicability?: "sale" | "purchase" | "both" }[];
     voucherLetters: { id: string; letter: string }[];
   };
-  thirdParties: { id: string; name: string; cuit: string }[];
+  thirdParties: VoucherThirdPartyOption[];
   type: "sales" | "purchases";
   mode?: VoucherModalMode;
   initialVoucher?: VoucherApiResponse | null;
@@ -49,8 +52,16 @@ export function VoucherModalCoreFields({
     formState: { errors },
   } = form;
   const selectedCurrency = useWatch({ control, name: "currency" });
+  const selectedThirdPartyId = useWatch({ control, name: "thirdPartyId" });
+  const documentIdentificationMode = useWatch({ control, name: "documentIdentificationMode" });
+  const selectedPosNumber = useWatch({ control, name: "posNumber" });
+  const selectedNumber = useWatch({ control, name: "number" });
+  const selectedThirdParty = thirdParties.find((thirdParty) => thirdParty.id === selectedThirdPartyId);
   const shouldShowExchangeRate = shouldRequireVoucherExchangeRate(selectedCurrency || "$");
   const isDisabled = isProcessing || mode === "view";
+  const isNonFiscalPurchase = type === "purchases" && documentIdentificationMode === voucherDocumentIdentificationModes.nonFiscal;
+  const shouldShowVoucherLetterError = type !== "purchases" || Boolean(selectedPosNumber || selectedNumber);
+  const applicableVoucherTypes = filterVoucherTypesByApplicability(catalogs.voucherTypes, type === "sales" ? voucherTypeApplicabilityValues.sale : voucherTypeApplicabilityValues.purchase);
 
   return (
     <div className="flex flex-col gap-4">
@@ -85,7 +96,7 @@ export function VoucherModalCoreFields({
         <div className="grid grid-cols-2 gap-3">
           <div className={fieldContainerClass}>
             <label className={labelClass}>CUIT</label>
-            <Input placeholder="00-00000000-0" className="bg-card h-[38px] text-[13px] px-3" disabled readOnly {...register("thirdPartyCuit")} />
+            <Input value={selectedThirdParty?.cuit || (isNonFiscalPurchase ? voucherNonFiscalDisplayValues.cuit : "")} placeholder="00-00000000-0" className="bg-card h-[38px] text-[13px] px-3" disabled readOnly />
           </div>
           <div className={fieldContainerClass}>
             <label className={labelClass}>Moneda</label>
@@ -150,7 +161,7 @@ export function VoucherModalCoreFields({
               {...register("voucherTypeId")}
             >
               <option value="">Seleccionar Tipo</option>
-              {catalogs.voucherTypes.map((voucherType) => (
+              {applicableVoucherTypes.map((voucherType) => (
                 <option key={voucherType.id} value={voucherType.id}>
                   {voucherType.name}
                 </option>
@@ -172,20 +183,20 @@ export function VoucherModalCoreFields({
                 </option>
               ))}
             </select>
-            {errors.voucherLetterId && <p className={errorClass}>{errors.voucherLetterId.message}</p>}
+            {errors.voucherLetterId && shouldShowVoucherLetterError && <p className={errorClass}>{errors.voucherLetterId.message}</p>}
           </div>
         </div>
 
         <div className="grid grid-cols-3 gap-3">
           <div className={cn(fieldContainerClass, "col-span-1")}>
             <label className={labelClass}>Pto. Venta</label>
-            <Input placeholder="00001" className="bg-card h-[38px] text-[13px] px-3" disabled={isDisabled} {...register("posNumber")} onBlur={handlePosBlur} />
+            <Input placeholder={isNonFiscalPurchase ? voucherNonFiscalDisplayValues.fiscalField : "00001"} className="bg-card h-[38px] text-[13px] px-3" disabled={isDisabled || isNonFiscalPurchase} {...register("posNumber")} onBlur={handlePosBlur} />
             {errors.posNumber && <p className={errorClass}>{errors.posNumber.message}</p>}
           </div>
 
           <div className={cn(fieldContainerClass, "col-span-2")}>
             <label className={labelClass}>Número</label>
-            <Input placeholder="00000000" className="bg-card h-[38px] text-[13px] px-3" disabled={isDisabled} {...register("number")} onBlur={handleNumberBlur} />
+            <Input placeholder={isNonFiscalPurchase ? voucherNonFiscalDisplayValues.number : "00000000"} className="bg-card h-[38px] text-[13px] px-3" disabled={isDisabled || isNonFiscalPurchase} {...register("number")} onBlur={handleNumberBlur} />
             {errors.number && <p className={errorClass}>{errors.number.message}</p>}
           </div>
         </div>

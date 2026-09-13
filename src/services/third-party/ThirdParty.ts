@@ -4,6 +4,7 @@ import { ThirdPartyData } from "src/types/third-party/third-party"
 import { ThirdPartyServiceContract, ThirdPartyServiceMessages, ThirdPartyServiceOptions } from "src/types/third-party/third-party-service"
 import { applicationErrorCodes } from "src/lib/constants/application-error"
 import { ApplicationError } from "src/lib/errors/application-error"
+import { thirdPartyRoles } from "src/lib/constants/third-party"
 
 export class ThirdPartyService<TRecord, TCreate, TUpdate> implements ThirdPartyServiceContract<TRecord> {
   private readonly repository: ThirdPartyServiceOptions<TRecord, TCreate, TUpdate>["repository"]
@@ -35,28 +36,33 @@ export class ThirdPartyService<TRecord, TCreate, TUpdate> implements ThirdPartyS
     return this.repository.findById(companyId, id)
   }
 
-  async create(companyId: string, name: string, cuit: string): Promise<TRecord> {
-    const model = this.createModel({ companyId, name, cuit })
+  hasVouchers(companyId: string, id: string): Promise<boolean> {
+    return this.repository.hasVouchers(companyId, id)
+  }
+
+  async create(companyId: string, name: string, cuit: string | null, taxIdentificationMode?: ThirdPartyData["taxIdentificationMode"]): Promise<TRecord> {
+    const model = this.createModel({ companyId, name, cuit, taxIdentificationMode })
     await this.ensureUnique(model, companyId)
 
     return this.repository.create({
       companyId,
       name: model.name,
       cuit: model.cuit,
+      ...(model.role === thirdPartyRoles.supplier ? { taxIdentificationMode: model.taxIdentificationMode } : {}),
     } as TCreate)
   }
 
-  async update(companyId: string, id: string, name: string, cuit: string): Promise<TRecord> {
+  async update(companyId: string, id: string, name: string, cuit: string | null, taxIdentificationMode?: ThirdPartyData["taxIdentificationMode"]): Promise<TRecord> {
     const existing = await this.repository.findById(companyId, id)
 
     if (!existing) {
       throw new ApplicationError(applicationErrorCodes.notFound, this.messages.notFound, "Third-party record not found")
     }
 
-    const model = this.createModel({ id, companyId, name, cuit })
+    const model = this.createModel({ id, companyId, name, cuit, taxIdentificationMode })
     await this.ensureUnique(model, companyId, id)
 
-    return this.repository.update(companyId, id, { name: model.name, cuit: model.cuit } as TUpdate)
+    return this.repository.update(companyId, id, { name: model.name, cuit: model.cuit, ...(model.role === thirdPartyRoles.supplier ? { taxIdentificationMode: model.taxIdentificationMode } : {}) } as TUpdate)
   }
 
   async delete(companyId: string, id: string): Promise<TRecord> {
@@ -82,7 +88,7 @@ export class ThirdPartyService<TRecord, TCreate, TUpdate> implements ThirdPartyS
       throw new ApplicationError(applicationErrorCodes.duplicate, this.messages.duplicateName, "Duplicate third-party name")
     }
 
-    const existingByCuit = await this.repository.findByCuitAndCompany(companyId, model.cuit)
+    const existingByCuit = model.cuit ? await this.repository.findByCuitAndCompany(companyId, model.cuit) : null
     if (existingByCuit && this.getRecordId(existingByCuit) !== excludedId) {
       throw new ApplicationError(applicationErrorCodes.duplicate, this.messages.duplicateCuit, "Duplicate third-party tax identifier")
     }

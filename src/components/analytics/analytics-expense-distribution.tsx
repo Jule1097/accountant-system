@@ -21,7 +21,7 @@ export function AnalyticsExpenseDistribution({ currency, categories, getCategory
             <svg viewBox="0 0 120 120" className="w-[120px] h-[120px] transform -rotate-90">
               {categories.map((category, index) => (
                 <circle
-                  key={category.category}
+                  key={category.id}
                   cx="60"
                   cy="60"
                   r="50"
@@ -42,7 +42,7 @@ export function AnalyticsExpenseDistribution({ currency, categories, getCategory
       </div>
       <div className="w-full flex flex-col gap-3 mt-2 overflow-y-auto max-h-[120px] pr-1">
         {categories.map((category) => (
-          <div key={category.category} className="w-full flex flex-row items-center justify-between">
+          <div key={category.id} className="w-full flex flex-row items-center justify-between">
             <div className="flex flex-row items-center gap-2">
               <div className="w-2 h-2 rounded-full" style={{ backgroundColor: category.color }} />
               <div className="text-xs text-muted-foreground truncate max-w-[100px]">{category.category}</div>

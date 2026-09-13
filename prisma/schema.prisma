@@ -63,7 +63,8 @@ model Client {
 model Supplier {
   id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name      String    @db.VarChar(255)
-  cuit      String    @db.VarChar(50)
+  cuit      String?   @db.VarChar(50)
+  taxIdentificationMode String @default("with_cuit") @db.VarChar(20)
   companyId String    @db.Uuid
   createdAt DateTime  @default(now()) @db.Timestamptz
   updatedAt DateTime  @updatedAt @db.Timestamptz
@@ -77,6 +78,7 @@ model Supplier {
 model VoucherType {
   id       String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name     String    @unique @db.VarChar(100)
+  applicability String @default("both") @db.VarChar(20)
   vouchers Voucher[]
 
   @@map("voucher_type")
@@ -130,9 +132,10 @@ model Voucher {
   companyId        String              @db.Uuid
   type             String              @db.VarChar(20)
   voucherTypeId    String              @db.Uuid
-  voucherLetterId  String              @db.Uuid
-  posNumber        String              @db.VarChar(5)
-  number           String              @db.VarChar(8)
+  voucherLetterId  String?             @db.Uuid
+  posNumber        String?             @db.VarChar(5)
+  number           String?             @db.VarChar(8)
+  documentIdentificationMode String @default("fiscal") @db.VarChar(20)
   clientId         String?             @db.Uuid
   supplierId       String?             @db.Uuid
   date             DateTime            @db.Date
@@ -157,7 +160,7 @@ model Voucher {
   updatedAt        DateTime            @updatedAt @db.Timestamptz
   company          Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
   voucherType      VoucherType         @relation(fields: [voucherTypeId], references: [id])
-  voucherLetter    VoucherLetter       @relation(fields: [voucherLetterId], references: [id])
+  voucherLetter    VoucherLetter?      @relation(fields: [voucherLetterId], references: [id])
   client           Client?             @relation(fields: [clientId], references: [id])
   supplier         Supplier?           @relation(fields: [supplierId], references: [id])
   createdByUser    User                @relation(fields: [createdByUserId], references: [id])

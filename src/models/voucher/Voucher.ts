@@ -1,5 +1,5 @@
 import { normalizeOptionalMoneyAmount } from "src/lib/helpers/voucher/money"
-import { voucherCurrencyCodes, voucherDefaultAccountingPeriodDay, voucherDefaultExchangeRate, voucherNegativeMultiplier, voucherStatusValues, voucherTypeCategories } from "src/lib/constants/voucher"
+import { voucherCurrencyCodes, voucherDefaultAccountingPeriodDay, voucherDefaultExchangeRate, voucherDocumentIdentificationModes, voucherNegativeMultiplier, voucherStatusValues, voucherTypeCategories } from "src/lib/constants/voucher"
 import { ExchangeRate } from "src/models/voucher/ExchangeRate"
 import { Money } from "src/models/voucher/Money"
 import { VoucherDomainInput, VoucherDomainStatus, VoucherSnapshot, VoucherTypeCategory, VoucherVatDetailInput } from "src/types/voucher/domain"
@@ -12,10 +12,11 @@ export abstract class Voucher {
   readonly voucherTypeId: string
   readonly voucherTypeCategory: VoucherTypeCategory
   readonly voucherTypeName: string | null
-  readonly voucherLetterId: string
+  readonly voucherLetterId: string | null
   readonly voucherLetter: string | null
-  readonly posNumber: string
-  readonly number: string
+  readonly posNumber: string | null
+  readonly number: string | null
+  readonly documentIdentificationMode: "fiscal" | "non_fiscal"
   readonly date: string
   readonly accountingPeriod: string
   readonly currency: string
@@ -48,10 +49,11 @@ export abstract class Voucher {
     this.voucherTypeId = input.voucherTypeId
     this.voucherTypeCategory = input.voucherTypeCategory ?? voucherTypeCategories.standard
     this.voucherTypeName = input.voucherTypeName ?? null
-    this.voucherLetterId = input.voucherLetterId
+    this.voucherLetterId = input.voucherLetterId ?? null
     this.voucherLetter = input.voucherLetter ?? null
-    this.posNumber = input.posNumber
-    this.number = input.number
+    this.posNumber = input.posNumber ?? null
+    this.number = input.number ?? null
+    this.documentIdentificationMode = input.documentIdentificationMode ?? voucherDocumentIdentificationModes.fiscal
     this.date = input.date
     this.accountingPeriod = input.accountingPeriod ?? `${input.date.slice(0, 7)}-${voucherDefaultAccountingPeriodDay}`
     this.currency = input.currency
@@ -139,6 +141,6 @@ export abstract class Voucher {
   }
 
   toSnapshot(): VoucherSnapshot {
-    return { id: this.id, companyId: this.companyId, type: this.type, voucherTypeId: this.voucherTypeId, voucherLetterId: this.voucherLetterId, posNumber: this.posNumber, number: this.number, date: this.date, accountingPeriod: this.accountingPeriod, currency: this.currency, exchangeRate: this.exchangeRate.toString(), subtotal: this.subtotal.toString(), vatAmount: this.vatAmount.toString(), nonTaxableAmount: this.nonTaxableAmount.toString(), exemptAmount: this.exemptAmount.toString(), otherTaxesAmount: this.otherTaxesAmount.toString(), totalAmount: this.totalAmount.toString(), netAmount: this.netAmount.toString(), saldo: this.saldo.toString(), paidAmount: this.paidAmount.toString(), paymentMethod: this.paymentMethod, paymentDate: this.paymentDate, status: this.status, concept: this.concept, comments: this.comments, createdByUserId: this.createdByUserId }
+    return { id: this.id, companyId: this.companyId, type: this.type, voucherTypeId: this.voucherTypeId, voucherLetterId: this.voucherLetterId, posNumber: this.posNumber, number: this.number, documentIdentificationMode: this.documentIdentificationMode, date: this.date, accountingPeriod: this.accountingPeriod, currency: this.currency, exchangeRate: this.exchangeRate.toString(), subtotal: this.subtotal.toString(), vatAmount: this.vatAmount.toString(), nonTaxableAmount: this.nonTaxableAmount.toString(), exemptAmount: this.exemptAmount.toString(), otherTaxesAmount: this.otherTaxesAmount.toString(), totalAmount: this.totalAmount.toString(), netAmount: this.netAmount.toString(), saldo: this.saldo.toString(), paidAmount: this.paidAmount.toString(), paymentMethod: this.paymentMethod, paymentDate: this.paymentDate, status: this.status, concept: this.concept, comments: this.comments, createdByUserId: this.createdByUserId }
   }
 }

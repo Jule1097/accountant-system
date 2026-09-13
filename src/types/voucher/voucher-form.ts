@@ -1,7 +1,7 @@
 import { VoucherVatDetail } from "src/types/voucher/voucher";
 
 export interface VoucherFormCatalogState {
-  voucherTypes: { id: string; name: string }[];
+  voucherTypes: { id: string; name: string; applicability?: "sale" | "purchase" | "both" }[];
   voucherLetters: { id: string; letter: string }[];
   retentionConcepts: { id: string; name: string; type: string }[];
   perceptionConcepts: { id: string; name: string }[];
@@ -10,7 +10,8 @@ export interface VoucherFormCatalogState {
 export interface VoucherThirdPartyOption {
   id: string;
   name: string;
-  cuit: string;
+  cuit: string | null;
+  taxIdentificationMode?: "with_cuit" | "without_cuit";
 }
 
 export interface VoucherPreviewDocument {
@@ -25,9 +26,10 @@ export type VoucherFormNullableDateValue = string | Date | null;
 export interface VoucherFormPayload {
   type: "sale" | "purchase";
   voucherTypeId: string;
-  voucherLetterId: string;
-  posNumber: string;
-  number: string;
+  voucherLetterId: string | null;
+  posNumber: string | null;
+  number: string | null;
+  documentIdentificationMode?: "fiscal" | "non_fiscal";
   clientId: string | null;
   supplierId: string | null;
   date: VoucherFormDateValue;
@@ -58,4 +60,6 @@ export interface VoucherFormPayload {
     amount: number;
   }[];
   vatDetails: Pick<VoucherVatDetail, "vatRateId" | "subtotal" | "vatAmount">[];
+  confirmNonFiscalDuplicate?: boolean;
+  confirmIdentificationModeConversion?: boolean;
 }

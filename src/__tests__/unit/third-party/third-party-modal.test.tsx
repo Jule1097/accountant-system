@@ -3,6 +3,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { ClientSupplierModal } from 'src/components/third-party/third-party-modal'
 import { ApiRequestError } from 'src/lib/api/api-client'
+import { supplierTaxIdentificationModes } from 'src/lib/constants/third-party'
 
 const toastAdd = jest.fn()
 const apiRequestMock = jest.fn()
@@ -56,6 +57,29 @@ describe('ClientSupplierModal', () => {
     await waitFor(() => {
       expect(submitButton).toBeEnabled()
     })
+  })
+
+  it('hides and restores the supplier cuit input according to the selected tax identification mode', async () => {
+    render(
+      <ClientSupplierModal
+        isOpen
+        type="suppliers"
+        mode="create"
+        onOpenChange={jest.fn()}
+      />
+    )
+
+    const identificationModeSelect = screen.getByRole('combobox')
+
+    expect(screen.getByLabelText('CUIT')).toBeInTheDocument()
+
+    fireEvent.change(identificationModeSelect, { target: { value: supplierTaxIdentificationModes.withoutCuit } })
+
+    await waitFor(() => expect(screen.queryByLabelText('CUIT')).not.toBeInTheDocument())
+
+    fireEvent.change(identificationModeSelect, { target: { value: supplierTaxIdentificationModes.withCuit } })
+
+    await waitFor(() => expect(screen.getByLabelText('CUIT')).toBeInTheDocument())
   })
 
   it('submits a valid create form, closes the modal, and reports success', async () => {

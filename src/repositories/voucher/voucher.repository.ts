@@ -18,6 +18,7 @@ import {
   VoucherSortOrder,
   VoucherSummaryResponse,
 } from 'src/types/voucher/voucher'
+import { voucherDocumentIdentificationModes, voucherNonFiscalDisplayValues, voucherTypeApplicabilityValues } from 'src/lib/constants/voucher'
 
 const voucherInclude = {
   retentions: {
@@ -194,7 +195,7 @@ function mapVoucherListItem(rawVoucher: Prisma.VoucherGetPayload<{ include: type
   return {
     rowKey: rawVoucher.id,
     voucher,
-    composedVoucherId: `${voucher.voucherLetter || ''} ${voucher.posNumber}-${voucher.number}`.trim(),
+    composedVoucherId: voucher.documentIdentificationMode === voucherDocumentIdentificationModes.nonFiscal ? voucherNonFiscalDisplayValues.number : `${voucher.voucherLetter || ''} ${voucher.posNumber}-${voucher.number}`.trim(),
     partyName: party?.name || null,
     partyCuit: party?.cuit || null,
   }
@@ -269,6 +270,11 @@ function mapDashboardRecentPurchases(
 }
 
 export class VoucherRepository {
+  async isVoucherTypeApplicable(voucherTypeId: string, type: VoucherRecordType): Promise<boolean> {
+    const voucherType = await prisma.voucherType.findUnique({ where: { id: voucherTypeId }, select: { applicability: true } })
+    return !!voucherType && (voucherType.applicability === voucherTypeApplicabilityValues.both || voucherType.applicability === type)
+  }
+
   async findById(companyId: string, id: string): Promise<Voucher | null> {
     const rawVoucher = await prisma.voucher.findUnique({
       where: { id, companyId },
@@ -284,7 +290,16 @@ export class VoucherRepository {
 
   async findDuplicate(voucher: Voucher): Promise<Voucher | null> {
     const { duplicateCriteria } = voucher.getPersistenceData()
-    const whereClause: Prisma.VoucherWhereInput = {
+    const whereClause: Prisma.VoucherWhereInput = voucher.documentIdentificationMode === voucherDocumentIdentificationModes.nonFiscal
+      ? {
+        companyId: voucher.companyId,
+        type: voucher.type,
+        supplierId: duplicateCriteria.supplierId,
+        date: new Date(voucher.date),
+        totalAmount: voucher.totalAmount.toString(),
+        documentIdentificationMode: voucherDocumentIdentificationModes.nonFiscal,
+      }
+      : {
       companyId: voucher.companyId,
       type: voucher.type,
       voucherTypeId: voucher.voucherTypeId,
@@ -292,7 +307,7 @@ export class VoucherRepository {
       posNumber: voucher.posNumber,
       number: voucher.number,
       ...duplicateCriteria,
-    }
+      }
 
     const rawVoucher = await prisma.voucher.findFirst({
       where: whereClause,
@@ -490,7 +505,7 @@ export class VoucherRepository {
     const data: Prisma.VoucherUpdateInput = {
       ...scalarData,
       voucherType: { connect: { id: voucher.voucherTypeId } },
-      voucherLetter: { connect: { id: voucher.voucherLetterId } },
+      voucherLetter: voucher.voucherLetterId ? { connect: { id: voucher.voucherLetterId } } : { disconnect: true },
       createdByUser: { connect: { id: voucher.createdByUserId } },
       client: persistenceData.clientId ? { connect: { id: persistenceData.clientId } } : { disconnect: true },
       supplier: persistenceData.supplierId ? { connect: { id: persistenceData.supplierId } } : { disconnect: true },

@@ -1,6 +1,6 @@
 import { ThirdParty } from "src/models/third-party/ThirdParty"
 import { ClientSupplierFilterParams, ClientSupplierListResponse } from "src/types/third-party/third-party-resource"
-import { ThirdPartyData } from "src/types/third-party/third-party"
+import { SupplierTaxIdentificationMode, ThirdPartyData } from "src/types/third-party/third-party"
 import { ThirdPartyRepository } from "src/types/third-party/third-party-repository"
 
 export interface ThirdPartyServiceMessages {
@@ -21,7 +21,8 @@ export interface ThirdPartyServiceContract<TRecord> {
   getAll: (companyId: string) => Promise<TRecord[]>
   getPage: (companyId: string, page: number, pageSize: number, filters?: ClientSupplierFilterParams) => Promise<ClientSupplierListResponse<TRecord>>
   getById: (companyId: string, id: string) => Promise<TRecord | null>
-  create: (companyId: string, name: string, cuit: string) => Promise<TRecord>
-  update: (companyId: string, id: string, name: string, cuit: string) => Promise<TRecord>
+  hasVouchers: (companyId: string, id: string) => Promise<boolean>
+  create: (companyId: string, name: string, cuit: string | null, taxIdentificationMode?: SupplierTaxIdentificationMode) => Promise<TRecord>
+  update: (companyId: string, id: string, name: string, cuit: string | null, taxIdentificationMode?: SupplierTaxIdentificationMode) => Promise<TRecord>
   delete: (companyId: string, id: string) => Promise<TRecord>
 }

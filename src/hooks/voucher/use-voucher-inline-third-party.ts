@@ -29,7 +29,7 @@ interface UseVoucherInlineThirdPartyProps {
 interface UseVoucherInlineThirdPartyResult {
   isInlineModalOpen: boolean;
   inlineModalType: "clients" | "suppliers";
-  inlineInitialValues: { name?: string; cuit?: string };
+  inlineInitialValues: { name?: string; cuit?: string | null };
   shouldShowInlineAction: boolean;
   openInlineModal: () => void;
   handleInlineModalOpenChange: (open: boolean) => void;
@@ -72,14 +72,14 @@ export function useVoucherInlineThirdParty({
 
     setTimeout(() => {
       form.setValue("thirdPartyId", record.id, { shouldDirty: true, shouldValidate: true });
-      form.setValue("thirdPartyCuit", record.cuit, { shouldDirty: true, shouldValidate: true });
+      form.setValue("thirdPartyCuit", record.cuit || "", { shouldDirty: true, shouldValidate: true });
     }, 0);
   };
 
   const resolveDuplicateRecord = async (
     values: ClientSupplierFormValues
   ): Promise<ClientSupplierRecord | null> => {
-    const searchValue = values.name.trim() || values.cuit.trim();
+    const searchValue = values.name.trim() || values.cuit?.trim() || "";
     const response = await apiRequest(
       buildClientSupplierCollectionPath(resolveVoucherThirdPartyModalType(type), {
         page: 1,

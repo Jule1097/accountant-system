@@ -29,13 +29,13 @@ export function createClientSupplierTableColumns({
     {
       id: "cuit",
       header: "CUIT",
-      accessor: (row) => row.cuit,
+      accessor: (row) => row.cuit || (type === "suppliers" ? "Sin CUIT" : "—"),
     },
     {
       id: "actions",
       header: "Acciones",
       cell: ({ row }) => (
-        <div className="flex items-center justify-center gap-1">
+        <div className="flex items-center gap-1">
           <Button
             type="button"
             variant="ghost"

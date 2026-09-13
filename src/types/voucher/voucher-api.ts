@@ -23,7 +23,7 @@ export interface VoucherApiVatDetail {
 export interface VoucherApiResponse extends VoucherSnapshot {
   clientId: string | null
   supplierId: string | null
-  voucherType: { name: string } | null
+  voucherType: { name: string; applicability?: "sale" | "purchase" | "both" } | null
   voucherLetter: { letter: string } | null
   client: VoucherPartySnapshot | null
   supplier: VoucherPartySnapshot | null
