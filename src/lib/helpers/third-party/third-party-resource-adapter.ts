@@ -44,9 +44,11 @@ export function createClientSupplierMutationAdapter(
       headers: { "Content-Type": contentTypes.json, ...(companyId ? { "x-company-id": companyId } : {}) },
       body: JSON.stringify(payload),
     })),
-    remove: async (companyId, resourceId) => parseResponse(await apiRequest(`/api/${type}/${resourceId}`, {
-      method: httpMethods.delete,
-      headers: companyId ? { "x-company-id": companyId } : {},
-    })),
+    remove: async (companyId, resourceId) => {
+      await apiRequest(`/api/${type}/${resourceId}`, {
+        method: httpMethods.delete,
+        headers: companyId ? { "x-company-id": companyId } : {},
+      })
+    },
   }
 }

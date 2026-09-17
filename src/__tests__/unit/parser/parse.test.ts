@@ -67,7 +67,7 @@ describe('Parser Route Handler', () => {
     ])
 
     CatalogRepository.prototype.getRetentionConcepts = jest.fn().mockResolvedValue([
-      { id: 'ret-gan', name: 'Retención de Ganancias Sufrida', type: 'sale' },
+      { id: 'ret-gan', name: 'Retención de Ganancias Sufrida' },
     ])
 
     CatalogRepository.prototype.getPerceptionConcepts = jest.fn().mockResolvedValue([
@@ -380,22 +380,7 @@ describe('Parser Route Handler', () => {
         taxJurisdictionName: 'CABA',
       },
     ])
-    expect(body.perceptions).toEqual([
-      {
-        perceptionConceptId: 'per-iibb',
-        taxJurisdictionId: 'jur-caba',
-        conceptName: 'Percepción de Ingresos Brutos',
-        amount: 15,
-        taxJurisdictionName: 'CABA',
-      },
-      {
-        perceptionConceptId: null,
-        taxJurisdictionId: 'jur-pba',
-        conceptName: 'ConceptoInexistente',
-        amount: 99,
-        taxJurisdictionName: 'Buenos Aires',
-      },
-    ])
+    expect(body.perceptions).toEqual([])
   })
 
   it('should keep conservative null and empty-array fallback values when extraction is incomplete', async () => {

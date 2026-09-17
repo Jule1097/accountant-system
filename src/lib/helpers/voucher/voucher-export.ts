@@ -1,9 +1,10 @@
 import Decimal from 'decimal.js'
-import { voucherZeroAmount } from 'src/lib/constants/voucher'
+import { voucherOtherTaxesConceptName, voucherPurchaseExportTaxJurisdictionNames, voucherPurchaseExportVatRateNames, voucherZeroAmount } from 'src/lib/constants/voucher'
 import { getPreviousMonthRangeInArgentina } from '../platform/date-timezone'
 import { standardJurisdictions } from 'src/lib/helpers/platform/excel-builder'
 import { normalizeCuit } from 'src/lib/domain/cuit'
 import { resolveTaxJurisdictionName } from 'src/lib/domain/tax-jurisdictions'
+import { requiresVoucherTaxJurisdiction } from 'src/lib/helpers/voucher/voucher-form'
 import { Money } from 'src/models/voucher/Money'
 import { Purchase } from 'src/models/voucher/Purchase'
 import { Sale } from 'src/models/voucher/Sale'
@@ -25,6 +26,23 @@ function toExportMoney(value: string | number | undefined, currency: string): Mo
 
 function toExportNumber(value: Money): number {
   return Number(value.toString())
+}
+
+function toExcelDate(value: string | null): Date | null {
+  if (!value) return null
+  const dateOnlyMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (dateOnlyMatch) return new Date(Date.UTC(Number(dateOnlyMatch[1]), Number(dateOnlyMatch[2]) - 1, Number(dateOnlyMatch[3])))
+  const parsedDate = new Date(value)
+  if (Number.isNaN(parsedDate.getTime())) return null
+  return new Date(Date.UTC(parsedDate.getUTCFullYear(), parsedDate.getUTCMonth(), parsedDate.getUTCDate()))
+}
+
+export function getPurchaseExportTaxJurisdictions(): readonly string[] {
+  return voucherPurchaseExportTaxJurisdictionNames
+}
+
+export function getPurchaseExportVatRates(allVatRates: VatRateLike[]): VatRateLike[] {
+  return allVatRates.filter((rate) => voucherPurchaseExportVatRateNames.some((name) => name === rate.name))
 }
 
 export function buildExportFilters(params: ExportQueryParams): {
@@ -70,11 +88,13 @@ export function cleanHeaderName(name: string, category: 'ret' | 'perc'): string 
 
   if (isRet && lowercase.includes('ganancias')) clean = 'Ret. Ganancias'
   if (isRet && lowercase.includes('iva')) clean = 'Ret. IVA'
+  if (isRet && lowercase.includes('iibb')) clean = 'Ret. IIBB'
   if (isRet && lowercase.includes('osseg')) clean = 'Ret. OSSEG'
 
   const isPerc = category === 'perc'
   if (isPerc && lowercase.includes('ganancias')) clean = 'Perc. Ganancias'
   if (isPerc && lowercase.includes('iva')) clean = 'Perc. IVA'
+  if (isPerc && lowercase.includes('iibb')) clean = 'Perc. IIBB'
   if (isPerc && lowercase.includes('osseg')) clean = 'Perc. OSSEG'
 
   return clean
@@ -88,8 +108,8 @@ export function mapSalesVoucherToRow(
   const subtotal = isLetterC ? 0 : toExportNumber(voucher.getSignedValueInArs(voucher.subtotal))
 
   const row: VoucherExportRow = {
-    date: voucher.date,
-    paymentDate: voucher.paymentDate || null,
+    date: toExcelDate(voucher.date),
+    paymentDate: toExcelDate(voucher.paymentDate),
     voucherType: voucher.voucherTypeName || '',
     letter: voucher.voucherLetter || '',
     posNumber: voucher.posNumber,
@@ -111,11 +131,18 @@ export function mapSalesVoucherToRow(
     row[`ret_${j}`] = 0
   })
 
-  let otrosRet = new Decimal(voucher.getSignedValueInArs(voucher.otherTaxesAmount).toString()).negated()
-
   voucher.retentions.forEach((ret) => {
-    const amount = new Decimal(voucher.getSignedValueInArs(toExportMoney(ret.amount, voucher.currency)).toString()).negated()
+    const amount = new Decimal(voucher.getSignedValueInArs(toExportMoney(ret.amount, voucher.currency)).toString()).abs().negated()
     const matchedConcept = saleConcepts.find((c) => c.id === ret.retentionConceptId)
+    const isJurisdictionalConcept = requiresVoucherTaxJurisdiction(matchedConcept?.name || ret.conceptName)
+    if (isJurisdictionalConcept) {
+      const resolvedName = resolveTaxJurisdictionName(ret.taxJurisdictionName)
+      const isStandard = resolvedName && standardJurisdictions.includes(resolvedName)
+      if (isStandard) {
+        row[`ret_${resolvedName}`] = new Decimal((row[`ret_${resolvedName}`] as number) || 0).add(amount).toNumber()
+      }
+      return
+    }
     if (matchedConcept) {
       row[`ret_concept_${matchedConcept.id}`] = new Decimal((row[`ret_concept_${matchedConcept.id}`] as number) || 0)
         .add(amount)
@@ -130,10 +157,8 @@ export function mapSalesVoucherToRow(
       return
     }
 
-    otrosRet = otrosRet.add(amount)
   })
 
-  row.otherTaxes = otrosRet.toNumber()
   return row
 }
 
@@ -144,11 +169,14 @@ export function mapPurchasesVoucherToRow(
   purchaseConcepts: PerceptionConceptLike[]
 ): VoucherExportRow {
   const isLetterC = voucher.voucherLetter === 'C'
-  const subtotal = isLetterC ? 0 : toExportNumber(voucher.getSignedValueInArs(voucher.subtotal))
+  let exempt = toExportNumber(voucher.getSignedValueInArs(voucher.exemptAmount))
+  const exemptVatDetails = voucher.vatDetails.filter((detail) => allVatRates.find((rate) => rate.id === detail.vatRateId)?.name === 'Exento')
+  if (exemptVatDetails.length > 0) exempt = exemptVatDetails.reduce((total, detail) => total + toExportNumber(voucher.getSignedValueInArs(toExportMoney(detail.subtotal, voucher.currency))), 0)
+  const subtotal = toExportNumber(voucher.getSignedValueInArs(voucher.subtotal)) + exempt
 
   const row: VoucherExportRow = {
-    date: voucher.date,
-    paymentDate: voucher.paymentDate || null,
+    date: toExcelDate(voucher.date),
+    paymentDate: toExcelDate(voucher.paymentDate),
     voucherType: voucher.voucherTypeName || '',
     letter: voucher.voucherLetter || '',
     posNumber: voucher.posNumber,
@@ -169,13 +197,12 @@ export function mapPurchasesVoucherToRow(
     row[`perc_concept_${c.id}`] = 0
   })
 
-  standardJurisdictions.forEach((j) => {
+  const purchaseExportTaxJurisdictions = getPurchaseExportTaxJurisdictions()
+  const otherTaxesConcept = purchaseConcepts.find((concept) => concept.name === voucherOtherTaxesConceptName)
+  purchaseExportTaxJurisdictions.forEach((j) => {
     row[`perc_${j}`] = 0
   })
 
-  let exempt = isLetterC
-    ? voucher.getSignedValueInArs(voucher.subtotal).add(voucher.getSignedValueInArs(voucher.exemptAmount))
-    : voucher.getSignedValueInArs(voucher.exemptAmount)
   let nonTaxable = voucher.getSignedValueInArs(voucher.nonTaxableAmount)
 
   const shouldProcessVat = !isLetterC
@@ -190,15 +217,11 @@ export function mapPurchasesVoucherToRow(
         if (!vr) {
           return
         }
-        if (vr.name === 'Exento') {
-          exempt = exempt.add(subtotalVal)
-          return
-        }
         if (vr.name === 'No Gravado') {
           nonTaxable = nonTaxable.add(subtotalVal)
           return
         }
-        if (vr.rate.toNumber() > 0) {
+        if (vr.rate.toNumber() > 0 && activeVatRates.some((rate) => rate.id === vr.id)) {
           row[`iva_${vr.id}`] = new Decimal((row[`iva_${vr.id}`] as number) || 0).add(vat.toString()).toNumber()
         }
       })
@@ -228,18 +251,12 @@ export function mapPurchasesVoucherToRow(
           })
 
           const vatVal = voucher.getSignedValueInArs(voucher.vatAmount)
-          row[`iva_${closestVr.id}`] = toExportNumber(vatVal)
+          if (activeVatRates.some((rate) => rate.id === closestVr.id)) row[`iva_${closestVr.id}`] = toExportNumber(vatVal)
         }
-      }
-
-      const hasNoVatAndPositiveSubtotal = !hasVatAmount && hasSubtotal
-      if (hasNoVatAndPositiveSubtotal) {
-        exempt = exempt.add(voucher.getSignedValueInArs(voucher.subtotal))
       }
     }
   }
 
-  row.exempt = toExportNumber(exempt)
   row.nonTaxable = toExportNumber(nonTaxable)
 
   let otrosPerc = voucher.getSignedValueInArs(voucher.otherTaxesAmount)
@@ -247,6 +264,17 @@ export function mapPurchasesVoucherToRow(
   voucher.perceptions.forEach((perc) => {
     const amount = voucher.getSignedValueInArs(toExportMoney(perc.amount, voucher.currency))
     const matchedConcept = purchaseConcepts.find((c) => c.id === perc.perceptionConceptId)
+    const isJurisdictionalConcept = requiresVoucherTaxJurisdiction(matchedConcept?.name || perc.conceptName)
+    if (isJurisdictionalConcept) {
+      const resolvedName = resolveTaxJurisdictionName(perc.taxJurisdictionName)
+      const isStandard = resolvedName && purchaseExportTaxJurisdictions.includes(resolvedName)
+      if (isStandard) {
+        row[`perc_${resolvedName}`] = new Decimal((row[`perc_${resolvedName}`] as number) || 0).add(amount.toString()).toNumber()
+      } else {
+        otrosPerc = otrosPerc.add(amount)
+      }
+      return
+    }
     if (matchedConcept) {
       row[`perc_concept_${matchedConcept.id}`] = new Decimal((row[`perc_concept_${matchedConcept.id}`] as number) || 0)
         .add(amount.toString())
@@ -255,7 +283,7 @@ export function mapPurchasesVoucherToRow(
     }
 
     const resolvedName = resolveTaxJurisdictionName(perc.taxJurisdictionName)
-    const isStandard = resolvedName && standardJurisdictions.includes(resolvedName)
+    const isStandard = resolvedName && purchaseExportTaxJurisdictions.includes(resolvedName)
     if (isStandard) {
       row[`perc_${resolvedName}`] = new Decimal((row[`perc_${resolvedName}`] as number) || 0).add(amount.toString()).toNumber()
       return
@@ -264,7 +292,10 @@ export function mapPurchasesVoucherToRow(
     otrosPerc = otrosPerc.add(amount)
   })
 
-  row.otherPerceptions = toExportNumber(otrosPerc)
+  if (otherTaxesConcept) {
+    const otherTaxesKey = `perc_concept_${otherTaxesConcept.id}`
+    row[otherTaxesKey] = new Decimal((row[otherTaxesKey] as number) || 0).add(otrosPerc.toString()).toNumber()
+  }
   return row
 }
 
@@ -282,11 +313,9 @@ export function prepareExportWorkbookData(
 } {
   const isSales = type === 'sales'
   if (isSales) {
-    const saleConcepts = catalogs.allRetentionConcepts.filter(
-      (c) => c.type === 'sale' && !c.name.toLowerCase().includes('ingresos brutos')
-    )
+    const saleConcepts = catalogs.allRetentionConcepts
 
-    const dynamicRetentionColumns = saleConcepts.map((c) => ({
+    const dynamicRetentionColumns = saleConcepts.filter((c) => !requiresVoucherTaxJurisdiction(c.name)).map((c) => ({
       header: cleanHeaderName(c.name, 'ret'),
       key: `ret_concept_${c.id}`,
       isMonetary: true,
@@ -311,7 +340,6 @@ export function prepareExportWorkbookData(
         key: `ret_${j}`,
         isMonetary: true,
       })),
-      { header: 'Otros Impuestos', key: 'otherTaxes', isMonetary: true },
       { header: 'Total', key: 'total', isMonetary: true },
     ]
 
@@ -321,12 +349,11 @@ export function prepareExportWorkbookData(
     return { columns, data }
   }
 
-  const activeVatRates = catalogs.allVatRates.filter((vr) => new Decimal(vr.rate.toString()).gt(0))
-  const purchaseConcepts = catalogs.allPerceptionConcepts.filter(
-    (c) => !c.name.toLowerCase().includes('ingresos brutos')
-  )
+  const activeVatRates = getPurchaseExportVatRates(catalogs.allVatRates)
+  const purchaseConcepts = catalogs.allPerceptionConcepts.filter((c) => !c.name.toLowerCase().includes('osseg'))
+  const purchaseExportTaxJurisdictions = getPurchaseExportTaxJurisdictions()
 
-  const dynamicPerceptionColumns = purchaseConcepts.map((c) => ({
+  const dynamicPerceptionColumns = purchaseConcepts.filter((c) => !requiresVoucherTaxJurisdiction(c.name)).map((c) => ({
     header: cleanHeaderName(c.name, 'perc'),
     key: `perc_concept_${c.id}`,
     isMonetary: true,
@@ -344,20 +371,18 @@ export function prepareExportWorkbookData(
     { header: 'Moneda', key: 'currency', isCenter: true },
     { header: 'Tipo de Cambio', key: 'exchangeRate', isRate: true },
     { header: 'Subtotal', key: 'subtotal', isMonetary: true },
+    { header: 'No Gravado', key: 'nonTaxable', isMonetary: true },
     ...activeVatRates.map((vr) => ({
       header: `IVA ${vr.name}`,
       key: `iva_${vr.id}`,
       isMonetary: true,
     })),
-    { header: 'Exento', key: 'exempt', isMonetary: true },
-    { header: 'No Gravado', key: 'nonTaxable', isMonetary: true },
     ...dynamicPerceptionColumns,
-    ...standardJurisdictions.map((j) => ({
+    ...purchaseExportTaxJurisdictions.map((j) => ({
       header: `Perc IIBB ${j === 'Buenos Aires' ? 'PBA' : j}`,
       key: `perc_${j}`,
       isMonetary: true,
     })),
-    { header: 'Otros', key: 'otherPerceptions', isMonetary: true },
     { header: 'Total', key: 'total', isMonetary: true },
   ]
 

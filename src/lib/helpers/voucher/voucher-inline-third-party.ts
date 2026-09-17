@@ -39,7 +39,8 @@ export function shouldShowVoucherInlineThirdPartyAction(
     return false
   }
 
-  return Boolean(parsedData?.thirdPartyName?.trim() || parsedData?.thirdPartyCuit?.trim())
+  void parsedData
+  return true
 }
 
 export function toVoucherThirdPartyOption(record: ClientSupplierRecord): VoucherThirdPartyOption {

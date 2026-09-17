@@ -35,11 +35,17 @@ export const voucherConfirmationKindValues = [voucherConfirmationKinds.nonFiscal
 export const voucherNonFiscalDisplayValues = { letter: "—", number: "Sin numeración fiscal", fiscalField: "No aplica", cuit: "Sin CUIT" } as const
 export const voucherExportIdentificationValues = { fiscal: "Fiscal", nonFiscal: "" } as const
 export const voucherTypeCategories = { standard: "standard", creditNote: "credit_note" } as const
-export const voucherCreditNoteNameTokens = ["credito", "crédito", "crÃ©dito"] as const
+export const voucherCreditNoteNameTokens = ["nota de credito", "nota de crédito", "nota de crÃ©dito"] as const
 export const voucherStatusValues = { pending: "pending", partial: "partial", paid: "paid" } as const
 export const voucherPageSizeOptions = [10, 20, 50] as const
 export const voucherTaxJurisdictionConceptToken = "ingresos brutos"
+export const voucherTaxJurisdictionAbbreviationToken = "iibb"
 export const voucherTaxJurisdictionRequiredMessage = "La jurisdicción es obligatoria para Ingresos Brutos"
+export const voucherPurchaseExportTaxJurisdictionNames = ["CABA", "Buenos Aires", "Cordoba"] as const
+export const voucherPurchaseExportVatRateNames = ["21%", "10.5%", "3%"] as const
+export const voucherOtherTaxesConceptName = "Otros Impuestos"
+export const voucherParsedTaxReviewTitle = "Revisión manual requerida"
+export const voucherParsedTaxReviewMessage = "Hay impuestos detectados que no coinciden con el catálogo. Revisalos manualmente antes de guardar."
 
 export const voucherMoneyErrorMessages = {
   invalidAmount: "Money amount must be a valid decimal string",

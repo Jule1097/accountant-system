@@ -44,7 +44,7 @@ export interface ResourceDetailHookResult<TItem> {
 export interface ResourceMutationAdapter<TCreate, TUpdate, TResponse> {
   create?: (scopeId: string | null, payload: TCreate) => Promise<TResponse>
   update?: (scopeId: string | null, resourceId: string, payload: TUpdate) => Promise<TResponse>
-  remove?: (scopeId: string | null, resourceId: string) => Promise<TResponse>
+  remove?: (scopeId: string | null, resourceId: string) => Promise<TResponse | void>
 }
 
 export interface UseResourceMutationOptions<TCreate, TUpdate, TResponse> {
@@ -57,7 +57,7 @@ export interface ResourceMutationHookResult<TCreate, TUpdate, TResponse> {
   error: unknown
   create: (payload: TCreate) => Promise<TResponse>
   update: (resourceId: string, payload: TUpdate) => Promise<TResponse>
-  remove: (resourceId: string) => Promise<TResponse>
+  remove: (resourceId: string) => Promise<TResponse | void>
 }
 
 export type ResourceSWRConfiguration<TItem> = SWRConfiguration<TItem, unknown>

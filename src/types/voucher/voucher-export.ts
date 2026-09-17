@@ -18,7 +18,7 @@ export interface VoucherExportResult {
   buffer: Buffer
 }
 
-export type VoucherExportRow = Record<string, string | number | null>
+export type VoucherExportRow = Record<string, string | number | Date | null>
 
 export interface ExportColumnDefinition {
   header: string
@@ -33,7 +33,6 @@ export interface ExportColumnDefinition {
 export interface RetentionConceptLike {
   id: string
   name: string
-  type: string
 }
 
 export interface PerceptionConceptLike {

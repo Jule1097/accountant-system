@@ -102,7 +102,7 @@ describe("company-scoped hooks", () => {
       null,
       expect.any(Function),
       expect.objectContaining({
-        keepPreviousData: true,
+        keepPreviousData: false,
         revalidateOnFocus: false,
         revalidateOnReconnect: false,
       })
@@ -153,6 +153,37 @@ describe("company-scoped hooks", () => {
 
     expect(result.current.isLoading).toBe(false)
     expect(result.current.isValidating).toBe(true)
+  })
+
+  it("does not retain client-supplier data when the active company changes", () => {
+    useCompanyMock.mockReturnValue({
+      activeCompanyId: "company-1",
+      loading: false,
+    })
+
+    const { rerender } = renderHook(() => useClientsSuppliers("suppliers", {
+      page: 1,
+      pageSize: 10,
+      sortBy: "name",
+      sortOrder: "asc",
+      recordId: null,
+    }))
+
+    useCompanyMock.mockReturnValue({
+      activeCompanyId: "company-2",
+      loading: false,
+    })
+    rerender()
+
+    expect(useSWRMock).toHaveBeenLastCalledWith(
+      ["company-2", expect.stringContaining("/api/suppliers")],
+      expect.any(Function),
+      expect.objectContaining({
+        keepPreviousData: false,
+        revalidateOnFocus: false,
+        revalidateOnReconnect: false,
+      })
+    )
   })
 
   it("keeps notifications requests disabled while the company context is still loading", () => {

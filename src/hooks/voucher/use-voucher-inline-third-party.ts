@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { UseFormReturn } from "react-hook-form";
+import { useCompany } from "src/contexts/company-context";
 import { apiRequest, parseJsonResponse } from "src/lib/api/api-client";
 import { buildClientSupplierCollectionPath } from "src/lib/helpers/third-party/third-party-management";
 import {
@@ -45,6 +46,7 @@ export function useVoucherInlineThirdParty({
   setThirdParties,
 }: UseVoucherInlineThirdPartyProps): UseVoucherInlineThirdPartyResult {
   const [isInlineModalOpen, setIsInlineModalOpen] = useState(false);
+  const { activeCompanyId } = useCompany();
   const selectedThirdPartyId = form.watch("thirdPartyId");
   const selectedThirdParty = useMemo(
     () => thirdParties.find((thirdParty) => thirdParty.id === selectedThirdPartyId),
@@ -64,7 +66,7 @@ export function useVoucherInlineThirdParty({
       return;
     }
 
-    invalidateVoucherFormOptions(type);
+    invalidateVoucherFormOptions(type, activeCompanyId);
     const refreshedThirdParties = await fetchVoucherThirdParties(type);
     const nextThirdParties = mergeVoucherThirdPartyOptions(refreshedThirdParties, record);
 
