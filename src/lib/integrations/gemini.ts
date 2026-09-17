@@ -28,19 +28,21 @@ function buildSharedPromptParts(options: GeminiParseOptions): string[] {
     "If the invoice currency is foreign, return the exact exchangeRate shown on the document. If it is not visible, return null instead of guessing.",
     "vatDetails must contain vatRateName, subtotal, and vatAmount.",
     "retentions and perceptions must contain conceptName, amount, and province when visible.",
-    "Keep sales retentions separate from purchase perceptions.",
-    "When returning perception or retention conceptName, prefer normalized accounting labels such as 'Percepción de Ingresos Brutos' or 'Percepción de IVA' instead of abbreviations like 'IIBB' or 'Perc.'.",
+    "For sales, return only retentions using these canonical labels: 'Retención de IIBB', 'Retención de IVA', 'Retención OSSEG/ANSAL', and 'Retención de Ganancias'.",
+    "For purchases, return only perceptions using these canonical labels: 'Percepción de IIBB', 'Percepción de IVA', 'Percepción de Ganancias', and 'Otros Impuestos'.",
+    "If a purchase tax item is identified as 'Otros Impuestos', include it only in perceptions and do not duplicate it in otherTaxesAmount.",
+    "Keep a generic other-tax total without an identified 'Otros Impuestos' concept only in otherTaxesAmount.",
   ];
 
   if (options.voucherKind === "sale") {
     promptParts.push(
-      "The document is being parsed from the sales workflow. Prioritize sales retentions and leave perceptions empty unless the document clearly shows them as separate data."
+      "The document is being parsed from the sales workflow. Return sales retentions in retentions and return perceptions as an empty array."
     );
   }
 
   if (options.voucherKind === "purchase") {
     promptParts.push(
-      "The document is being parsed from the purchases workflow. Prioritize purchase perceptions and leave retentions empty unless the document clearly shows them as separate data."
+      "The document is being parsed from the purchases workflow. Return purchase perceptions in perceptions and return retentions as an empty array."
     );
   }
 

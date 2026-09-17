@@ -9,6 +9,7 @@ import {
   RawGeminiParsedVoucher,
   RawGeminiTaxItem,
   RawGeminiVatDetail,
+  VoucherKind,
 } from 'src/types/parser/gemini-parser'
 
 export class GeminiParsedVoucher {
@@ -182,10 +183,15 @@ export class GeminiParsedVoucher {
     return this.normalizeTextValue(this.extractedData.thirdPartyName)
   }
 
-  toResponse(catalogs: GeminiParserCatalogs, thirdPartyId: string | null): ParsedVoucherData {
+  toResponse(catalogs: GeminiParserCatalogs, thirdPartyId: string | null, voucherKind?: VoucherKind): ParsedVoucherData {
     const thirdPartyCuit = this.getLookupThirdPartyCuit()
     const thirdPartyName = this.normalizeThirdPartyName(thirdPartyCuit)
     const currency = this.normalizeCurrency(this.extractedData.currency)
+    const retentions = (this.extractedData.retentions || []).map((retention) => this.resolveRetention(retention, catalogs))
+    const perceptions = (this.extractedData.perceptions || []).map((perception) => this.resolvePerception(perception, catalogs))
+    const applicableRetentions = voucherKind === "purchase" ? [] : retentions
+    const applicablePerceptions = voucherKind === "sale" ? [] : perceptions
+    const hasOtherTaxesPerception = applicablePerceptions.some((perception) => this.isOtherTaxesConcept(perception.conceptName))
 
     return {
       posNumber: this.extractedData.posNumber || null,
@@ -197,7 +203,7 @@ export class GeminiParsedVoucher {
       vatAmount: this.extractedData.vatAmount ?? null,
       nonTaxableAmount: this.extractedData.nonTaxableAmount ?? null,
       exemptAmount: this.extractedData.exemptAmount ?? null,
-      otherTaxesAmount: this.extractedData.otherTaxesAmount ?? null,
+      otherTaxesAmount: hasOtherTaxesPerception ? 0 : this.extractedData.otherTaxesAmount ?? null,
       totalAmount: this.extractedData.totalAmount ?? null,
       concept: this.normalizeTextValue(this.extractedData.concept),
       paymentMethod: this.normalizeTextValue(this.extractedData.paymentMethod),
@@ -210,9 +216,13 @@ export class GeminiParsedVoucher {
       voucherType: this.normalizeTextValue(this.extractedData.voucherType),
       voucherLetter: this.normalizeVoucherLetterValue(this.extractedData.voucherLetter, this.extractedData.voucherType),
       vatDetails: (this.extractedData.vatDetails || []).map((detail) => this.resolveVatDetail(detail, catalogs)),
-      retentions: (this.extractedData.retentions || []).map((retention) => this.resolveRetention(retention, catalogs)),
-      perceptions: (this.extractedData.perceptions || []).map((perception) => this.resolvePerception(perception, catalogs)),
+      retentions: applicableRetentions,
+      perceptions: applicablePerceptions,
       thirdPartyId,
     }
+  }
+
+  private isOtherTaxesConcept(conceptName: string | null): boolean {
+    return conceptName?.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim() === "otros impuestos"
   }
 }
