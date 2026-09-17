@@ -7,7 +7,7 @@ export interface VoucherApiTaxAmount {
   amount: string
   conceptName?: string | null
   taxJurisdictionName?: string | null
-  retentionConcept?: { id: string; name: string; type?: string } | null
+  retentionConcept?: { id: string; name: string } | null
   perceptionConcept?: { id: string; name: string } | null
   taxJurisdiction?: { id: string; name: string } | null
 }

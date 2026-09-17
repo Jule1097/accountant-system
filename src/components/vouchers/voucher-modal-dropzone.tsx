@@ -44,7 +44,7 @@ export function VoucherModalDropzone({
         ) : (
           <>
             <UploadCloud className="h-10 w-10 text-muted-foreground mb-4" />
-            <p className="text-sm font-medium">Arrastra y suelta tus archivos aquí, o haz click para buscar</p>
+            <p className="text-sm font-medium">Arrastra y suelta hasta un máximo de 20 de tus archivos aquí, o haz click para buscar</p>
             <p className="text-xs text-muted-foreground mt-1">Soporta PDF, PNG, JPG o JPEG</p>
           </>
         )}

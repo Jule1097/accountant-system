@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { apiRequest, parseJsonResponse } from "src/lib/api/api-client";
+import { useCompany } from "src/contexts/company-context";
 import { clearCachedPromise, getCachedPromise } from "src/lib/helpers/platform/promise-cache";
 import { resolveVoucherThirdPartyEndpoint } from "src/lib/helpers/voucher/voucher-inline-third-party";
 import { VoucherScreenType } from "src/types/voucher/voucher";
@@ -21,8 +22,8 @@ interface UseVoucherFormOptionsResult {
   promise: Promise<VoucherFormOptionsData> | null;
 }
 
-function resolveVoucherFormOptionsCacheKey(type: VoucherScreenType): string {
-  return `voucher-form-options:${type}`
+function resolveVoucherFormOptionsCacheKey(type: VoucherScreenType, companyId: string): string {
+  return `voucher-form-options:${companyId}:${type}`
 }
 
 function resolveVoucherThirdPartyList(
@@ -46,20 +47,25 @@ export async function fetchVoucherThirdParties(type: VoucherScreenType): Promise
   return resolveVoucherThirdPartyList(payload)
 }
 
-export function invalidateVoucherFormOptions(type: VoucherScreenType): void {
-  clearCachedPromise(resolveVoucherFormOptionsCacheKey(type))
+export function invalidateVoucherFormOptions(type: VoucherScreenType, companyId: string | null): void {
+  if (!companyId) {
+    return
+  }
+
+  clearCachedPromise(resolveVoucherFormOptionsCacheKey(type, companyId))
 }
 
 export function useVoucherFormOptions({
   isOpen,
   type,
 }: UseVoucherFormOptionsProps): UseVoucherFormOptionsResult {
+  const { activeCompanyId, loading: isCompanyLoading } = useCompany();
   const promise = useMemo(() => {
-    if (!isOpen) {
+    if (!isOpen || isCompanyLoading || !activeCompanyId) {
       return null;
     }
 
-    return getCachedPromise(resolveVoucherFormOptionsCacheKey(type), () =>
+    return getCachedPromise(resolveVoucherFormOptionsCacheKey(type, activeCompanyId), () =>
       Promise.all([
         fetchVoucherCatalogs(),
         fetchVoucherThirdParties(type),
@@ -68,7 +74,7 @@ export function useVoucherFormOptions({
         thirdParties,
       }))
     );
-  }, [isOpen, type]);
+  }, [activeCompanyId, isCompanyLoading, isOpen, type]);
 
   return {
     promise,

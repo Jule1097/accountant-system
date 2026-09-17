@@ -18,6 +18,10 @@ jest.mock("src/hooks/auth/use-auth", () => ({
   }),
 }))
 
+jest.mock("src/contexts/company-context", () => ({
+  useCompany: () => ({ activeCompanyId: "company-1" }),
+}))
+
 jest.mock("src/components/conciliations/conciliation-review-preview", () => ({
   ConciliationReviewPreview: () => <div data-testid="conciliation-review-preview" />,
 }))
@@ -164,6 +168,21 @@ describe("Voucher inline third-party creation", () => {
     )
 
     expect(screen.queryByRole("button", { name: "Agregar proveedor" })).not.toBeInTheDocument()
+  })
+
+  it("shows the inline supplier action when parsing has no supplier identity", async () => {
+    render(
+      <VoucherModalReady
+        isOpen
+        onOpenChange={jest.fn()}
+        type="purchases"
+        mode="create"
+        initialParsedData={createParsedPayload({ thirdPartyName: null, thirdPartyCuit: null })}
+        options={createVoucherModalOptions()}
+      />
+    )
+
+    expect(await screen.findByRole("button", { name: "Agregar proveedor" })).toBeInTheDocument()
   })
 
   it("resolves an existing supplier on duplicate create without showing an error toast", async () => {
