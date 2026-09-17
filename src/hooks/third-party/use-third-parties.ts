@@ -14,7 +14,7 @@ export function useClientsSuppliers(type: ClientSupplierEntityType, query: Clien
   const resource = useResourceList({
     query,
     adapter: createClientSupplierListAdapter(type),
-    swrOptions: { revalidateOnReconnect: false },
+    swrOptions: { keepPreviousData: false, revalidateOnReconnect: false },
   })
 
   return {

@@ -2,6 +2,7 @@
 
 import { act, renderHook, waitFor } from "@testing-library/react"
 import { useClientsSuppliersManagement } from "src/hooks/third-party/use-third-party-management"
+import { invalidateVoucherFormOptions } from "src/hooks/voucher/use-voucher-form-options"
 
 const pushMock = jest.fn()
 const replaceMock = jest.fn()
@@ -33,6 +34,10 @@ jest.mock("src/contexts/company-context", () => ({
 jest.mock("src/hooks/third-party/use-third-parties", () => ({
   useClientsSuppliers: (...args: unknown[]) => useClientsSuppliersMock(...args),
   useClientSupplierById: (...args: unknown[]) => useClientSupplierByIdMock(...args),
+}))
+
+jest.mock("src/hooks/voucher/use-voucher-form-options", () => ({
+  invalidateVoucherFormOptions: jest.fn(),
 }))
 
 describe("useClientsSuppliersManagement", () => {
@@ -143,6 +148,26 @@ describe("useClientsSuppliersManagement", () => {
       recordId: null,
     })
     expect(useClientSupplierByIdMock).toHaveBeenLastCalledWith("clients", "")
+  })
+
+  it("invalidates the sales voucher option cache after creating a client", async () => {
+    const { result } = renderHook(() => useClientsSuppliersManagement("clients"))
+
+    await act(async () => {
+      await result.current.handleCreateSuccess()
+    })
+
+    expect(invalidateVoucherFormOptions).toHaveBeenCalledWith("sales", "company-1")
+  })
+
+  it("invalidates the purchases voucher option cache after creating a supplier", async () => {
+    const { result } = renderHook(() => useClientsSuppliersManagement("suppliers"))
+
+    await act(async () => {
+      await result.current.handleCreateSuccess()
+    })
+
+    expect(invalidateVoucherFormOptions).toHaveBeenCalledWith("purchases", "company-1")
   })
 
 })
