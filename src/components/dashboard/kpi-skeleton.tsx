@@ -1,21 +1,18 @@
-import { Skeleton } from "src/components/ui/skeleton";
-import { Card, CardContent, CardHeader } from "src/components/ui/card";
+import { Skeleton } from "src/components/ui/skeleton"
 
 export function KpiCardsSkeleton() {
   return (
-    <div className="grid gap-4 md:grid-cols-2">
-      {Array.from({ length: 2 }).map((_, idx) => (
-        <Card key={idx} className="rounded-xl p-5 shadow-none border-border/50">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 p-0 pb-4">
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-4 w-4 rounded-full" />
-          </CardHeader>
-          <CardContent className="p-0">
-            <Skeleton className="h-8 w-32 mb-2 mt-2" />
-            <Skeleton className="h-3 w-40" />
-          </CardContent>
-        </Card>
+    <div className="flex w-full flex-col gap-4 md:flex-row">
+      {Array.from({ length: 3 }).map((_, idx) => (
+        <div key={idx} className="flex-1 rounded-xl border border-border/50 bg-card p-5">
+          <div className="pb-4"><Skeleton className="h-4 w-32" /></div>
+          <div className="space-y-3">
+            <Skeleton className="h-8 w-36" />
+            <Skeleton className="h-3 w-full max-w-[220px]" />
+            <Skeleton className="h-3 w-24" />
+          </div>
+        </div>
       ))}
     </div>
-  );
+  )
 }

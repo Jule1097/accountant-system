@@ -1,14 +1,14 @@
-import { VoucherRepository } from "src/repositories/voucher/voucher.repository"
-import { DashboardRecentActivityData } from "src/types/dashboard/dashboard"
+import { DashboardRepository } from "src/repositories/dashboard/DashboardRepository"
+import type { DashboardRecentActivityData } from "src/types/dashboard/dashboard"
 
 export class DashboardService {
-  private readonly repository: VoucherRepository
+  private readonly repository: DashboardRepository
 
-  constructor() {
-    this.repository = new VoucherRepository()
+  constructor(repository: DashboardRepository = new DashboardRepository()) {
+    this.repository = repository
   }
 
   async getRecentActivity(companyId: string): Promise<DashboardRecentActivityData> {
-    return this.repository.findDashboardRecentActivity(companyId)
+    return this.repository.findRecentActivity(companyId)
   }
 }

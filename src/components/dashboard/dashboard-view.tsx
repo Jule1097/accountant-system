@@ -5,7 +5,7 @@ import { DashboardSkeleton } from "src/components/dashboard/dashboard-skeleton";
 import { useCompany } from "src/contexts/company-context";
 import { KpiCards } from "src/components/dashboard/kpi-cards";
 import { RecentActivity } from "src/components/dashboard/recent-activity";
-import { useAnalytics } from "src/hooks/analytics/use-analytics";
+import { useMetrics } from "src/hooks/metric/use-metrics";
 import { useDashboardActivity } from "src/hooks/dashboard/use-dashboard-activity";
 
 function DashboardShell({ children }: { children?: ReactNode }) {
@@ -23,16 +23,20 @@ function DashboardShell({ children }: { children?: ReactNode }) {
 }
 
 function DashboardDataSections() {
-  const { data: analytics, isLoading: isAnalyticsLoading } = useAnalytics({ suspense: false });
-  const { data: recentActivity, isLoading: isRecentActivityLoading } = useDashboardActivity({ suspense: false });
+  const { data: metrics, error: metricsError, isLoading: isMetricsLoading } = useMetrics({ suspense: false });
+  const { data: recentActivity, error: recentActivityError, isLoading: isRecentActivityLoading } = useDashboardActivity({ suspense: false });
 
-  if (isAnalyticsLoading || isRecentActivityLoading || !analytics || !recentActivity) {
+  if (metricsError || recentActivityError) {
+    return <div className="rounded-xl border border-destructive/40 bg-card p-6 text-sm text-destructive">No se pudo cargar el dashboard.</div>;
+  }
+
+  if (isMetricsLoading || isRecentActivityLoading || !metrics || !recentActivity) {
     return <DashboardSkeleton />;
   }
 
   return (
     <>
-      <KpiCards data={analytics} />
+      <KpiCards data={metrics} />
       <RecentActivity data={recentActivity} />
     </>
   );
