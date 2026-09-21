@@ -416,8 +416,11 @@ function createVoucherListResponse(vouchers: VoucherApiResponse[]): VoucherListR
 function createVoucherSummaryResponse(): VoucherSummaryResponse {
   return {
     totalCount: 1,
-    totalAmount: 136,
-    topPartyName: 'Proveedor Uno',
+    documentTotal: { ARS: 136 },
+    cashTotal: { ARS: 120 },
+    topParty: { ARS: { name: 'Proveedor Uno', total: 120 } },
+    pendingCount: 1,
+    nonFiscalAmount: {},
   }
 }
 
@@ -509,6 +512,7 @@ describe('Voucher UI', () => {
         onClearFilters={onClearFilters}
         onStatusChange={onStatusChange}
         onDateRangeChange={onDateRangeChange}
+        onCurrencyChange={jest.fn()}
       />
     )
 
@@ -613,6 +617,7 @@ describe('Voucher UI', () => {
         onClearFilters={jest.fn()}
         onStatusChange={jest.fn()}
         onDateRangeChange={jest.fn()}
+        onCurrencyChange={jest.fn()}
         onSortChange={jest.fn()}
         onPageChange={jest.fn()}
         onPageSizeChange={jest.fn()}
@@ -652,6 +657,7 @@ describe('Voucher UI', () => {
         onClearFilters={jest.fn()}
         onStatusChange={jest.fn()}
         onDateRangeChange={jest.fn()}
+        onCurrencyChange={jest.fn()}
         onSortChange={jest.fn()}
         onPageChange={jest.fn()}
         onPageSizeChange={jest.fn()}
@@ -680,6 +686,7 @@ describe('Voucher UI', () => {
         onClearFilters={jest.fn()}
         onStatusChange={jest.fn()}
         onDateRangeChange={onDateRangeChange}
+        onCurrencyChange={jest.fn()}
         onSortChange={jest.fn()}
         onPageChange={jest.fn()}
         onPageSizeChange={jest.fn()}
@@ -722,6 +729,7 @@ describe('Voucher UI', () => {
         onClearFilters={jest.fn()}
         onStatusChange={jest.fn()}
         onDateRangeChange={jest.fn()}
+        onCurrencyChange={jest.fn()}
         onSortChange={jest.fn()}
         onPageChange={onPageChange}
         onPageSizeChange={jest.fn()}
@@ -1081,7 +1089,7 @@ describe('Voucher UI', () => {
       )
     })
 
-    expect(replaceMock).toHaveBeenCalledWith('/sales', { scroll: false })
+    expect(replaceMock).toHaveBeenCalledWith('/sales?currency=ARS', { scroll: false })
   })
 
   it('confirms physical deletion, refreshes the table, shows success feedback, and clears voucherId when needed', async () => {
@@ -1135,6 +1143,6 @@ describe('Voucher UI', () => {
         title: 'Comprobante eliminado',
       })
     )
-    expect(replaceMock).toHaveBeenCalledWith('/sales', { scroll: false })
+    expect(replaceMock).toHaveBeenCalledWith('/sales?currency=ARS', { scroll: false })
   })
 })

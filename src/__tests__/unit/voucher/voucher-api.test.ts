@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { DELETE, GET, PUT } from 'src/app/api/vouchers/[id]/route'
 import { POST } from 'src/app/api/vouchers/route'
+import { GET as GET_SUMMARY } from 'src/app/api/vouchers/summary/route'
 import { applicationErrorCodes } from 'src/lib/constants/application-error'
 import { ApplicationError } from 'src/lib/errors/application-error'
 import { VoucherService } from 'src/services/voucher/Voucher'
@@ -122,5 +123,24 @@ describe('Voucher API Route Handlers', () => {
 
     expect(response.status).toBe(404)
     expect(await response.json()).toEqual({ error: 'Comprobante no encontrado.' })
+  })
+
+  it('keeps filtered summary queries company-scoped and currency-specific', async () => {
+    voucherServiceMock.prototype.getVoucherSummary = jest.fn().mockResolvedValue({
+      totalCount: 1,
+      documentTotal: { USD: 100 },
+      cashTotal: { USD: 80 },
+      topParty: { USD: { name: 'Proveedor', total: 80 } },
+      pendingCount: 1,
+      nonFiscalAmount: { USD: 0 },
+    })
+    const request = createRequest({
+      nextUrl: { searchParams: new URLSearchParams('type=purchase&currency=USD&status=pending&dateFrom=2026-01-01&dateTo=2026-01-31') } as NextRequest['nextUrl'],
+    })
+
+    const response = await GET_SUMMARY(request)
+
+    expect(response.status).toBe(200)
+    expect(voucherServiceMock.prototype.getVoucherSummary).toHaveBeenCalledWith('123e4567-e89b-12d3-a456-426614174000', expect.objectContaining({ type: 'purchase', currency: 'USD', status: 'pending' }))
   })
 })

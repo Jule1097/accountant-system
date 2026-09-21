@@ -11,12 +11,14 @@ import { buildEffectiveVoucherQuery, buildVoucherMutationQuery, buildVoucherQuer
 import { createVoucherMutationAdapter } from "src/lib/helpers/voucher/voucher-resource-adapter";
 import { revalidateCompanyScope } from "src/lib/helpers/platform/swr";
 import { useCompany } from "src/contexts/company-context";
+import { analyticsDefaultCurrency } from "src/lib/constants/analytics";
 import { VoucherApiResponse } from "src/types/voucher/voucher-api";
 import { UseVoucherManagementResult, VoucherListQueryState, VoucherModalMode, VoucherScreenType } from "src/types/voucher/voucher";
 
 const emptyQueryState: VoucherListQueryState = {
   page: 1,
   pageSize: 10,
+  currency: analyticsDefaultCurrency,
   sortBy: "date",
   sortOrder: "desc",
   status: undefined,
@@ -89,7 +91,7 @@ export function useVoucherManagement(type: VoucherScreenType): UseVoucherManagem
     await Promise.all([
       mutateVouchers(),
       mutateSummary(),
-      revalidateCompanyScope(activeCompanyId, ['/api/analytics']),
+      revalidateCompanyScope(activeCompanyId, ['/api/analytics', '/api/metrics', '/api/dashboard/recent-activity']),
     ]);
   };
 
@@ -201,6 +203,10 @@ export function useVoucherManagement(type: VoucherScreenType): UseVoucherManagem
     replaceQuery(resetVoucherPage(buildVoucherMutationQuery(managementQuery, { status: value })));
   };
 
+  const handleCurrencyChange = (value: string): void => {
+    replaceQuery(resetVoucherPage(buildVoucherMutationQuery(managementQuery, { currency: value })));
+  };
+
   const handleDateRangeChange = (dateFrom: string, dateTo: string): void => {
     replaceQuery(
       resetVoucherPage(
@@ -288,6 +294,7 @@ export function useVoucherManagement(type: VoucherScreenType): UseVoucherManagem
     handleSearchChange,
     handleClearFilters,
     handleStatusChange,
+    handleCurrencyChange,
     handleDateRangeChange,
     handleSortChange,
     handlePageChange,

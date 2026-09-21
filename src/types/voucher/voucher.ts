@@ -1,5 +1,6 @@
 import type { VoucherApiResponse } from 'src/types/voucher/voucher-api'
 import { useVouchers, useVoucherSummary } from 'src/hooks/voucher/use-vouchers'
+import type { CurrencyAmounts } from 'src/types/analytics/analytics'
 
 export type VoucherRecordType = 'sale' | 'purchase'
 
@@ -21,6 +22,7 @@ export interface VoucherVatDetail {
 
 export interface VoucherFilterParams {
   type?: VoucherRecordType
+  currency?: string
   search?: string
   status?: VoucherStatus
   dateFrom?: Date
@@ -33,6 +35,7 @@ export interface VoucherListQueryState {
   page: number
   pageSize: number
   search?: string
+  currency?: string
   status?: VoucherStatus
   dateFrom?: string
   dateTo?: string
@@ -59,8 +62,17 @@ export interface VoucherListResponse<TVoucher = VoucherApiResponse> {
 
 export interface VoucherSummaryResponse {
   totalCount: number
-  totalAmount: number
-  topPartyName: string | null
+  documentTotal: CurrencyAmounts
+  cashTotal: CurrencyAmounts
+  topParty: Record<string, { name: string; total: number }>
+  pendingCount: number
+  nonFiscalAmount: CurrencyAmounts
+}
+
+export interface VoucherSummaryMetricCardProps {
+  title: string
+  value: string
+  description?: string
 }
 
 export type VoucherScreenType = 'sales' | 'purchases'
@@ -114,6 +126,7 @@ export interface UseVoucherManagementResult {
   handleSearchChange: (value: string) => void;
   handleClearFilters: () => void;
   handleStatusChange: (value: VoucherListQueryState["status"]) => void;
+  handleCurrencyChange: (value: string) => void;
   handleDateRangeChange: (dateFrom: string, dateTo: string) => void;
   handleSortChange: (sortBy: VoucherListQueryState["sortBy"], sortOrder: VoucherListQueryState["sortOrder"]) => void;
   handlePageChange: (page: number) => void;

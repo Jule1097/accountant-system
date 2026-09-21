@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
       page: request.nextUrl.searchParams.get('page') || undefined,
       pageSize: request.nextUrl.searchParams.get('pageSize') || undefined,
       search: request.nextUrl.searchParams.get('search') || undefined,
+      currency: request.nextUrl.searchParams.get('currency') || undefined,
       status: request.nextUrl.searchParams.get('status') || undefined,
       dateFrom: request.nextUrl.searchParams.get('dateFrom') || undefined,
       dateTo: request.nextUrl.searchParams.get('dateTo') || undefined,
