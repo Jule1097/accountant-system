@@ -1,4 +1,5 @@
 import { voucherMoneyScale } from "src/lib/constants/voucher";
+import { analyticsDefaultCurrency } from "src/lib/constants/analytics";
 
 const localizedDecimalFormatter = new Intl.NumberFormat("es-AR", {
   minimumFractionDigits: voucherMoneyScale,
@@ -6,7 +7,7 @@ const localizedDecimalFormatter = new Intl.NumberFormat("es-AR", {
 });
 
 export function getFormattedAmount(currency: string, value: number): string {
-  const currencyLabel = currency === "USD" ? "USD" : "$";
+  const currencyLabel = currency === analyticsDefaultCurrency || currency === "$" ? "$" : currency;
   return `${currencyLabel} ${value.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
