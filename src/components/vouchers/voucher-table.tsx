@@ -20,6 +20,7 @@ interface VoucherTableProps {
   onSearchChange: (value: string) => void;
   onClearFilters: () => void;
   onStatusChange: (value: VoucherStatus | undefined) => void;
+  onCurrencyChange: (value: string) => void;
   onDateRangeChange: (dateFrom: string, dateTo: string) => void;
   onSortChange: (sortBy: VoucherSortBy | undefined, sortOrder: VoucherSortOrder | undefined) => void;
   onPageChange: (page: number) => void;
@@ -37,6 +38,7 @@ export function VoucherTable({
   onSearchChange,
   onClearFilters,
   onStatusChange,
+  onCurrencyChange,
   onDateRangeChange,
   onSortChange,
   onPageChange,
@@ -58,6 +60,7 @@ export function VoucherTable({
         onSearchChange={onSearchChange}
         onClearFilters={onClearFilters}
         onStatusChange={onStatusChange}
+        onCurrencyChange={onCurrencyChange}
         onDateRangeChange={onDateRangeChange}
       />
       <div className="overflow-hidden rounded-[12px] border border-border bg-card">

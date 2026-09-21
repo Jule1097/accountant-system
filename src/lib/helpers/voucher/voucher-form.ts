@@ -5,7 +5,7 @@ import {
   VoucherFormPayload,
   VoucherThirdPartyOption,
 } from "src/types/voucher/voucher-form";
-import { voucherTaxJurisdictionAbbreviationToken, voucherTaxJurisdictionConceptToken } from "src/lib/constants/voucher";
+import { voucherCurrencyCodes, voucherCurrencySymbols, voucherTaxJurisdictionAbbreviationToken, voucherTaxJurisdictionConceptToken } from "src/lib/constants/voucher";
 import { resolveGeminiCatalogMatch } from "src/lib/helpers/parser/gemini-parser";
 import { roundToTwoDecimals } from "src/lib/helpers/platform/formatting";
 import { resolveVoucherRecordType } from "src/lib/helpers/voucher/voucher-management";
@@ -71,12 +71,12 @@ export function normalizeVoucherCurrency(value?: string | null): "$" | "USD" | n
   return null;
 }
 
-export function shouldRequireVoucherExchangeRate(currency: "$" | "USD"): boolean {
-  return currency !== "$";
+export function shouldRequireVoucherExchangeRate(currency: string): boolean {
+  return currency !== voucherCurrencySymbols.ARS && currency !== voucherCurrencyCodes.ars;
 }
 
 export function normalizeVoucherExchangeRate(
-  currency: "$" | "USD",
+  currency: string,
   exchangeRate: number | null | undefined,
 ): number {
   if (!shouldRequireVoucherExchangeRate(currency)) {

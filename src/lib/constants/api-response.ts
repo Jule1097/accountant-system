@@ -12,6 +12,9 @@ export const apiResponseMessages = {
     activeCompanyRequired: "Falta la empresa activa",
     activityLoadFailed: "No se pudo cargar la actividad del dashboard",
   },
+  metrics: {
+    loadFailed: "No se pudieron cargar las métricas",
+  },
   notifications: {
     invalid: "La notificación es inválida",
     loadFailed: "No se pudieron cargar las notificaciones",

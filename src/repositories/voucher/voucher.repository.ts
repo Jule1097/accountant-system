@@ -2,70 +2,17 @@ import prisma from 'src/lib/database/prisma'
 import { Prisma } from 'src/generated/prisma/client'
 import { voucherMoneyErrorMessages, voucherZeroAmount } from 'src/lib/constants/voucher'
 import { Voucher } from 'src/models/voucher/Voucher'
-import { VoucherFactory } from 'src/models/voucher/VoucherFactory'
-import { mapPrismaVoucherToDomainInput, mapVoucherToPrismaData } from 'src/lib/helpers/voucher/voucher-persistence'
+import { mapVoucherToPrismaData } from 'src/lib/helpers/voucher/voucher-persistence'
+import { rehydrateVoucher, voucherInclude } from 'src/repositories/voucher/voucher-repository-shared'
 import { ParsedVoucherData } from 'src/types/parser/gemini-parser'
-import {
-  DashboardRecentActivityData,
-  DashboardRecentPurchaseEntry,
-  DashboardWeeklySalesEntry,
-} from "src/types/dashboard/dashboard"
 import {
   VoucherFilterParams,
   VoucherListItem,
   VoucherListResponse,
   VoucherRecordType,
   VoucherSortOrder,
-  VoucherSummaryResponse,
 } from 'src/types/voucher/voucher'
-import { voucherDocumentIdentificationModes, voucherNonFiscalDisplayValues, voucherTypeApplicabilityValues } from 'src/lib/constants/voucher'
-
-const voucherInclude = {
-  retentions: {
-    include: {
-      retentionConcept: true,
-      taxJurisdiction: true,
-    },
-  },
-  perceptions: {
-    include: {
-      perceptionConcept: true,
-      taxJurisdiction: true,
-    },
-  },
-  vatDetails: {
-    include: {
-      vatRate: true,
-    },
-  },
-  voucherType: true,
-  voucherLetter: true,
-  client: true,
-  supplier: true,
-} satisfies Prisma.VoucherInclude
-
-interface VoucherSummaryRawRecord {
-  totalAmount: Prisma.Decimal
-  client: { name: string; cuit: string } | null
-  supplier: { name: string; cuit: string } | null
-}
-
-interface DashboardRecentSaleRawRecord {
-  date: Date
-  totalAmount: Prisma.Decimal
-}
-
-interface DashboardRecentPurchaseRawRecord {
-  id: string
-  date: Date
-  totalAmount: Prisma.Decimal
-  supplier: {
-    name: string
-  } | null
-  voucherType: {
-    name: string
-  } | null
-}
+import { voucherCurrencyCodes, voucherCurrencySymbols, voucherDocumentIdentificationModes, voucherNonFiscalDisplayValues, voucherTypeApplicabilityValues } from 'src/lib/constants/voucher'
 
 function resolveVoucherDateFilter(filters: VoucherFilterParams): Prisma.DateTimeFilter<'Voucher'> | undefined {
   if (!filters.dateFrom || !filters.dateTo) {
@@ -179,10 +126,6 @@ function resolveVoucherOrderBy(sortBy: string | undefined, sortOrder: VoucherSor
   return [{ date: direction }, { id: 'desc' }]
 }
 
-function rehydrateVoucher(rawVoucher: Prisma.VoucherGetPayload<{ include: typeof voucherInclude }>): Voucher {
-  return VoucherFactory.rehydrate(mapPrismaVoucherToDomainInput(rawVoucher))
-}
-
 function requireRelationId(value: string | undefined, message: string): string {
   if (!value) throw new Error(message)
   return value
@@ -215,58 +158,15 @@ function buildVoucherWhereClause(companyId: string, filters: VoucherFilterParams
     whereClause.status = filters.status
   }
 
+  if (filters.currency) {
+    whereClause.currency = filters.currency.toUpperCase() === voucherCurrencyCodes.ars ? { in: [voucherCurrencySymbols.ARS, voucherCurrencyCodes.ars] } : filters.currency.toUpperCase()
+  }
+
   if (filters.search && filters.type) {
     whereClause.OR = resolveVoucherSearchWhere(filters.search, filters.type)
   }
 
   return whereClause
-}
-
-function buildDashboardWeeklySales(
-  sales: DashboardRecentSaleRawRecord[],
-  now: Date
-): DashboardWeeklySalesEntry[] {
-  const weeklySales = [
-    { week: "Semana 1", amount: 0 },
-    { week: "Semana 2", amount: 0 },
-    { week: "Semana 3", amount: 0 },
-    { week: "Semana 4", amount: 0 },
-    { week: "Semana 5", amount: 0 },
-  ]
-  const days35Ago = new Date(now.getTime() - 35 * 24 * 60 * 60 * 1000)
-
-  sales
-    .slice()
-    .sort((left, right) => left.date.getTime() - right.date.getTime())
-    .forEach((sale) => {
-      if (sale.date < days35Ago) {
-        return
-      }
-
-      const diffTime = now.getTime() - sale.date.getTime()
-      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
-      const weekIndex = 4 - Math.floor(diffDays / 7)
-
-      if (weekIndex < 0 || weekIndex >= weeklySales.length) {
-        return
-      }
-
-      weeklySales[weekIndex].amount += Number(sale.totalAmount)
-    })
-
-  return weeklySales
-}
-
-function mapDashboardRecentPurchases(
-  purchases: DashboardRecentPurchaseRawRecord[]
-): DashboardRecentPurchaseEntry[] {
-  return purchases.map((purchase) => ({
-    id: purchase.id,
-    supplierName: purchase.supplier?.name || null,
-    date: purchase.date.toISOString(),
-    voucherTypeName: purchase.voucherType?.name || null,
-    totalAmount: Number(purchase.totalAmount),
-  }))
 }
 
 export class VoucherRepository {
@@ -402,57 +302,6 @@ export class VoucherRepository {
     }
   }
 
-  async summarize(companyId: string, filters: VoucherFilterParams = {}): Promise<VoucherSummaryResponse> {
-    const rawVouchers = await prisma.voucher.findMany({
-      where: buildVoucherWhereClause(companyId, filters),
-      select: {
-        totalAmount: true,
-        client: {
-          select: {
-            name: true,
-            cuit: true,
-          },
-        },
-        supplier: {
-          select: {
-            name: true,
-            cuit: true,
-          },
-        },
-      },
-    })
-    const totalsByParty = new Map<string, number>()
-    let totalAmount = 0
-
-    for (const rawVoucher of rawVouchers as VoucherSummaryRawRecord[]) {
-      totalAmount += Number(rawVoucher.totalAmount)
-      const partyName = rawVoucher.client?.name || rawVoucher.supplier?.name
-
-      if (!partyName) {
-        continue
-      }
-
-      const currentValue = totalsByParty.get(partyName) || 0
-      totalsByParty.set(partyName, currentValue + Number(rawVoucher.totalAmount))
-    }
-
-    let topPartyName: string | null = null
-    let topPartyAmount = -1
-
-    for (const [partyName, partyAmount] of totalsByParty.entries()) {
-      if (partyAmount > topPartyAmount) {
-        topPartyName = partyName
-        topPartyAmount = partyAmount
-      }
-    }
-
-    return {
-      totalCount: rawVouchers.length,
-      totalAmount,
-      topPartyName,
-    }
-  }
-
   async create(voucher: Voucher): Promise<Voucher> {
     const persistenceData = voucher.getPersistenceData()
     const data: Prisma.VoucherUncheckedCreateInput = {
@@ -550,69 +399,4 @@ export class VoucherRepository {
     })
   }
 
-  async findForAnalytics(companyId: string, startDate: Date): Promise<Voucher[]> {
-    const rawVouchers = await prisma.voucher.findMany({
-      where: {
-        companyId,
-        date: {
-          gte: startDate,
-        },
-      },
-      include: voucherInclude,
-      orderBy: { date: 'desc' },
-    })
-
-    return rawVouchers.map(rehydrateVoucher)
-  }
-
-  async findDashboardRecentActivity(companyId: string): Promise<DashboardRecentActivityData> {
-    const now = new Date()
-    const salesCutoff = new Date(now.getTime() - 35 * 24 * 60 * 60 * 1000)
-    const sales = await prisma.voucher.findMany({
-      where: {
-        companyId,
-        type: "sale",
-        date: {
-          gte: salesCutoff,
-        },
-      },
-      select: {
-        date: true,
-        totalAmount: true,
-      },
-      orderBy: {
-        date: "desc",
-      },
-    })
-    const purchases = await prisma.voucher.findMany({
-      where: {
-        companyId,
-        type: "purchase",
-      },
-      select: {
-        id: true,
-        date: true,
-        totalAmount: true,
-        supplier: {
-          select: {
-            name: true,
-          },
-        },
-        voucherType: {
-          select: {
-            name: true,
-          },
-        },
-      },
-      orderBy: {
-        date: "desc",
-      },
-      take: 3,
-    })
-
-    return {
-      weeklySales: buildDashboardWeeklySales(sales as DashboardRecentSaleRawRecord[], now),
-      recentPurchases: mapDashboardRecentPurchases(purchases as DashboardRecentPurchaseRawRecord[]),
-    }
-  }
 }

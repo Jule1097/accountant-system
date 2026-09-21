@@ -37,6 +37,7 @@ export const voucherExportIdentificationValues = { fiscal: "Fiscal", nonFiscal: 
 export const voucherTypeCategories = { standard: "standard", creditNote: "credit_note" } as const
 export const voucherCreditNoteNameTokens = ["nota de credito", "nota de crédito", "nota de crÃ©dito"] as const
 export const voucherStatusValues = { pending: "pending", partial: "partial", paid: "paid" } as const
+export const voucherSummaryCardCounts = { sales: 4, purchases: 5 } as const
 export const voucherPageSizeOptions = [10, 20, 50] as const
 export const voucherTaxJurisdictionConceptToken = "ingresos brutos"
 export const voucherTaxJurisdictionAbbreviationToken = "iibb"
@@ -69,6 +70,7 @@ export const voucherMoneyErrorMessages = {
 } as const
 
 export const voucherValidationMessages = {
+  invalidCurrency: "La moneda es obligatoria.",
   invalidFiniteAmount: "El monto debe ser un número finito.",
   excessiveAmount: "El monto supera el máximo permitido.",
   excessiveAmountScale: "El monto puede tener hasta 2 decimales.",

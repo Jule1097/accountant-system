@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader } from "src/components/ui/card";
 import { Skeleton } from "src/components/ui/skeleton";
+import { analyticsClientSalesPageSize } from "src/lib/constants/analytics";
 
 export function AnalyticsSkeleton() {
   return (
@@ -14,24 +15,15 @@ export function AnalyticsSkeleton() {
             <Skeleton className="h-8 w-20" />
             <Skeleton className="h-8 w-16" />
           </div>
-          <div className="flex items-center gap-1 border border-border rounded-lg p-1 bg-card">
-            <Skeleton className="h-8 w-24" />
-            <Skeleton className="h-8 w-16" />
-          </div>
         </div>
       </div>
 
       <div className="flex flex-col md:flex-row gap-4 w-full">
         {Array.from({ length: 3 }).map((_, idx) => (
-          <Card key={idx} className="flex-1 rounded-xl border border-border/50 p-5 shadow-none">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-0 pb-4">
-              <Skeleton className="h-4 w-32" />
-            </CardHeader>
-            <CardContent className="p-0">
-              <Skeleton className="h-8 w-36 mb-3" />
-              <Skeleton className="h-3 w-full max-w-[220px]" />
-            </CardContent>
-          </Card>
+          <div key={idx} className="flex-1 rounded-xl border border-border/50 bg-card p-5">
+            <div className="pb-4"><Skeleton className="h-4 w-32" /></div>
+            <div><Skeleton className="mb-3 h-8 w-36" /><Skeleton className="h-3 w-full max-w-[220px]" /></div>
+          </div>
         ))}
       </div>
 
@@ -42,7 +34,7 @@ export function AnalyticsSkeleton() {
         </CardHeader>
         <CardContent className="p-0">
           <div className="h-[180px] flex items-end gap-3">
-            {Array.from({ length: 6 }).map((_, idx) => (
+            {Array.from({ length: 12 }).map((_, idx) => (
               <div key={idx} className="flex-1 h-full flex items-end gap-1">
                 <Skeleton className={`flex-1 rounded-t-sm ${idx % 2 === 0 ? "h-[55%]" : "h-[35%]"}`} />
                 <Skeleton className={`flex-1 rounded-t-sm ${idx % 2 === 0 ? "h-[30%]" : "h-[60%]"}`} />
@@ -62,7 +54,7 @@ export function AnalyticsSkeleton() {
               <Skeleton className="h-[120px] w-[120px] rounded-full" />
             </div>
             <div className="space-y-3 mt-6">
-              {Array.from({ length: 3 }).map((_, idx) => (
+              {Array.from({ length: 2 }).map((_, idx) => (
                 <div key={idx} className="flex items-center justify-between">
                   <Skeleton className="h-4 w-24" />
                   <Skeleton className="h-4 w-20" />
@@ -72,24 +64,20 @@ export function AnalyticsSkeleton() {
           </CardContent>
         </Card>
 
-        <Card className="flex-1 rounded-xl border border-border/50 p-5 shadow-none">
+        <Card className="min-w-0 flex-1 rounded-xl border border-border/50 p-5 shadow-none">
           <CardHeader className="p-0 pb-4">
             <Skeleton className="h-5 w-64" />
           </CardHeader>
           <CardContent className="p-0">
             <div className="space-y-3">
-              <div className="flex items-center gap-4">
-                <Skeleton className="h-4 flex-1" />
-                <Skeleton className="h-4 flex-1" />
-                <Skeleton className="h-4 flex-1" />
-                <Skeleton className="h-4 flex-1" />
-              </div>
-              {Array.from({ length: 4 }).map((_, idx) => (
+                <div className="flex items-center gap-4">
+                  <Skeleton className="h-4 flex-1" />
+                  <Skeleton className="h-4 flex-1" />
+                </div>
+              {Array.from({ length: analyticsClientSalesPageSize }).map((_, idx) => (
                 <div key={idx} className="flex items-center gap-4">
                   <Skeleton className="h-4 flex-1" />
                   <Skeleton className="h-4 flex-1" />
-                  <Skeleton className="h-4 flex-1" />
-                  <Skeleton className="h-6 w-16 rounded-full" />
                 </div>
               ))}
             </div>

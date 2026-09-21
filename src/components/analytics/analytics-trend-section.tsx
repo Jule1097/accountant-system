@@ -1,54 +1,43 @@
-import type { AnalyticsCurrency } from "src/components/analytics/analytics-header";
-import type { TrendEntry } from "src/types/analytics/analytics";
+import type { AnalyticsCurrency } from "src/components/analytics/analytics-header"
+import { analyticsUnavailableValueLabel } from "src/lib/constants/analytics"
+import type { AnalyticsChartEntry } from "src/types/analytics/analytics"
+import { getFormattedAmount } from "src/lib/helpers/platform/formatting"
 
 interface AnalyticsTrendSectionProps {
-  activeData: TrendEntry[];
-  currency: AnalyticsCurrency;
-  maxValue: number;
-}
-
-function formatTrendAmount(currency: AnalyticsCurrency, value: number): string {
-  return `${currency === "USD" ? "USD" : "$"} ${value.toLocaleString("es-AR")}`;
+  activeData: AnalyticsChartEntry[]
+  currency: AnalyticsCurrency
+  maxValue: number
 }
 
 export function AnalyticsTrendSection({ activeData, currency, maxValue }: AnalyticsTrendSectionProps) {
   return (
-    <div className="flex flex-col gap-5 p-6 bg-card rounded-xl border border-border/50 w-full">
-      <div className="flex flex-row justify-between items-center w-full">
-        <div className="text-sm font-semibold text-foreground">Tendencia de Ingresos y Egresos</div>
-        <div className="text-xs text-muted-foreground hidden sm:block">Representación de la facturación y gastos mensuales del período seleccionado.</div>
+    <section className="flex flex-col gap-5 p-6 bg-card rounded-xl border border-border/50 w-full" aria-labelledby="analytics-trend-title">
+      <div className="flex flex-wrap justify-between items-center gap-3">
+        <h3 id="analytics-trend-title" className="text-sm font-semibold text-foreground">Tendencia anual de cobros y pagos</h3>
+        <div className="flex items-center gap-4 text-xs text-muted-foreground"><span className="text-emerald-500">Cobros</span><span className="text-rose-500">Pagos</span></div>
       </div>
-      <div className="w-full h-[180px] flex flex-row gap-3 items-end justify-start mt-2">
-        {activeData.length === 0 ? (
-          <p className="text-xs text-muted-foreground w-full text-center">No hay datos suficientes para graficar.</p>
-        ) : (
-          activeData.map((entry) => {
-            const incomePercentage = maxValue > 0 ? (entry.income / maxValue) * 100 : 0;
-            const expensesPercentage = maxValue > 0 ? (entry.expenses / maxValue) * 100 : 0;
-
-            return (
-              <div key={entry.month} className="flex-1 h-full flex flex-col gap-2 justify-end items-center group relative">
-                <div className="absolute bottom-[105%] opacity-0 group-hover:opacity-100 transition-opacity bg-popover border border-border text-popover-foreground text-xs rounded-md p-3 shadow-lg whitespace-nowrap z-10 pointer-events-none flex flex-col gap-1.5">
-                  <div className="font-bold mb-1 border-b border-border pb-1">{entry.month}</div>
-                  <div className="flex gap-4 justify-between">
-                    <span className="text-emerald-500">Ingresos:</span>
-                    <span className="font-mono">{formatTrendAmount(currency, entry.income)}</span>
-                  </div>
-                  <div className="flex gap-4 justify-between">
-                    <span className="text-rose-500">Egresos:</span>
-                    <span className="font-mono">{formatTrendAmount(currency, entry.expenses)}</span>
-                  </div>
+      <div className="grid grid-cols-12 gap-1 sm:gap-2 h-[220px] items-end" role="list" aria-label="Resumen mensual de cobros y pagos">
+        {activeData.map((entry) => {
+          const collectionsHeight = maxValue > 0 ? (entry.cobros / maxValue) * 100 : 0
+          const paymentsHeight = maxValue > 0 ? (entry.pagos / maxValue) * 100 : 0
+          return (
+            <div key={entry.month} className="min-w-0 h-full flex flex-col justify-end items-center gap-2" role="listitem" tabIndex={0} aria-label={`${entry.month}: cobros ${getFormattedAmount(currency, entry.cobros)}, pagos ${getFormattedAmount(currency, entry.pagos)}`}>
+              <div className="relative w-full h-full flex items-end justify-center gap-0.5 group">
+                <div className="w-1/2 max-w-8 rounded-t-sm bg-emerald-500" style={{ height: `${collectionsHeight}%` }} />
+                <div className="w-1/2 max-w-8 rounded-t-sm bg-rose-500" style={{ height: `${paymentsHeight}%` }} />
+                <div className="absolute bottom-full hidden group-hover:flex group-focus-within:flex flex-col gap-1 p-2 rounded-md border border-border bg-popover text-xs text-popover-foreground shadow-lg whitespace-nowrap z-10">
+                  <span className="font-medium">{entry.month}</span>
+                  <span>Cobros: {getFormattedAmount(currency, entry.cobros)}</span>
+                  <span>Pagos: {getFormattedAmount(currency, entry.pagos)}</span>
+                  <span>Balance: {getFormattedAmount(currency, entry.balance)}</span>
+                  <span>Variación: {entry.variation.percentage === null ? analyticsUnavailableValueLabel : `${entry.variation.percentage.toFixed(2)}%`}</span>
                 </div>
-                <div className="w-full h-full flex flex-row gap-1 items-end justify-center group-hover:opacity-80 transition-opacity">
-                  <div className="flex-1 max-w-[40px] bg-emerald-500 rounded-t-sm" style={{ height: `${incomePercentage}%` }} />
-                  <div className="flex-1 max-w-[40px] bg-rose-500 rounded-t-sm" style={{ height: `${expensesPercentage}%` }} />
-                </div>
-                <div className="text-[11px] text-muted-foreground">{entry.month.substring(0, 3)}</div>
               </div>
-            );
-          })
-        )}
+              <span className="text-[10px] text-muted-foreground truncate max-w-full">{entry.month.slice(0, 3)}</span>
+            </div>
+          )
+        })}
       </div>
-    </div>
-  );
+    </section>
+  )
 }

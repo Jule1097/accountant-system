@@ -1,4 +1,4 @@
-import { AnalyticsData } from "src/types/analytics/analytics"
+import type { MetricData } from "src/types/metric/metric"
 
 export interface DashboardWeeklySalesEntry {
   week: string
@@ -23,5 +23,5 @@ export interface DashboardRecentActivityProps {
 }
 
 export interface DashboardKpiCardsProps {
-  data?: AnalyticsData
+  data?: MetricData
 }

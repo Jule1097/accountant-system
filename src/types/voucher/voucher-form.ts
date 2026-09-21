@@ -34,7 +34,7 @@ export interface VoucherFormPayload {
   supplierId: string | null;
   date: VoucherFormDateValue;
   accountingPeriod?: VoucherFormDateValue;
-  currency: "$" | "USD";
+  currency: string;
   exchangeRate: number;
   subtotal: number;
   vatAmount: number;

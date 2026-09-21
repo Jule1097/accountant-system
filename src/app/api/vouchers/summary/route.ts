@@ -11,6 +11,7 @@ export async function GET(request: NextRequest): Promise<Response> {
     const queryParseResult = voucherSummaryQuerySchema.safeParse({
       type: request.nextUrl.searchParams.get('type') || undefined,
       search: request.nextUrl.searchParams.get('search') || undefined,
+      currency: request.nextUrl.searchParams.get('currency') || undefined,
       status: request.nextUrl.searchParams.get('status') || undefined,
       dateFrom: request.nextUrl.searchParams.get('dateFrom') || undefined,
       dateTo: request.nextUrl.searchParams.get('dateTo') || undefined,

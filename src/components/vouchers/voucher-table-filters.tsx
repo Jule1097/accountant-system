@@ -6,6 +6,7 @@ import { DataTableFilterBar } from "src/components/ui/data-table-filter-bar";
 import { DataTableSearchFilter } from "src/components/ui/data-table-search-filter";
 import { DataTableSelectFilter } from "src/components/ui/data-table-select-filter";
 import { voucherSearchDebounceMs } from "src/lib/helpers/voucher/voucher-management";
+import { analyticsDefaultCurrency, analyticsInitialCurrencies } from "src/lib/constants/analytics";
 import type { VoucherListQueryState, VoucherStatus } from "src/types/voucher/voucher";
 
 interface VoucherTableFiltersProps {
@@ -14,6 +15,7 @@ interface VoucherTableFiltersProps {
   onSearchChange: (value: string) => void;
   onClearFilters: () => void;
   onStatusChange: (value: VoucherStatus | undefined) => void;
+  onCurrencyChange: (value: string) => void;
   onDateRangeChange: (dateFrom: string, dateTo: string) => void;
 }
 
@@ -24,19 +26,22 @@ const voucherStatusOptions = [
   { value: "paid", label: "Pagado" },
 ] as const;
 
+const voucherCurrencyOptions = analyticsInitialCurrencies.map((currency) => ({ value: currency, label: currency }));
+
 export function VoucherTableFilters({
   query,
   searchValue,
   onSearchChange,
   onClearFilters,
   onStatusChange,
+  onCurrencyChange,
   onDateRangeChange,
 }: VoucherTableFiltersProps) {
-  const hasActiveFilters = Boolean(query.search || query.status || query.dateFrom || query.dateTo);
+  const hasActiveFilters = Boolean(query.search || query.status || query.currency !== analyticsDefaultCurrency || query.dateFrom || query.dateTo);
 
   return (
     <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 md:flex-row md:items-end md:justify-between">
-      <DataTableFilterBar className="grid flex-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
+      <DataTableFilterBar className="grid flex-1 gap-3 md:grid-cols-2 xl:grid-cols-6">
         <div className="xl:col-span-2">
           <DataTableSearchFilter
             id="voucher-search"
@@ -53,6 +58,7 @@ export function VoucherTableFilters({
           options={voucherStatusOptions}
           onChange={(value) => onStatusChange(value ? (value as VoucherStatus) : undefined)}
         />
+        <DataTableSelectFilter id="voucher-currency" label="Moneda" value={query.currency || analyticsDefaultCurrency} options={voucherCurrencyOptions} onChange={onCurrencyChange} />
         <DataTableDateRangeFilter
           id="voucher-date"
           from={query.dateFrom}
