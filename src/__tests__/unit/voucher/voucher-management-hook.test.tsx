@@ -9,6 +9,7 @@ const useVoucherByIdMock = jest.fn()
 const useCompanyMock = jest.fn()
 const replaceStateMock = jest.fn()
 const replaceMock = jest.fn()
+const revalidateCompanyScopeMock = jest.fn().mockResolvedValue(undefined)
 
 const searchParamsState = {
   value: "page=2&pageSize=10&voucherId=voucher-1&status=pending",
@@ -34,6 +35,10 @@ jest.mock("src/hooks/voucher/use-vouchers", () => ({
   useVouchers: (...args: unknown[]) => useVouchersMock(...args),
   useVoucherSummary: (...args: unknown[]) => useVoucherSummaryMock(...args),
   useVoucherById: (...args: unknown[]) => useVoucherByIdMock(...args),
+}))
+
+jest.mock("src/lib/helpers/platform/swr", () => ({
+  revalidateCompanyScope: (...args: unknown[]) => revalidateCompanyScopeMock(...args),
 }))
 
 describe("useVoucherManagement", () => {
@@ -65,6 +70,11 @@ describe("useVoucherManagement", () => {
     expect(useVouchersMock).toHaveBeenLastCalledWith("sale", {
       page: 1,
       pageSize: 10,
+      currency: "ARS",
+      search: undefined,
+      status: undefined,
+      dateFrom: undefined,
+      dateTo: undefined,
       sortBy: "date",
       sortOrder: "desc",
       voucherId: null,
@@ -72,6 +82,11 @@ describe("useVoucherManagement", () => {
     expect(useVoucherSummaryMock).toHaveBeenLastCalledWith("sale", {
       page: 1,
       pageSize: 10,
+      currency: "ARS",
+      search: undefined,
+      status: undefined,
+      dateFrom: undefined,
+      dateTo: undefined,
       sortBy: "date",
       sortOrder: "desc",
       voucherId: null,
@@ -79,7 +94,7 @@ describe("useVoucherManagement", () => {
     expect(useVoucherByIdMock).toHaveBeenLastCalledWith("")
 
     await waitFor(() => {
-      expect(replaceMock).toHaveBeenCalledWith("/sales", { scroll: false })
+      expect(replaceMock).toHaveBeenCalledWith("/sales?currency=ARS", { scroll: false })
     })
   })
 
@@ -91,6 +106,10 @@ describe("useVoucherManagement", () => {
     expect(useVouchersMock).toHaveBeenCalledWith("sale", {
       page: 2,
       pageSize: 10,
+      currency: "ARS",
+      search: undefined,
+      dateFrom: undefined,
+      dateTo: undefined,
       status: "pending",
       sortBy: "date",
       sortOrder: "desc",
@@ -99,6 +118,10 @@ describe("useVoucherManagement", () => {
     expect(useVoucherSummaryMock).toHaveBeenCalledWith("sale", {
       page: 2,
       pageSize: 10,
+      currency: "ARS",
+      search: undefined,
+      dateFrom: undefined,
+      dateTo: undefined,
       status: "pending",
       sortBy: "date",
       sortOrder: "desc",
@@ -115,6 +138,10 @@ describe("useVoucherManagement", () => {
     expect(useVouchersMock).toHaveBeenLastCalledWith("sale", {
       page: 2,
       pageSize: 10,
+      currency: "ARS",
+      search: undefined,
+      dateFrom: undefined,
+      dateTo: undefined,
       status: "pending",
       sortBy: "date",
       sortOrder: "desc",
@@ -123,6 +150,10 @@ describe("useVoucherManagement", () => {
     expect(useVoucherSummaryMock).toHaveBeenLastCalledWith("sale", {
       page: 2,
       pageSize: 10,
+      currency: "ARS",
+      search: undefined,
+      dateFrom: undefined,
+      dateTo: undefined,
       status: "pending",
       sortBy: "date",
       sortOrder: "desc",
@@ -137,6 +168,10 @@ describe("useVoucherManagement", () => {
     expect(useVouchersMock).toHaveBeenLastCalledWith("sale", {
       page: 2,
       pageSize: 10,
+      currency: "ARS",
+      search: undefined,
+      dateFrom: undefined,
+      dateTo: undefined,
       status: "pending",
       sortBy: "date",
       sortOrder: "desc",
@@ -145,11 +180,25 @@ describe("useVoucherManagement", () => {
     expect(useVoucherSummaryMock).toHaveBeenLastCalledWith("sale", {
       page: 2,
       pageSize: 10,
+      currency: "ARS",
+      search: undefined,
+      dateFrom: undefined,
+      dateTo: undefined,
       status: "pending",
       sortBy: "date",
       sortOrder: "desc",
       voucherId: null,
     })
     expect(useVoucherByIdMock).toHaveBeenLastCalledWith("")
+  })
+
+  it("revalidates only company-scoped dashboard, analytics, and voucher datasets after a successful create", async () => {
+    const { result } = renderHook(() => useVoucherManagement("sales"))
+
+    await act(async () => {
+      await result.current.handleCreateSuccess()
+    })
+
+    expect(revalidateCompanyScopeMock).toHaveBeenCalledWith("company-1", ["/api/analytics", "/api/metrics", "/api/dashboard/recent-activity"])
   })
 })

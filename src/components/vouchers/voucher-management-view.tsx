@@ -7,6 +7,8 @@ import { VoucherSkeleton } from "src/components/vouchers/voucher-skeleton";
 import { VoucherTable } from "src/components/vouchers/voucher-table";
 import { useVoucherManagement } from "src/hooks/voucher/use-voucher-management";
 import { VoucherScreenType } from "src/types/voucher/voucher";
+import { analyticsDefaultCurrency } from "src/lib/constants/analytics";
+import { voucherSummaryCardCounts } from "src/lib/constants/voucher";
 
 const VoucherDeleteDialog = dynamic(
   () => import("src/components/vouchers/voucher-delete-dialog").then((module) => module.VoucherDeleteDialog),
@@ -66,6 +68,7 @@ export function VoucherManagementView({ type, title, description }: VoucherManag
     handleSearchChange,
     handleClearFilters,
     handleStatusChange,
+    handleCurrencyChange,
     handleDateRangeChange,
     handleSortChange,
     handlePageChange,
@@ -84,14 +87,12 @@ export function VoucherManagementView({ type, title, description }: VoucherManag
 
       {isSummaryLoading || !summaryData ? (
         <div className="grid gap-4 md:grid-cols-3 mb-6">
-          <div className="h-[104px] rounded-xl bg-card animate-pulse border border-border/50" />
-          <div className="h-[104px] rounded-xl bg-card animate-pulse border border-border/50" />
-          <div className="h-[104px] rounded-xl bg-card animate-pulse border border-border/50" />
+          {Array.from({ length: type === "sales" ? voucherSummaryCardCounts.sales : voucherSummaryCardCounts.purchases }).map((_, index) => <div key={index} className="h-[104px] rounded-xl bg-card animate-pulse border border-border/50" />)}
         </div>
       ) : type === "sales" ? (
-        <SalesKpiCards summary={summaryData} />
+        <SalesKpiCards summary={summaryData} currency={query.currency || analyticsDefaultCurrency} />
       ) : (
-        <PurchasesKpiCards summary={summaryData} />
+        <PurchasesKpiCards summary={summaryData} currency={query.currency || analyticsDefaultCurrency} />
       )}
 
       {isTableLoading || !vouchersData ? (
@@ -108,6 +109,7 @@ export function VoucherManagementView({ type, title, description }: VoucherManag
           onSearchChange={handleSearchChange}
           onClearFilters={handleClearFilters}
           onStatusChange={handleStatusChange}
+          onCurrencyChange={handleCurrencyChange}
           onDateRangeChange={handleDateRangeChange}
           onSortChange={handleSortChange}
           onPageChange={handlePageChange}

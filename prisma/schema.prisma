@@ -95,7 +95,6 @@ model VoucherLetter {
 model RetentionConcept {
   id         String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name       String             @unique @db.VarChar(255)
-  type       String             @db.VarChar(20)
   retentions VoucherRetention[]
 
   @@map("retention_concept")

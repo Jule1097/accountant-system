@@ -4,12 +4,12 @@ import { render, screen } from "@testing-library/react"
 import DashboardPage from "src/app/(dashboard)/dashboard/page"
 import { DashboardView } from "src/components/dashboard/dashboard-view"
 
-const useAnalyticsMock = jest.fn()
+const useMetricsMock = jest.fn()
 const useDashboardActivityMock = jest.fn()
 const useCompanyMock = jest.fn()
 
-jest.mock("src/hooks/analytics/use-analytics", () => ({
-  useAnalytics: () => useAnalyticsMock(),
+jest.mock("src/hooks/metric/use-metrics", () => ({
+  useMetrics: () => useMetricsMock(),
 }))
 
 jest.mock("src/hooks/dashboard/use-dashboard-activity", () => ({
@@ -45,12 +45,11 @@ describe("DashboardView", () => {
     })
   })
 
-  it("renders the resolved dashboard sections once analytics and dashboard activity data are ready", async () => {
-    useAnalyticsMock.mockReturnValue({
+  it("renders the resolved dashboard sections once dashboard metrics and activity data are ready", async () => {
+    useMetricsMock.mockReturnValue({
       data: {
-        trend: {
-          ARS: [{ income: 1000, expenses: 500, month: "Ago" }],
-        },
+        currentMonth: { collections: { ARS: 1000 }, payments: { ARS: 500 }, balance: { ARS: 500 }, margin: { ARS: 50 } },
+        variations: { collections: { absolute: 100, percentage: 10 }, payments: { absolute: 50, percentage: 10 }, balance: { absolute: 50, percentage: 10 } },
       },
       isLoading: false,
     })
@@ -69,11 +68,10 @@ describe("DashboardView", () => {
   })
 
   it("renders dashboard sections without relying on route-level skeleton placeholders after resolution", () => {
-    useAnalyticsMock.mockReturnValue({
+    useMetricsMock.mockReturnValue({
       data: {
-        trend: {
-          ARS: [{ income: 1000, expenses: 500, month: "Ago" }],
-        },
+        currentMonth: { collections: { ARS: 1000 }, payments: { ARS: 500 }, balance: { ARS: 500 }, margin: { ARS: 50 } },
+        variations: { collections: { absolute: 100, percentage: 10 }, payments: { absolute: 50, percentage: 10 }, balance: { absolute: 50, percentage: 10 } },
       },
       isLoading: false,
     })
@@ -94,11 +92,10 @@ describe("DashboardView", () => {
   })
 
   it("does not depend on voucher hooks for the dashboard route", () => {
-    useAnalyticsMock.mockReturnValue({
+    useMetricsMock.mockReturnValue({
       data: {
-        trend: {
-          ARS: [{ income: 1000, expenses: 500, month: "Ago" }],
-        },
+        currentMonth: { collections: { ARS: 1000 }, payments: { ARS: 500 }, balance: { ARS: 500 }, margin: { ARS: 50 } },
+        variations: { collections: { absolute: 100, percentage: 10 }, payments: { absolute: 50, percentage: 10 }, balance: { absolute: 50, percentage: 10 } },
       },
       isLoading: false,
     })
@@ -134,7 +131,7 @@ describe("DashboardView", () => {
     expect(screen.getByText("Dashboard")).toBeInTheDocument()
     expect(screen.queryByTestId("dashboard-kpi-cards")).not.toBeInTheDocument()
     expect(screen.queryByTestId("dashboard-recent-activity")).not.toBeInTheDocument()
-    expect(useAnalyticsMock).not.toHaveBeenCalled()
+    expect(useMetricsMock).not.toHaveBeenCalled()
     expect(useDashboardActivityMock).not.toHaveBeenCalled()
   })
 
@@ -154,12 +151,12 @@ describe("DashboardView", () => {
     expect(screen.queryByText("Dashboard")).not.toBeInTheDocument()
     expect(screen.queryByTestId("dashboard-kpi-cards")).not.toBeInTheDocument()
     expect(screen.queryByTestId("dashboard-recent-activity")).not.toBeInTheDocument()
-    expect(useAnalyticsMock).not.toHaveBeenCalled()
+    expect(useMetricsMock).not.toHaveBeenCalled()
     expect(useDashboardActivityMock).not.toHaveBeenCalled()
   })
 
   it("keeps a full dashboard skeleton visible while route data is still loading", () => {
-    useAnalyticsMock.mockReturnValue({
+    useMetricsMock.mockReturnValue({
       data: undefined,
       isLoading: true,
     })

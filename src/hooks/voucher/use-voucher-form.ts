@@ -8,7 +8,7 @@ import { useAuth } from "src/hooks/auth/use-auth";
 import { useVoucherPreview } from "src/hooks/voucher/use-voucher-preview";
 import { ApiRequestError, apiRequest, parseJsonResponse } from "src/lib/api/api-client";
 import { createVoucherFormSchema, VoucherFormValues } from "src/lib/schemas/voucher/voucher-form-schemas";
-import { buildVoucherFormInitialValues, buildVoucherFormPayload, buildVoucherParsedPatch, resolveSalesSubtotal } from "src/lib/helpers/voucher/voucher-form";
+import { buildVoucherFormInitialValues, buildVoucherFormPayload, buildVoucherParsedPatch, hasUnresolvedParsedVoucherTaxes, resolveSalesSubtotal } from "src/lib/helpers/voucher/voucher-form";
 import { ParserBatchAsyncResponse } from "src/types/parser/parser-batch";
 import { ParsedVoucherData } from "src/types/parser/gemini-parser";
 import { VoucherApiResponse } from "src/types/voucher/voucher-api";
@@ -20,7 +20,8 @@ import {
   VoucherThirdPartyOption,
 } from "src/types/voucher/voucher-form";
 import { resolveVoucherRecordType } from "src/lib/helpers/voucher/voucher-management";
-import { possibleNonFiscalDuplicateMessage, purchaseIdentificationConversionMessage, voucherConfirmationKinds, voucherDocumentIdentificationModes } from "src/lib/constants/voucher";
+import { feedbackTypes } from "src/lib/constants/feedback";
+import { possibleNonFiscalDuplicateMessage, purchaseIdentificationConversionMessage, voucherConfirmationKinds, voucherDocumentIdentificationModes, voucherParsedTaxReviewMessage, voucherParsedTaxReviewTitle } from "src/lib/constants/voucher";
 
 export type { VoucherFormValues } from "src/lib/schemas/voucher/voucher-form-schemas";
 
@@ -189,6 +190,7 @@ export function useVoucherForm({
       if (initialParsedData) {
         const patch = buildVoucherParsedPatch(initialParsedData, nextValues, type, catalogs, thirdParties);
         reset({ ...nextValues, ...patch });
+        if (hasUnresolvedParsedVoucherTaxes(initialParsedData, type)) toastManager.add({ type: feedbackTypes.warning, title: voucherParsedTaxReviewTitle, description: voucherParsedTaxReviewMessage });
       } else {
         reset(nextValues);
       }
@@ -204,8 +206,9 @@ export function useVoucherForm({
     lastParsedDataRef.current = parsedDataSignature;
     const patch = buildVoucherParsedPatch(initialParsedData, getValues(), type, catalogs, thirdParties);
     reset({ ...getValues(), ...patch }, { keepDirtyValues: true, keepTouched: true });
+    if (hasUnresolvedParsedVoucherTaxes(initialParsedData, type)) toastManager.add({ type: feedbackTypes.warning, title: voucherParsedTaxReviewTitle, description: voucherParsedTaxReviewMessage });
     void trigger();
-  }, [activeResetKey, catalogs, getValues, initialParsedData, initialVoucher, isOpen, reset, thirdParties, trigger, type, user?.id]);
+  }, [activeResetKey, catalogs, getValues, initialParsedData, initialVoucher, isOpen, reset, thirdParties, toastManager, trigger, type, user?.id]);
 
   const handleOpenChange = (open: boolean): void => {
     if (!open) {
@@ -289,6 +292,7 @@ export function useVoucherForm({
       data: parsedData,
     });
     reset({ ...getValues(), ...patch }, { keepDirty: true, keepTouched: true });
+    if (hasUnresolvedParsedVoucherTaxes(parsedData, type)) toastManager.add({ type: feedbackTypes.warning, title: voucherParsedTaxReviewTitle, description: voucherParsedTaxReviewMessage });
   };
 
   const handleFiles = async (files: File[]): Promise<void> => {

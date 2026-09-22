@@ -123,4 +123,48 @@ describe("GeminiParsedVoucher", () => {
 
     expect(response.voucherLetter).toBe(expectedLetter);
   });
+
+  it("keeps only purchase perceptions and resolves Otros Impuestos without duplicating the generic total", () => {
+    const parsedVoucher = new GeminiParsedVoucher({
+      otherTaxesAmount: 7,
+      retentions: [{ conceptName: "Retención de IVA", amount: 3 }],
+      perceptions: [{ conceptName: "Otros Impuestos", amount: 7 }],
+    });
+
+    const response = parsedVoucher.toResponse(
+      {
+        vatRates: [],
+        retentionConcepts: [{ id: "ret-iva", name: "Retención de IVA" }],
+        perceptionConcepts: [{ id: "per-other", name: "Otros Impuestos" }],
+        taxJurisdictions: [],
+      },
+      null,
+      "purchase",
+    );
+
+    expect(response.retentions).toEqual([])
+    expect(response.perceptions).toEqual([expect.objectContaining({ perceptionConceptId: "per-other", amount: 7 })])
+    expect(response.otherTaxesAmount).toBe(0)
+  });
+
+  it("keeps unresolved taxes in the applicable parser array without assigning a catalog id", () => {
+    const parsedVoucher = new GeminiParsedVoucher({
+      retentions: [{ conceptName: "Retención desconocida", amount: 12 }],
+      perceptions: [{ conceptName: "Percepción desconocida", amount: 8 }],
+    });
+
+    const response = parsedVoucher.toResponse(
+      {
+        vatRates: [],
+        retentionConcepts: [],
+        perceptionConcepts: [],
+        taxJurisdictions: [],
+      },
+      null,
+      "sale",
+    );
+
+    expect(response.retentions).toEqual([expect.objectContaining({ retentionConceptId: null, conceptName: "Retención desconocida" })])
+    expect(response.perceptions).toEqual([])
+  });
 });

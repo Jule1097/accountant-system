@@ -7,6 +7,7 @@ function normalizeGeminiCatalogValue(value: string): string {
     .replace(/\bingr brutos\b/g, "ingresos brutos")
     .replace(/\bperc\b/g, "percepcion")
     .replace(/\bpercep\b/g, "percepcion")
+    .replace(/\bsufrid[ao]\b/g, "")
     .replace(/[^a-z0-9\s]/g, " ")
     .replace(/\s+/g, " ")
     .trim();

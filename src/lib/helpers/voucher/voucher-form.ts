@@ -5,7 +5,7 @@ import {
   VoucherFormPayload,
   VoucherThirdPartyOption,
 } from "src/types/voucher/voucher-form";
-import { voucherTaxJurisdictionConceptToken, voucherTypeValues } from "src/lib/constants/voucher";
+import { voucherCurrencyCodes, voucherCurrencySymbols, voucherTaxJurisdictionAbbreviationToken, voucherTaxJurisdictionConceptToken } from "src/lib/constants/voucher";
 import { resolveGeminiCatalogMatch } from "src/lib/helpers/parser/gemini-parser";
 import { roundToTwoDecimals } from "src/lib/helpers/platform/formatting";
 import { resolveVoucherRecordType } from "src/lib/helpers/voucher/voucher-management";
@@ -21,16 +21,16 @@ function uniqueVoucherOptions<T extends { id: string }>(options: T[]): T[] {
 }
 
 export function requiresVoucherTaxJurisdiction(conceptName?: string | null): boolean {
-  return conceptName?.toLowerCase().includes(voucherTaxJurisdictionConceptToken) ?? false;
+  const normalizedConceptName = conceptName?.toLowerCase() || "";
+  return normalizedConceptName.includes(voucherTaxJurisdictionConceptToken) || normalizedConceptName.includes(voucherTaxJurisdictionAbbreviationToken);
 }
 
 export function buildVoucherViewOptions(voucher: VoucherApiResponse, type: VoucherScreenType): { catalogs: VoucherFormCatalogState; thirdParties: VoucherThirdPartyOption[] } {
   const thirdParty = type === "sales" ? voucher.client : voucher.supplier;
   const thirdPartyId = type === "sales" ? voucher.clientId : voucher.supplierId;
-  const recordType = type === "sales" ? voucherTypeValues.sale : voucherTypeValues.purchase;
   const retentionConcepts = uniqueVoucherOptions(voucher.retentions.flatMap((item) => {
     const name = item.conceptName || item.retentionConcept?.name;
-    return item.retentionConceptId && name ? [{ id: item.retentionConceptId, name, type: recordType }] : [];
+    return item.retentionConceptId && name ? [{ id: item.retentionConceptId, name }] : [];
   }));
   const perceptionConcepts = uniqueVoucherOptions(voucher.perceptions.flatMap((item) => {
     const name = item.conceptName || item.perceptionConcept?.name;
@@ -71,12 +71,12 @@ export function normalizeVoucherCurrency(value?: string | null): "$" | "USD" | n
   return null;
 }
 
-export function shouldRequireVoucherExchangeRate(currency: "$" | "USD"): boolean {
-  return currency !== "$";
+export function shouldRequireVoucherExchangeRate(currency: string): boolean {
+  return currency !== voucherCurrencySymbols.ARS && currency !== voucherCurrencyCodes.ars;
 }
 
 export function normalizeVoucherExchangeRate(
-  currency: "$" | "USD",
+  currency: string,
   exchangeRate: number | null | undefined,
 ): number {
   if (!shouldRequireVoucherExchangeRate(currency)) {
@@ -497,4 +497,9 @@ export function buildVoucherParsedPatch(parsedData: ParsedVoucherData, currentVa
     retentions: parsedData.retentions.length ? mapParsedVoucherRetentionValues(parsedData.retentions) : currentValues.retentions,
     perceptions: parsedData.perceptions.length ? mapParsedVoucherPerceptionValues(parsedData.perceptions) : currentValues.perceptions,
   };
+}
+
+export function hasUnresolvedParsedVoucherTaxes(parsedData: ParsedVoucherData, type: VoucherScreenType): boolean {
+  if (type === "sales") return parsedData.retentions.some((tax) => !tax.retentionConceptId);
+  return parsedData.perceptions.some((tax) => !tax.perceptionConceptId);
 }

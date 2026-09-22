@@ -201,4 +201,14 @@ describe("VoucherRepository", () => {
 
     expect(result?.isCreditNote()).toBe(true)
   })
+
+
+  it("filters voucher queries by the selected currency while accepting ARS storage aliases", async () => {
+    mockPrisma.voucher.count.mockResolvedValue(0)
+    mockPrisma.voucher.findMany.mockResolvedValue([])
+
+    await repository.findPage("company-1", 1, 10, { type: "sale", currency: "ARS" })
+
+    expect(mockPrisma.voucher.count).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ currency: { in: ["$", "ARS"] } }) }))
+  })
 })

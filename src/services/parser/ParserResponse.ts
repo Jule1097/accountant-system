@@ -40,7 +40,8 @@ export class ParserResponseService {
         perceptionConcepts,
         taxJurisdictions,
       },
-      thirdPartyId
+      thirdPartyId,
+      _voucherKind,
     );
   }
 }

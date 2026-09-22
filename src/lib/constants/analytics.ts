@@ -1,0 +1,16 @@
+export const analyticsDefaultCurrency = "ARS"
+export const analyticsInitialCurrencies = ["ARS", "USD"] as const
+export const analyticsCurrencyAliases = { pesos: "ARS" } as const
+export const analyticsMonthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"] as const
+export const analyticsPurchaseCategoryIds = { fiscal: "fiscal", nonFiscal: "non_fiscal" } as const
+export const analyticsFallbackTaxConcept = "Otros"
+export const analyticsUnavailableValueLabel = "N/D"
+export const analyticsNoIncomeLabel = "Sin ingresos"
+export const analyticsMetricLabels = { collections: "Cobros del mes", payments: "Pagos del mes", balance: "Balance y margen" } as const
+export const analyticsAnnualMetricLabels = { collections: "Cobros acumulados", payments: "Pagos acumulados", balance: "Balance acumulado y margen" } as const
+export const analyticsPurchaseCategoryLabels = { fiscal: "Compras fiscales", non_fiscal: "Compras no fiscales" } as const
+export const analyticsCategoryColors = ["#FF5C00", "#FF8A4C", "#6B6B70", "#ADADB0", "#3F3F46", "#18181B"] as const
+export const analyticsClientSalesPageSize = 10
+export const analyticsClientSalesPageSizeOptions = [10, 20, 50] as const
+export const analyticsClientSalesPageSizeAriaLabel = "Mostrar clientes por página"
+export const analyticsClientSalesTitle = "Ventas por cliente"

@@ -163,7 +163,7 @@ describe("voucher tax jurisdiction validation", () => {
   it("requires a jurisdiction for income tax retention concepts", () => {
     const result = createVoucherFormSchema({
       ...formCatalogs,
-      retentionConcepts: [{ id: "retention-iibb", name: "Retención de Ingresos Brutos", type: "sale" }],
+      retentionConcepts: [{ id: "retention-iibb", name: "Retención de Ingresos Brutos" }],
     }).safeParse({
       ...purchaseFormValues,
       retentions: [{ retentionConceptId: "retention-iibb", taxJurisdictionId: "", amount: 10 }],

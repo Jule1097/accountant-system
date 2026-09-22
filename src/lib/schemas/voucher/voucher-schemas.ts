@@ -11,6 +11,8 @@ import {
   voucherValidationMessages,
   voucherDocumentIdentificationModeValues,
   voucherDocumentIdentificationModes,
+  voucherCurrencyCodes,
+  voucherCurrencySymbols,
 } from 'src/lib/constants/voucher'
 
 function isNonZeroVoucherValue(value: string): boolean {
@@ -109,9 +111,7 @@ export const voucherSchema = z
     supplierId: z.string().uuid('ID de proveedor inválido').nullable().optional(),
     date: z.coerce.date({ message: 'Fecha inválida' }),
     accountingPeriod: z.coerce.date({ message: 'Período contable inválido' }).optional(),
-    currency: z.enum(['$', 'USD'], {
-      message: "La moneda debe ser '$' o 'USD'",
-    }),
+    currency: z.string().trim().min(1, voucherValidationMessages.invalidCurrency),
     exchangeRate: exchangeRateSchema
       .positive('El tipo de cambio debe ser un número positivo')
       .optional()
@@ -164,7 +164,7 @@ export const voucherSchema = z
   )
   .refine(
     (data) => {
-      if (data.currency === 'USD') {
+      if (data.currency !== voucherCurrencySymbols.ARS && data.currency !== voucherCurrencyCodes.ars) {
         return data.exchangeRate > 0 && data.exchangeRate !== 1
       }
 
@@ -200,6 +200,7 @@ export const voucherListQuerySchema = z.object({
   pageSize: z.coerce.number().int().refine((value) => voucherPageSizeOptions.includes(value as typeof voucherPageSizeOptions[number])).default(voucherPageSizeOptions[0]),
   search: z.string().trim().max(inputLimits.maxSearchLength, 'La búsqueda no puede superar los 255 caracteres').optional(),
   status: z.enum(['pending', 'partial', 'paid']).optional(),
+  currency: z.string().trim().min(1, voucherValidationMessages.invalidCurrency).optional(),
   dateFrom: z.coerce.date().optional(),
   dateTo: z.coerce.date().optional(),
   sortBy: z.enum(['date', 'status', 'voucher']).default('date'),

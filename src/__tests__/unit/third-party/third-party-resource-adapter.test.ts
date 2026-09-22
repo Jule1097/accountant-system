@@ -7,14 +7,14 @@ jest.mock("src/lib/api/api-client", () => ({
 }))
 
 describe("client supplier resource adapter", () => {
-  it("executes deletion through the injected resource operation boundary", async () => {
-    const response = { json: jest.fn() }
+  it.each(["clients", "suppliers"] as const)("executes %s deletion without parsing a 204 response", async (type) => {
+    const response = new Response(null, { status: 204 })
     apiRequestMock.mockResolvedValue(response)
-    const adapter = createClientSupplierMutationAdapter("clients")
+    const adapter = createClientSupplierMutationAdapter(type)
 
-    await adapter.remove?.("company-1", "client-1")
+    await adapter.remove?.("company-1", `${type}-1`)
 
-    expect(apiRequestMock).toHaveBeenCalledWith("/api/clients/client-1", {
+    expect(apiRequestMock).toHaveBeenCalledWith(`/api/${type}/${type}-1`, {
       method: "DELETE",
       headers: { "x-company-id": "company-1" },
     })

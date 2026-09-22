@@ -90,26 +90,27 @@ async function main() {
   console.log('Voucher letters seeded.')
 
   const retentionConcepts = [
-    { name: 'Retención de Ganancias Sufrida', type: 'sale' },
-    { name: 'Retención de IVA Sufrida', type: 'sale' },
-    { name: 'Retención de Ingresos Brutos Sufrida', type: 'sale' },
-    { name: 'Retención Osseg/ansal Sufrida', type: 'sale' },
+    { name: 'Retención de IIBB' },
+    { name: 'Retención de IVA' },
+    { name: 'Retención OSSEG/ANSAL' },
+    { name: 'Retención de Ganancias' },
   ]
 
   for (const retentionConcept of retentionConcepts) {
     await prisma.retentionConcept.upsert({
       where: { name: retentionConcept.name },
-      update: { type: retentionConcept.type },
-      create: { name: retentionConcept.name, type: retentionConcept.type },
+      update: {},
+      create: retentionConcept,
     })
   }
 
   console.log('Retention concepts seeded.')
 
   const perceptionConcepts = [
+    { name: 'Percepción de IIBB' },
     { name: 'Percepción de IVA' },
-    { name: 'Percepción de Ingresos Brutos' },
-    { name: 'Percepción Osseg/ansal' },
+    { name: 'Percepción de Ganancias' },
+    { name: 'Otros Impuestos' },
   ]
 
   for (const perceptionConcept of perceptionConcepts) {

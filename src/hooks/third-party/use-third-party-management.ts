@@ -11,6 +11,7 @@ import { useTableQueryState } from 'src/hooks/shared/use-table-query-state'
 import { useResourceDeletionCoordinator } from 'src/hooks/shared/use-resource-deletion'
 import { resolveResourceDeletionQuery } from 'src/lib/helpers/shared/resource-deletion'
 import { createClientSupplierMutationAdapter } from 'src/lib/helpers/third-party/third-party-resource-adapter'
+import { invalidateVoucherFormOptions } from 'src/hooks/voucher/use-voucher-form-options'
 import {
   buildClientSupplierMutationQuery,
   buildClientSupplierQuery,
@@ -170,6 +171,7 @@ export function useClientsSuppliersManagement(type: ClientSupplierEntityType): U
   }
 
   const handleCreateSuccess = async (): Promise<void> => {
+    invalidateVoucherFormOptions(type === thirdPartyEntityTypes.clients ? 'sales' : 'purchases', activeCompanyId)
     await revalidateScope()
   }
 

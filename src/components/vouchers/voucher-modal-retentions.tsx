@@ -11,7 +11,7 @@ interface VoucherModalRetentionsProps {
   append: UseFieldArrayReturn<VoucherFormValues, "retentions">["append"];
   remove: UseFieldArrayReturn<VoucherFormValues, "retentions">["remove"];
   catalogs: {
-    retentionConcepts: { id: string; name: string; type: string }[];
+    retentionConcepts: { id: string; name: string }[];
     taxJurisdictions: { id: string; name: string }[];
   };
   disabled?: boolean;
@@ -69,13 +69,11 @@ export function VoucherModalRetentions({
                     {...register(`retentions.${index}.retentionConceptId` as const)}
                   >
                     <option value="">Seleccionar</option>
-                    {catalogs.retentionConcepts
-                      .filter((concept) => concept.type === "sale")
-                      .map((concept) => (
-                        <option key={concept.id} value={concept.id}>
-                          {concept.name}
-                        </option>
-                      ))}
+                    {catalogs.retentionConcepts.map((concept) => (
+                      <option key={concept.id} value={concept.id}>
+                        {concept.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
 

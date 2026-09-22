@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { VoucherManagementView } from 'src/components/vouchers/voucher-management-view'
 import { VoucherModalPerceptions } from 'src/components/vouchers/voucher-modal-perceptions'
+import { VoucherModalRetentions } from 'src/components/vouchers/voucher-modal-retentions'
 import { VoucherModalActions } from 'src/components/vouchers/voucher-modal-actions'
 import { VoucherModalCoreFields } from 'src/components/vouchers/voucher-modal-core-fields'
 import { VoucherTableFilters } from 'src/components/vouchers/voucher-table-filters'
@@ -305,13 +306,43 @@ function PerceptionsHarness() {
       remove={fieldArray.remove}
       catalogs={{
         perceptionConcepts: [
-          { id: 'per-iibb', name: 'Percepción de Ingresos Brutos' },
+          { id: 'per-iibb', name: 'Percepción de IIBB' },
           { id: 'per-iva', name: 'Percepción de IVA' },
+          { id: 'per-gan', name: 'Percepción de Ganancias' },
+          { id: 'per-other', name: 'Otros Impuestos' },
         ],
         taxJurisdictions: [
           { id: 'jur-caba', name: 'CABA' },
           { id: 'jur-pba', name: 'Buenos Aires' },
         ],
+      }}
+    />
+  )
+}
+
+function RetentionsHarness() {
+  const form = useForm<VoucherFormValues>({
+    defaultValues: createBaseFormValues(),
+  })
+  const fieldArray = useFieldArray({
+    control: form.control,
+    name: 'retentions',
+  })
+
+  return (
+    <VoucherModalRetentions
+      form={form}
+      fields={fieldArray.fields}
+      append={fieldArray.append}
+      remove={fieldArray.remove}
+      catalogs={{
+        retentionConcepts: [
+          { id: 'ret-iibb', name: 'Retención de IIBB' },
+          { id: 'ret-iva', name: 'Retención de IVA' },
+          { id: 'ret-osseg', name: 'Retención OSSEG/ANSAL' },
+          { id: 'ret-gan', name: 'Retención de Ganancias' },
+        ],
+        taxJurisdictions: [],
       }}
     />
   )
@@ -385,8 +416,11 @@ function createVoucherListResponse(vouchers: VoucherApiResponse[]): VoucherListR
 function createVoucherSummaryResponse(): VoucherSummaryResponse {
   return {
     totalCount: 1,
-    totalAmount: 136,
-    topPartyName: 'Proveedor Uno',
+    documentTotal: { ARS: 136 },
+    cashTotal: { ARS: 120 },
+    topParty: { ARS: { name: 'Proveedor Uno', total: 120 } },
+    pendingCount: 1,
+    nonFiscalAmount: {},
   }
 }
 
@@ -412,6 +446,32 @@ describe('Voucher UI', () => {
 
     expect(screen.getByRole('option', { name: 'CABA' })).toBeInTheDocument()
     expect(screen.getByRole('option', { name: 'Buenos Aires' })).toBeInTheDocument()
+  })
+
+  it('exposes the canonical retention concepts', () => {
+    render(<RetentionsHarness />)
+
+    fireEvent.click(screen.getByRole('button', { name: '+ Agregar Retención' }))
+
+    expect(Array.from((screen.getByRole('combobox') as HTMLSelectElement).options).map((option) => option.textContent)).toEqual([
+      'Seleccionar',
+      'Retención de IIBB',
+      'Retención de IVA',
+      'Retención OSSEG/ANSAL',
+      'Retención de Ganancias',
+    ])
+  })
+
+  it('exposes the canonical perception concepts', () => {
+    render(<PerceptionsHarness />)
+
+    expect(Array.from((screen.getByRole('combobox') as HTMLSelectElement).options).map((option) => option.textContent)).toEqual([
+      'Seleccionar',
+      'Percepción de IIBB',
+      'Percepción de IVA',
+      'Percepción de Ganancias',
+      'Otros Impuestos',
+    ])
   })
 
   it('does not show a jurisdiction select for non-IIBB perceptions', async () => {
@@ -452,6 +512,7 @@ describe('Voucher UI', () => {
         onClearFilters={onClearFilters}
         onStatusChange={onStatusChange}
         onDateRangeChange={onDateRangeChange}
+        onCurrencyChange={jest.fn()}
       />
     )
 
@@ -556,6 +617,7 @@ describe('Voucher UI', () => {
         onClearFilters={jest.fn()}
         onStatusChange={jest.fn()}
         onDateRangeChange={jest.fn()}
+        onCurrencyChange={jest.fn()}
         onSortChange={jest.fn()}
         onPageChange={jest.fn()}
         onPageSizeChange={jest.fn()}
@@ -595,6 +657,7 @@ describe('Voucher UI', () => {
         onClearFilters={jest.fn()}
         onStatusChange={jest.fn()}
         onDateRangeChange={jest.fn()}
+        onCurrencyChange={jest.fn()}
         onSortChange={jest.fn()}
         onPageChange={jest.fn()}
         onPageSizeChange={jest.fn()}
@@ -623,6 +686,7 @@ describe('Voucher UI', () => {
         onClearFilters={jest.fn()}
         onStatusChange={jest.fn()}
         onDateRangeChange={onDateRangeChange}
+        onCurrencyChange={jest.fn()}
         onSortChange={jest.fn()}
         onPageChange={jest.fn()}
         onPageSizeChange={jest.fn()}
@@ -665,6 +729,7 @@ describe('Voucher UI', () => {
         onClearFilters={jest.fn()}
         onStatusChange={jest.fn()}
         onDateRangeChange={jest.fn()}
+        onCurrencyChange={jest.fn()}
         onSortChange={jest.fn()}
         onPageChange={onPageChange}
         onPageSizeChange={jest.fn()}
@@ -863,7 +928,7 @@ describe('Voucher UI', () => {
       voucherType: 'Factura de Crédito Electrónica MiPyME (FCE)',
       voucherLetter: 'A',
       vatDetails: [],
-      retentions: [],
+      retentions: [{ retentionConceptId: null, taxJurisdictionId: null, conceptName: "Retención desconocida", amount: 12, taxJurisdictionName: null }],
       perceptions: [],
     }
     const { result, rerender } = renderHook((props: Parameters<typeof useVoucherForm>[0]) => useVoucherForm(props), {
@@ -885,6 +950,7 @@ describe('Voucher UI', () => {
       expect(result.current.form.getValues('voucherTypeId')).toBe('type-fce')
       expect(result.current.form.getValues('voucherLetterId')).toBe('letter-a')
     })
+    expect(toastAdd).toHaveBeenCalledWith(expect.objectContaining({ type: "warning" }))
   })
 
   it('persists voucher edition through the API and keeps the modal open', async () => {
@@ -1023,7 +1089,7 @@ describe('Voucher UI', () => {
       )
     })
 
-    expect(replaceMock).toHaveBeenCalledWith('/sales', { scroll: false })
+    expect(replaceMock).toHaveBeenCalledWith('/sales?currency=ARS', { scroll: false })
   })
 
   it('confirms physical deletion, refreshes the table, shows success feedback, and clears voucherId when needed', async () => {
@@ -1077,6 +1143,6 @@ describe('Voucher UI', () => {
         title: 'Comprobante eliminado',
       })
     )
-    expect(replaceMock).toHaveBeenCalledWith('/sales', { scroll: false })
+    expect(replaceMock).toHaveBeenCalledWith('/sales?currency=ARS', { scroll: false })
   })
 })

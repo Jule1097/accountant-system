@@ -1,4 +1,5 @@
 import { ApiRequestError } from "src/lib/api/api-client";
+import { analyticsDefaultCurrency } from "src/lib/constants/analytics";
 import { parseUrlState, updateUrlState } from "src/lib/helpers/shared/url-state";
 import { VoucherApiResponse } from "src/types/voucher/voucher-api";
 import {
@@ -22,6 +23,7 @@ export const voucherTableParameters = {
   page: { defaultValue: 1, parse: (value: string | null) => Number(value), normalize: (value: number) => Number.isInteger(value) && value > 0 ? value : 1, serialize: (value: number) => value === 1 ? null : String(value) },
   pageSize: { defaultValue: 10, parse: (value: string | null) => Number(value), normalize: (value: number) => voucherPageSizeOptions.includes(value as typeof voucherPageSizeOptions[number]) ? value : 10, serialize: (value: number) => value === 10 ? null : String(value), allowedValues: voucherPageSizeOptions },
   search: { defaultValue: "", serialize: (value: string) => value || null },
+  currency: { defaultValue: analyticsDefaultCurrency, parse: (value: string | null) => value || analyticsDefaultCurrency, serialize: (value: string) => value || analyticsDefaultCurrency },
   status: { defaultValue: undefined, parse: (value: string | null) => value ? value as VoucherStatus : undefined, allowedValues: voucherStatusOptions },
   dateFrom: { defaultValue: undefined, parse: (value: string | null) => value ?? undefined },
   dateTo: { defaultValue: undefined, parse: (value: string | null) => value ?? undefined },

@@ -8,8 +8,10 @@ describe("dashboard components", () => {
   it("renders kpi cards with zero values when analytics data is unavailable", () => {
     render(<KpiCards data={undefined as never} />)
 
-    expect(screen.getByText("Ingresos del mes")).toBeInTheDocument()
-    expect(screen.getAllByText("$ 0,00")).toHaveLength(2)
+    expect(screen.getByText("Cobros del mes")).toBeInTheDocument()
+    expect(screen.getByText("Pagos del mes")).toBeInTheDocument()
+    expect(screen.getByText("Balance y margen")).toBeInTheDocument()
+    expect(screen.getAllByText("$ 0,00")).toHaveLength(3)
   })
 
   it("renders recent activity empty states when dashboard activity data is unavailable", () => {

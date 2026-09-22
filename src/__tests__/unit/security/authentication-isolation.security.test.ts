@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server"
 import { GET as getCatalogs } from "src/app/api/catalogs/route"
 import { GET as getDashboardActivity } from "src/app/api/dashboard/recent-activity/route"
+import { GET as getMetrics } from "src/app/api/metrics/route"
 import { GET as getClient } from "src/app/api/clients/[id]/route"
 import { GET as getSupplier } from "src/app/api/suppliers/[id]/route"
 import { GET as getVoucher } from "src/app/api/vouchers/[id]/route"
@@ -13,6 +14,7 @@ import { RequestContextError } from "src/lib/errors/request-context"
 import { requireRequestContext } from "src/lib/helpers/auth/request-context"
 import { CatalogService } from "src/services/catalog/Catalog"
 import { DashboardService } from "src/services/dashboard/Dashboard"
+import { Metric } from "src/services/metric/Metric"
 import { ClientService } from "src/services/third-party/Client"
 import { SupplierService } from "src/services/third-party/Supplier"
 import { VoucherService } from "src/services/voucher/Voucher"
@@ -23,6 +25,7 @@ import { VoucherPersistenceService } from "src/services/parser/VoucherPersistenc
 jest.mock("src/lib/helpers/auth/request-context", () => ({ requireRequestContext: jest.fn() }))
 jest.mock("src/services/catalog/Catalog")
 jest.mock("src/services/dashboard/Dashboard")
+jest.mock("src/services/metric/Metric")
 jest.mock("src/services/third-party/Client")
 jest.mock("src/services/third-party/Supplier")
 jest.mock("src/services/voucher/Voucher")
@@ -62,6 +65,13 @@ describe("authentication and company isolation security boundary", () => {
 
     expect(response.status).toBe(401)
     expect(DashboardService).not.toHaveBeenCalled()
+  })
+
+  it("rejects anonymous metrics access even when a company header is supplied", async () => {
+    const response = await getMetrics(createRequest("/api/metrics", foreignCompanyId))
+
+    expect(response.status).toBe(401)
+    expect(Metric).not.toHaveBeenCalled()
   })
 
   it("blocks an authenticated user from an unrelated client record", async () => {

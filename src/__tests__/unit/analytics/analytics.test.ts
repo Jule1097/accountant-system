@@ -38,49 +38,36 @@ describe("Analytics Module Exports", () => {
     })
     useAnalyticsMock.mockReturnValue({
       data: {
-        monthly: {
-          netSales: { ARS: 0, USD: 0 },
-          netPurchases: { ARS: 0, USD: 0 },
-          salesCreditNotes: { ARS: 0, USD: 0 },
-          purchasesCreditNotes: { ARS: 0, USD: 0 },
-          vatDebit: { ARS: 0, USD: 0 },
-          vatCredit: { ARS: 0, USD: 0 },
-          vatNetBalance: { ARS: 0, USD: 0 },
-          retentions: [],
-          perceptions: [],
+        currentMonth: {
+          collections: { ARS: 0 },
+          payments: { ARS: 0 },
+          balance: { ARS: 0 },
+          margin: { ARS: null },
+          sales: { ARS: 0 },
+          purchases: { ARS: 0 },
+          pending: { count: 0, amount: {} },
+          purchaseDistribution: { ARS: [] },
+          taxes: { retentions: [], perceptions: [] },
           topClients: [],
           topSuppliers: [],
-        },
-        semiannual: {
-          netSales: { ARS: 0, USD: 0 },
-          netPurchases: { ARS: 0, USD: 0 },
-          salesCreditNotes: { ARS: 0, USD: 0 },
-          purchasesCreditNotes: { ARS: 0, USD: 0 },
-          vatDebit: { ARS: 0, USD: 0 },
-          vatCredit: { ARS: 0, USD: 0 },
-          vatNetBalance: { ARS: 0, USD: 0 },
-          retentions: [],
-          perceptions: [],
-          topClients: [],
-          topSuppliers: [],
+          salesByClient: { ARS: [] },
         },
         annual: {
-          netSales: { ARS: 0, USD: 0 },
-          netPurchases: { ARS: 0, USD: 0 },
-          salesCreditNotes: { ARS: 0, USD: 0 },
-          purchasesCreditNotes: { ARS: 0, USD: 0 },
-          vatDebit: { ARS: 0, USD: 0 },
-          vatCredit: { ARS: 0, USD: 0 },
-          vatNetBalance: { ARS: 0, USD: 0 },
-          retentions: [],
-          perceptions: [],
+          collections: { ARS: 0 },
+          payments: { ARS: 0 },
+          balance: { ARS: 0 },
+          margin: { ARS: null },
+          sales: { ARS: 0 },
+          purchases: { ARS: 0 },
+          pending: { count: 0, amount: {} },
+          purchaseDistribution: { ARS: [] },
+          taxes: { retentions: [], perceptions: [] },
           topClients: [],
           topSuppliers: [],
+          salesByClient: { ARS: [] },
         },
-        trend: {
-          ARS: [],
-          USD: [],
-        },
+        trend: [],
+        annualVariations: { collections: {}, payments: {}, balance: {} },
       },
       isLoading: false,
     })
@@ -117,8 +104,7 @@ describe("Analytics Module Exports", () => {
     render(createElement(AnalyticsView))
 
     expect(screen.getByText("Analíticas")).toBeInTheDocument()
-    expect(screen.queryByText("Facturación del Mes")).not.toBeInTheDocument()
-    expect(screen.queryByText("Comparación Mensual vs Período Anterior")).not.toBeInTheDocument()
+    expect(screen.queryByText("Cobros del mes")).not.toBeInTheDocument()
     expect(useAnalyticsMock).not.toHaveBeenCalled()
   })
 
@@ -136,7 +122,7 @@ describe("Analytics Module Exports", () => {
 
     expect(screen.getByTestId("analytics-page-skeleton")).toBeInTheDocument()
     expect(screen.queryByText("Analíticas")).not.toBeInTheDocument()
-    expect(screen.queryByText("Facturación del Mes")).not.toBeInTheDocument()
+    expect(screen.queryByText("Cobros del mes")).not.toBeInTheDocument()
     expect(useAnalyticsMock).not.toHaveBeenCalled()
   })
 
@@ -149,6 +135,6 @@ describe("Analytics Module Exports", () => {
     render(createElement(AnalyticsView))
 
     expect(screen.getByTestId("analytics-page-skeleton")).toBeInTheDocument()
-    expect(screen.queryByText("Facturación del Mes")).not.toBeInTheDocument()
+    expect(screen.queryByText("Cobros del mes")).not.toBeInTheDocument()
   })
 })

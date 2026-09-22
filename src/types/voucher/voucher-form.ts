@@ -3,7 +3,7 @@ import { VoucherVatDetail } from "src/types/voucher/voucher";
 export interface VoucherFormCatalogState {
   voucherTypes: { id: string; name: string; applicability?: "sale" | "purchase" | "both" }[];
   voucherLetters: { id: string; letter: string }[];
-  retentionConcepts: { id: string; name: string; type: string }[];
+  retentionConcepts: { id: string; name: string }[];
   perceptionConcepts: { id: string; name: string }[];
   taxJurisdictions: { id: string; name: string }[];
 }
@@ -34,7 +34,7 @@ export interface VoucherFormPayload {
   supplierId: string | null;
   date: VoucherFormDateValue;
   accountingPeriod?: VoucherFormDateValue;
-  currency: "$" | "USD";
+  currency: string;
   exchangeRate: number;
   subtotal: number;
   vatAmount: number;

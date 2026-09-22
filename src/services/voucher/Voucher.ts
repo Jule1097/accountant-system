@@ -10,6 +10,7 @@ import { supplierTaxIdentificationModes } from 'src/lib/constants/third-party'
 import { voucherDocumentIdentificationModes, purchaseIdentificationModeMismatchMessage, purchaseSupplierNotFoundMessage, voucherTypeNotApplicableMessage, voucherTypeValues } from 'src/lib/constants/voucher'
 import { SupplierRepositoryContract } from 'src/types/third-party/supplier-repository'
 import { IdentificationModeConversionRequiredError, PossibleNonFiscalDuplicateError } from 'src/lib/errors/voucher/voucher-errors'
+import { calculateVoucherSummary } from 'src/lib/helpers/metric/metric-calculations'
 
 export class VoucherService {
   private repository: VoucherRepository
@@ -37,8 +38,9 @@ export class VoucherService {
     return this.repository.findPage(companyId, page, pageSize, filters)
   }
 
-  async getVoucherSummary(companyId: string, filters?: VoucherFilterParams): Promise<VoucherSummaryResponse> {
-    return this.repository.summarize(companyId, filters)
+  async getVoucherSummary(companyId: string, filters: VoucherFilterParams & { type: 'sale' | 'purchase' }): Promise<VoucherSummaryResponse> {
+    const vouchers = await this.repository.findAll(companyId, filters)
+    return calculateVoucherSummary(vouchers, filters.type)
   }
 
   async createVoucher(input: VoucherFactoryInput): Promise<Voucher> {
