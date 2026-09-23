@@ -4,6 +4,9 @@ import { VoucherPersistenceService } from "src/services/parser/VoucherPersistenc
 import { AsyncBatchRunner } from "src/types/parser/async-batch-runner";
 import { ParserBatchItemContextRecord } from "src/types/parser/parser-batch";
 import { VoucherFormPayload } from "src/types/voucher/voucher-form";
+import { ParserStorageService } from "src/services/parser/ParserStorage";
+import { applicationErrorCodes } from "src/lib/constants/application-error";
+import { ApplicationError } from "src/lib/errors/application-error";
 import { apiResponseMessages } from "src/lib/constants/api-response";
 
 jest.mock("src/repositories/parser/parser-batch.repository");
@@ -79,6 +82,8 @@ describe("VoucherPersistenceService", () => {
   let batchRepositoryMock: jest.Mocked<ParserBatchRepository>;
   let voucherServiceMock: jest.Mocked<VoucherService>;
   let asyncBatchRunnerMock: jest.Mocked<AsyncBatchRunner>;
+  let storageServiceMock: jest.Mocked<ParserStorageService>;
+  let deleteItemMock: jest.Mock;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -89,9 +94,14 @@ describe("VoucherPersistenceService", () => {
     service = new VoucherPersistenceService(asyncBatchRunnerMock);
     batchRepositoryMock = new ParserBatchRepository() as jest.Mocked<ParserBatchRepository>;
     voucherServiceMock = new VoucherService() as jest.Mocked<VoucherService>;
+    storageServiceMock = Object.create(ParserStorageService.prototype) as jest.Mocked<ParserStorageService>;
+    storageServiceMock.deleteFile = jest.fn();
+    deleteItemMock = jest.fn();
+    Object.defineProperty(batchRepositoryMock, "deleteItem", { value: deleteItemMock, writable: true });
 
     Object.defineProperty(service, "batchRepository", { value: batchRepositoryMock, writable: true });
     Object.defineProperty(service, "voucherService", { value: voucherServiceMock, writable: true });
+    Object.defineProperty(service, "storageService", { value: storageServiceMock, writable: true });
   });
 
   it("persists the validated purchase payload without losing voucher number or supplier", async () => {
@@ -137,24 +147,70 @@ describe("VoucherPersistenceService", () => {
     });
 
     expect(voucherServiceMock.createVoucher).not.toHaveBeenCalled();
-    expect(batchRepositoryMock.markItemPersistenceFailed).toHaveBeenCalledWith(
-      "item-1",
-      apiResponseMessages.conciliation.itemPersistFailed,
-    );
+    expect(batchRepositoryMock.markItemPersistenceFailed).toHaveBeenCalledWith("item-1", apiResponseMessages.conciliation.itemPersistFailed);
   });
 
-  it("stores a generic persistence error instead of provider details", async () => {
+  it("restores validated work instead of exposing provider details after a technical failure", async () => {
     const item = createPersistingItem();
     const secret = "database-password-token-user-email@example.com";
 
     batchRepositoryMock.findItemById.mockResolvedValue(item);
-    batchRepositoryMock.markItemPersistenceFailed.mockResolvedValue();
+    batchRepositoryMock.restoreItemsToValidated.mockResolvedValue();
     voucherServiceMock.createVoucher.mockRejectedValue(new Error(secret));
 
     await service.processJob({ batchId: "batch-1", itemId: "item-1" });
 
-    expect(batchRepositoryMock.markItemPersistenceFailed).toHaveBeenCalledWith("item-1", apiResponseMessages.conciliation.itemPersistFailed);
-    expect(batchRepositoryMock.markItemPersistenceFailed.mock.calls.flat()).not.toContain(secret);
+    expect(batchRepositoryMock.restoreItemsToValidated).toHaveBeenCalledWith(["item-1"]);
+    expect(batchRepositoryMock.restoreItemsToValidated.mock.calls.flat()).not.toContain(secret);
+  });
+
+  it("physically removes a losing duplicate item and its temporary source file", async () => {
+    const item = createPersistingItem();
+
+    batchRepositoryMock.findItemById.mockResolvedValue(item);
+    voucherServiceMock.createVoucher.mockRejectedValue(new ApplicationError(applicationErrorCodes.duplicate, "Comprobante duplicado detectado."));
+    storageServiceMock.deleteFile.mockResolvedValue();
+
+    await service.processJob({ batchId: "batch-1", itemId: "item-1" });
+
+    expect(storageServiceMock.deleteFile).toHaveBeenCalledWith(item.storagePath);
+    expect(deleteItemMock).toHaveBeenCalledWith(item.id);
+  });
+
+  it.each([
+    { name: "two independent persistence jobs", firstBatchId: "batch-1", secondBatchId: "batch-2", mixed: false },
+    { name: "an individual persistence request and a batch job", firstBatchId: "batch-1", secondBatchId: "batch-1", mixed: true },
+    { name: "two equivalent items from one batch", firstBatchId: "batch-1", secondBatchId: "batch-1", mixed: false },
+  ])("keeps one voucher and removes every losing item when $name race", async ({ firstBatchId, secondBatchId, mixed }) => {
+    const firstItem = createPersistingItem();
+    firstItem.id = "item-1";
+    firstItem.batchId = firstBatchId;
+    firstItem.status = mixed ? "validated" : "persisting";
+    firstItem.storagePath = `${firstBatchId}/first.pdf`;
+    firstItem.batch = { ...firstItem.batch, id: firstBatchId };
+    const secondItem = createPersistingItem();
+    secondItem.id = "item-2";
+    secondItem.batchId = secondBatchId;
+    secondItem.storagePath = `${secondBatchId}/second.pdf`;
+    secondItem.batch = { ...secondItem.batch, id: secondBatchId };
+    const items = new Map([[firstItem.id, firstItem], [secondItem.id, secondItem]]);
+
+    batchRepositoryMock.findItemById.mockImplementation(async (itemId) => items.get(itemId) || null);
+    batchRepositoryMock.claimValidatedItemForPersistence.mockResolvedValue({ ...firstItem, status: "persisting" });
+    batchRepositoryMock.markItemPersisted.mockResolvedValue();
+    voucherServiceMock.createVoucher.mockResolvedValueOnce({} as never).mockRejectedValueOnce(new ApplicationError(applicationErrorCodes.duplicate, "Comprobante duplicado detectado."));
+    storageServiceMock.deleteFile.mockResolvedValue();
+
+    const operations = mixed
+      ? [service.persistItem(companyId, firstItem.id), service.processJob({ batchId: secondBatchId, itemId: secondItem.id })]
+      : [service.processJob({ batchId: firstBatchId, itemId: firstItem.id }), service.processJob({ batchId: secondBatchId, itemId: secondItem.id })];
+
+    await Promise.all(operations);
+
+    expect(voucherServiceMock.createVoucher).toHaveBeenCalledTimes(2);
+    expect(batchRepositoryMock.markItemPersisted).toHaveBeenCalledTimes(1);
+    expect(storageServiceMock.deleteFile).toHaveBeenCalledTimes(1);
+    expect(deleteItemMock).toHaveBeenCalledTimes(1);
   });
 
   it("triggers the async persistence runner for validated batch items", async () => {

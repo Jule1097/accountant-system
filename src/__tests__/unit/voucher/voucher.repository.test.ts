@@ -3,6 +3,7 @@ import prisma from "src/lib/database/prisma"
 import { VoucherFactory } from "src/models/voucher/VoucherFactory"
 import { VoucherRepository } from "src/repositories/voucher/voucher.repository"
 import { VoucherPersistenceRecord } from "src/types/voucher/voucher-persistence"
+import { Voucher } from "src/models/voucher/Voucher"
 
 jest.mock("src/lib/database/prisma", () => ({ __esModule: true, default: { voucher: { findUnique: jest.fn(), findFirst: jest.fn(), findMany: jest.fn(), count: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn() } } }))
 
@@ -210,5 +211,23 @@ describe("VoucherRepository", () => {
     await repository.findPage("company-1", 1, 10, { type: "sale", currency: "ARS" })
 
     expect(mockPrisma.voucher.count).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ currency: { in: ["$", "ARS"] } }) }))
+  })
+
+  it("matches fiscal duplicates with absent applicable party values and keeps company isolation", async () => {
+    mockPrisma.voucher.findFirst.mockResolvedValue(null)
+    const voucher = Object.assign(Object.create(Voucher.prototype), {
+      companyId: "company-2",
+      type: "purchase",
+      voucherTypeId: "voucher-type-1",
+      voucherLetterId: null,
+      posNumber: null,
+      number: null,
+      documentIdentificationMode: "fiscal",
+      getPersistenceData: () => ({ clientId: null, supplierId: null, duplicateCriteria: { supplierId: null }, retentions: [], perceptions: [] }),
+    }) as Voucher
+
+    await repository.findDuplicate(voucher)
+
+    expect(mockPrisma.voucher.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ companyId: "company-2", supplierId: null, voucherLetterId: null, posNumber: null, number: null, documentIdentificationMode: "fiscal" }) }))
   })
 })

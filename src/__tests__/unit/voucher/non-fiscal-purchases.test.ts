@@ -78,6 +78,19 @@ describe("Non-fiscal purchases", () => {
     })
   })
 
+  it("allows a confirmed non-fiscal duplicate purchase", async () => {
+    const repositoryMock = new VoucherRepository() as jest.Mocked<VoucherRepository>
+    const supplierRepository = createSupplierRepository("without_cuit")
+    const service = new VoucherService(repositoryMock, supplierRepository)
+    const existingPurchase = VoucherFactory.create(createNonFiscalPurchaseInput({ id: validUuid }))
+
+    repositoryMock.findDuplicate.mockResolvedValue(existingPurchase)
+    repositoryMock.create.mockImplementation(async (voucher) => voucher)
+
+    await expect(service.createVoucher(createNonFiscalPurchaseInput({ confirmNonFiscalDuplicate: true }))).resolves.toBeInstanceOf(Purchase)
+    expect(repositoryMock.create).toHaveBeenCalled()
+  })
+
   it("preserves a historical non-fiscal mode when the supplier later has a CUIT", async () => {
     const repositoryMock = new VoucherRepository() as jest.Mocked<VoucherRepository>
     const supplierRepository = createSupplierRepository("with_cuit")

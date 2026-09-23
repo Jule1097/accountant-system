@@ -593,7 +593,29 @@ export class ParserBatchRepository {
       },
       data: {
         status: "validated",
+        currentError: null,
       },
+    });
+  }
+
+  async deleteItem(itemId: string): Promise<void> {
+    await prisma.$transaction(async (tx) => {
+      const item = await tx.parserBatchItem.findUniqueOrThrow({
+        where: {
+          id: itemId,
+        },
+        select: {
+          batchId: true,
+        },
+      });
+
+      await tx.parserBatchItem.delete({
+        where: {
+          id: itemId,
+        },
+      });
+
+      await syncBatchStatus(tx, item.batchId);
     });
   }
 
