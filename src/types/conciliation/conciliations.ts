@@ -44,8 +44,10 @@ export interface ConciliationSectionData {
 export interface ConciliationSectionSelectionState {
   discardableItemIds: string[]
   validatedItemIds: string[]
+  failedItemIds: string[]
   selectedDiscardableItemIds: string[]
   selectedValidatedItemIds: string[]
+  selectedFailedItemIds: string[]
   allDiscardableSelected: boolean
 }
 
@@ -62,6 +64,8 @@ export interface ConciliationSectionProps {
   onDelete: (voucher: ConciliationItem) => void
   onPersistSelected: () => void
   onDeleteSelected: () => void
+  onRetrySelected: () => void
+  isRetryingSelected: boolean
 }
 
 export interface ConciliationBulkDiscardPayload {
@@ -78,6 +82,13 @@ export interface ConciliationBulkPersistPayload {
 
 export interface ConciliationBulkPersistResponse {
   queuedItems: number;
+}
+
+export interface ConciliationBulkRetryResponse {
+  requeuedItems: number;
+  affectedBatches: number;
+  dispatchRecovered: boolean;
+  message: string;
 }
 
 export type ConciliationPersistResultStatus = "persisted" | "duplicate" | "failed";
@@ -117,6 +128,13 @@ export interface ConciliationDeleteDialogState {
   title: string;
   description: string;
   mode: "single" | "bulk" | null;
+}
+
+export interface ConciliationRetryBatchActionState {
+  itemIds: string[];
+  selectedFailedCount: number;
+  canRetry: boolean;
+  isPending: boolean;
 }
 
 export interface ConciliationsOverlaysProps {

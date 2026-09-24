@@ -29,7 +29,9 @@ export interface ApplicationErrorResponseContext {
 function logUnexpectedApplicationError(error: unknown, context: ApplicationErrorResponseContext): void {
   const errorName = isError(error) ? error.name : "UnknownError"
   const errorCode = isApplicationError(error) ? error.code : applicationErrorCodes.unexpected
-  console.error("Application request failed", { path: new URL(context.request.url).pathname, operation: context.operation, resource: context.resource, entityId: context.entityId, workflow: context.workflow, errorName, errorCode })
+  const providerErrorCode = !isApplicationError(error) && isError(error) && "code" in error && typeof error.code === "string" ? error.code : undefined
+  const providerErrorStatus = !isApplicationError(error) && isError(error) && "status" in error && (typeof error.status === "string" || typeof error.status === "number") ? error.status : undefined
+  console.error("Application request failed", { path: new URL(context.request.url).pathname, operation: context.operation, resource: context.resource, entityId: context.entityId, workflow: context.workflow, errorName, errorCode, providerErrorCode, providerErrorStatus })
 }
 
 export function resolveApplicationErrorResponse(error: unknown, context: ApplicationErrorResponseContext): NextResponse {

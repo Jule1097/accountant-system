@@ -5,6 +5,7 @@ import {
   ParserBatchStatus,
 } from "src/types/parser/parser-batch";
 import { inputLimits } from "src/lib/constants/input-limits";
+import { ParsedVoucherData } from "src/types/parser/gemini-parser";
 
 const parserBatchExpirationHours = 24;
 const parserBatchMaxFiles = inputLimits.maxParserFiles;
@@ -66,4 +67,40 @@ export function withParserBatchStatus(batch: ParserBatchRecord): ParserBatchReco
 
 export function isParserBatchExpired(expiresAt: string, now: Date = new Date()): boolean {
   return new Date(expiresAt).getTime() <= now.getTime();
+}
+
+function hasMeaningfulNumber(value: string | null): boolean {
+  return !!value && /[1-9]/.test(value);
+}
+
+function hasMeaningfulText(value: string | null): boolean {
+  if (!value) {
+    return false;
+  }
+
+  const normalizedValue = value.trim().toLowerCase();
+  return !!normalizedValue && normalizedValue !== "null" && normalizedValue !== "sin tercero identificado";
+}
+
+function hasMeaningfulTaxItems(items: Array<{ amount: number | null }>): boolean {
+  return items.some((item) => typeof item.amount === "number" && item.amount > 0);
+}
+
+function hasMeaningfulVatDetails(items: Array<{ subtotal: number | null; vatAmount: number | null }>): boolean {
+  return items.some((item) => (typeof item.subtotal === "number" && item.subtotal > 0) || (typeof item.vatAmount === "number" && item.vatAmount > 0));
+}
+
+export function hasReviewableParsedPayload(payload: ParsedVoucherData | null): boolean {
+  if (!payload) {
+    return false;
+  }
+
+  return (hasMeaningfulNumber(payload.posNumber) && hasMeaningfulNumber(payload.number))
+    || hasMeaningfulText(payload.date)
+    || (typeof payload.totalAmount === "number" && payload.totalAmount > 0)
+    || hasMeaningfulText(payload.thirdPartyCuit)
+    || hasMeaningfulText(payload.thirdPartyName)
+    || hasMeaningfulVatDetails(payload.vatDetails)
+    || hasMeaningfulTaxItems(payload.retentions)
+    || hasMeaningfulTaxItems(payload.perceptions);
 }

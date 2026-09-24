@@ -11,6 +11,12 @@ import { voucherDocumentIdentificationModes, purchaseIdentificationModeMismatchM
 import { SupplierRepositoryContract } from 'src/types/third-party/supplier-repository'
 import { IdentificationModeConversionRequiredError, PossibleNonFiscalDuplicateError } from 'src/lib/errors/voucher/voucher-errors'
 import { calculateVoucherSummary } from 'src/lib/helpers/metric/metric-calculations'
+import { isFiscalVoucherIdentityConstraintError } from 'src/lib/helpers/voucher/fiscal-identity'
+
+function rethrowVoucherPersistenceError(error: unknown): never {
+  if (isFiscalVoucherIdentityConstraintError(error)) throw new ApplicationError(applicationErrorCodes.duplicate, apiResponseMessages.voucher.duplicate, 'Duplicate voucher detected by fiscal identity constraint')
+  throw error
+}
 
 export class VoucherService {
   private repository: VoucherRepository
@@ -57,7 +63,11 @@ export class VoucherService {
       throw new ApplicationError(applicationErrorCodes.duplicate, apiResponseMessages.voucher.duplicate, 'Duplicate voucher detected')
     }
 
-    return this.repository.create(voucher)
+    try {
+      return await this.repository.create(voucher)
+    } catch (error: unknown) {
+      return rethrowVoucherPersistenceError(error)
+    }
   }
 
   async updateVoucher(companyId: string, id: string, input: VoucherFactoryInput): Promise<Voucher> {
@@ -79,7 +89,11 @@ export class VoucherService {
       throw new ApplicationError(applicationErrorCodes.duplicate, apiResponseMessages.voucher.duplicate, 'Duplicate voucher detected')
     }
 
-    return this.repository.update(updatedVoucher)
+    try {
+      return await this.repository.update(updatedVoucher)
+    } catch (error: unknown) {
+      return rethrowVoucherPersistenceError(error)
+    }
   }
 
   async deleteVoucher(companyId: string, id: string): Promise<void> {

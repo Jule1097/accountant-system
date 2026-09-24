@@ -1,6 +1,7 @@
 "use client";
 
 import { ConciliationCard } from "src/components/conciliations/conciliation-card";
+import { Loader2 } from "lucide-react";
 import type { ConciliationSectionProps } from "src/types/conciliation/conciliations";
 
 export function ConciliationSection({
@@ -16,9 +17,12 @@ export function ConciliationSection({
   onDelete,
   onPersistSelected,
   onDeleteSelected,
+  onRetrySelected,
+  isRetryingSelected,
 }: ConciliationSectionProps) {
   const selectedCount = selection.selectedDiscardableItemIds.length;
   const selectedValidatedCount = selection.selectedValidatedItemIds.length;
+  const selectedFailedCount = selection.selectedFailedItemIds.length;
 
   return (
     <section className="space-y-3">
@@ -59,6 +63,17 @@ export function ConciliationSection({
                     className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-medium text-sky-600 transition-colors hover:bg-sky-100 dark:border-sky-500/20 dark:bg-sky-500/10 dark:text-sky-300 dark:hover:bg-sky-500/15"
                   >
                     Guardar seleccionadas ({selectedValidatedCount})
+                  </button>
+                )}
+
+                {selectedFailedCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={onRetrySelected}
+                    disabled={isRetryingSelected}
+                    className="inline-flex items-center justify-center gap-2 rounded-md border border-[#FF5C00]/30 bg-[#FF5C00]/10 px-3 py-2 text-xs font-medium text-[#FF5C00] transition-colors hover:bg-[#FF5C00]/15 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isRetryingSelected ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Enviando...</> : `Regenerar (${selectedFailedCount})`}
                   </button>
                 )}
 

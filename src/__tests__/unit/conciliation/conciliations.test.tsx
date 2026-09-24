@@ -14,6 +14,7 @@ const handlePersistMock = jest.fn();
 const handlePersistSectionMock = jest.fn();
 const handleDeleteMock = jest.fn();
 const handleDeleteSectionMock = jest.fn();
+const handleRetrySectionMock = jest.fn();
 const handleToggleItemSelectionMock = jest.fn();
 const handleToggleAllDiscardableMock = jest.fn();
 const handleReviewModalOpenChangeMock = jest.fn();
@@ -48,6 +49,12 @@ jest.mock("src/hooks/conciliation/use-conciliations", () => ({
       itemIds: ["item-validated"],
       selectedValidatedCount: 1,
       canPersist: true,
+    },
+    retryBatchAction: {
+      itemIds: [],
+      selectedFailedCount: 0,
+      canRetry: false,
+      isPending: false,
     },
     startIndex: 0,
     isPageLoading: false,
@@ -166,11 +173,14 @@ jest.mock("src/hooks/conciliation/use-conciliations", () => ({
         validatedItemIds,
         selectedDiscardableItemIds: discardableItemIds.filter((itemId) => selectedItemIds.includes(itemId)),
         selectedValidatedItemIds: validatedItemIds.filter((itemId) => selectedItemIds.includes(itemId)),
+        failedItemIds: section.items.filter((item) => item.status === "Error").map((item) => item.id),
+        selectedFailedItemIds: [],
         allDiscardableSelected: false,
       };
     },
     handlePersistSection: handlePersistSectionMock,
     handleDeleteSection: handleDeleteSectionMock,
+    handleRetrySection: handleRetrySectionMock,
     confirmDeleteDialog: jest.fn(),
     isVoucherSelected: (itemId: string) => itemId === "item-ready" || itemId === "item-validated",
     handleTabChange: handleTabChangeMock,

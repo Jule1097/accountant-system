@@ -21,6 +21,14 @@ export const voucherDefaultAccountingPeriodDay = "01"
 export const voucherTypeValues = { sale: "sale", purchase: "purchase" } as const
 export const voucherDocumentIdentificationModes = { fiscal: "fiscal", nonFiscal: "non_fiscal" } as const
 export const voucherDocumentIdentificationModeValues = [voucherDocumentIdentificationModes.fiscal, voucherDocumentIdentificationModes.nonFiscal] as const
+export const voucherFiscalIdentityConstraintNames = {
+  sale: "voucher_fiscal_sale_identity_unique",
+  purchase: "voucher_fiscal_purchase_identity_unique",
+} as const
+export const voucherFiscalIdentityFieldSets = [
+  ["companyId", "type", "voucherTypeId", "voucherLetterId", "posNumber", "number", "clientId"],
+  ["companyId", "type", "voucherTypeId", "voucherLetterId", "posNumber", "number", "supplierId"],
+] as const
 export const voucherTypeApplicabilityValues = { sale: "sale", purchase: "purchase", both: "both" } as const
 export const voucherTypeApplicabilityOptions = [voucherTypeApplicabilityValues.sale, voucherTypeApplicabilityValues.purchase, voucherTypeApplicabilityValues.both] as const
 export const possibleNonFiscalDuplicateMessage = "Posible comprobante duplicado"

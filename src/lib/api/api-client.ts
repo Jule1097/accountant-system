@@ -16,6 +16,20 @@ export function isApiRequestError(value: unknown): value is ApiRequestError {
   return isError(value) && value.name === "ApiRequestError" && "status" in value && typeof value.status === "number"
 }
 
+export function resolveApiErrorMessage(error: unknown, fallbackMessage: string): string {
+  if (isApiRequestError(error)) {
+    const payloadMessage = resolveErrorMessage(error.payload, error.status)
+    if (!payloadMessage.startsWith("Request failed with status")) return payloadMessage
+    if (error.message) return resolveSerializedErrorMessage(error.message) ?? error.message
+  }
+
+  if (isError(error)) return resolveSerializedErrorMessage(error.message) ?? error.message
+
+  if (typeof error === "object" && error !== null && "error" in error && typeof error.error === "string" && error.error) return resolveSerializedErrorMessage(error.error) ?? error.error
+
+  return fallbackMessage
+}
+
 export async function parseJsonResponse<T>(response: Response): Promise<T> {
   return response.json() as Promise<T>
 }
@@ -32,7 +46,7 @@ async function parseErrorPayload(response: Response): Promise<unknown> {
 
 function resolveErrorMessage(payload: unknown, status: number): string {
   if (typeof payload === 'string' && payload) {
-    return payload
+    return resolveSerializedErrorMessage(payload) ?? payload
   }
 
   if (
@@ -45,6 +59,17 @@ function resolveErrorMessage(payload: unknown, status: number): string {
   }
 
   return `Request failed with status ${status}`
+}
+
+function resolveSerializedErrorMessage(value: string): string | null {
+  try {
+    const parsedValue: unknown = JSON.parse(value)
+    if (typeof parsedValue === 'object' && parsedValue !== null && "error" in parsedValue && typeof parsedValue.error === 'string' && parsedValue.error) return parsedValue.error
+  } catch {
+    return null
+  }
+
+  return null
 }
 
 export async function apiRequest(path: string, options: RequestInit = {}): Promise<Response> {

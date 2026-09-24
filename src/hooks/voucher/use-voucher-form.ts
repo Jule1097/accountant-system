@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useToastManager } from "src/components/ui/toast";
 import { useAuth } from "src/hooks/auth/use-auth";
 import { useVoucherPreview } from "src/hooks/voucher/use-voucher-preview";
-import { ApiRequestError, apiRequest, parseJsonResponse } from "src/lib/api/api-client";
+import { ApiRequestError, apiRequest, parseJsonResponse, resolveApiErrorMessage } from "src/lib/api/api-client";
 import { createVoucherFormSchema, VoucherFormValues } from "src/lib/schemas/voucher/voucher-form-schemas";
 import { buildVoucherFormInitialValues, buildVoucherFormPayload, buildVoucherParsedPatch, hasUnresolvedParsedVoucherTaxes, resolveSalesSubtotal } from "src/lib/helpers/voucher/voucher-form";
 import { ParserBatchAsyncResponse } from "src/types/parser/parser-batch";
@@ -68,15 +68,8 @@ function resolveVoucherSuccessMessage(mode: VoucherModalMode, type: VoucherScree
 }
 
 function resolveVoucherErrorMessage(error: unknown, mode: VoucherModalMode): string {
-  if (error instanceof ApiRequestError) {
-    return error.message;
-  }
-
-  if (mode === "edit") {
-    return "No se pudo guardar la edición del comprobante.";
-  }
-
-  return "No se pudo guardar el comprobante.";
+  const fallbackMessage = mode === "edit" ? "No se pudo guardar la edición del comprobante." : "No se pudo guardar el comprobante.";
+  return resolveApiErrorMessage(error, fallbackMessage);
 }
 
 function buildEmptyVoucherFormValues(userId?: string): VoucherFormValues {
@@ -345,7 +338,7 @@ export function useVoucherForm({
       toastManager.add({
         type: "error",
         title: "Error al procesar",
-        description: error instanceof ApiRequestError ? error.message : "No se pudo procesar el comprobante por IA.",
+        description: resolveApiErrorMessage(error, "No se pudo procesar el comprobante por IA."),
       });
     } finally {
       setIsParsing(false);
@@ -446,6 +439,7 @@ export function useVoucherForm({
     perceptionFields: perceptionFieldArray.fields,
     appendPerception: perceptionFieldArray.append,
     removePerception: perceptionFieldArray.remove,
+    isParsing,
     isProcessing,
     pendingConfirmation,
     confirmPendingSubmission,

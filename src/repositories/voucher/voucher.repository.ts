@@ -206,6 +206,7 @@ export class VoucherRepository {
       voucherLetterId: voucher.voucherLetterId,
       posNumber: voucher.posNumber,
       number: voucher.number,
+      documentIdentificationMode: voucherDocumentIdentificationModes.fiscal,
       ...duplicateCriteria,
       }
 
@@ -233,6 +234,7 @@ export class VoucherRepository {
     const whereClause: Prisma.VoucherWhereInput = {
       companyId,
       type,
+      documentIdentificationMode: voucherDocumentIdentificationModes.fiscal,
       voucherType: {
         name: {
           equals: parsedPayload.voucherType,

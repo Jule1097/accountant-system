@@ -86,19 +86,19 @@ export function createVoucherTableColumns({
       id: "total",
       header: "Total",
       cellClassName: "text-right text-muted-foreground",
-      accessor: (row) => getFormattedAmount(row.voucher.currency, Number(row.voucher.totalAmount)),
+      accessor: (row) => getFormattedAmount(row.voucher.currency, Number(row.voucher.totalAmount), row.voucher.voucherType?.name),
     },
     {
       id: "paid",
       header: "Pagado",
       cellClassName: "text-right text-muted-foreground",
-      accessor: (row) => getFormattedAmount(row.voucher.currency, Number(row.voucher.paidAmount)),
+      accessor: (row) => getFormattedAmount(row.voucher.currency, Number(row.voucher.paidAmount), row.voucher.voucherType?.name),
     },
     {
       id: "balance",
       header: "Saldo",
       cellClassName: "text-right text-muted-foreground font-medium",
-      accessor: (row) => getFormattedAmount(row.voucher.currency, Number(row.voucher.saldo)),
+      accessor: (row) => getFormattedAmount(row.voucher.currency, Number(row.voucher.saldo), row.voucher.voucherType?.name),
     },
     {
       id: "actions",

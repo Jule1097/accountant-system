@@ -1,4 +1,4 @@
-import { voucherMoneyScale } from "src/lib/constants/voucher";
+import { voucherCreditNoteNameTokens, voucherMoneyScale } from "src/lib/constants/voucher";
 import { analyticsDefaultCurrency } from "src/lib/constants/analytics";
 
 const localizedDecimalFormatter = new Intl.NumberFormat("es-AR", {
@@ -6,9 +6,15 @@ const localizedDecimalFormatter = new Intl.NumberFormat("es-AR", {
   maximumFractionDigits: voucherMoneyScale,
 });
 
-export function getFormattedAmount(currency: string, value: number): string {
+function isCreditNoteVoucherType(voucherTypeName?: string | null): boolean {
+  const normalizedName = voucherTypeName?.toLowerCase() || "";
+  return voucherCreditNoteNameTokens.some((token) => normalizedName.includes(token));
+}
+
+export function getFormattedAmount(currency: string, value: number, voucherTypeName?: string | null): string {
   const currencyLabel = currency === analyticsDefaultCurrency || currency === "$" ? "$" : currency;
-  return `${currencyLabel} ${value.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const signedValue = isCreditNoteVoucherType(voucherTypeName) ? -Math.abs(value) : value;
+  return `${currencyLabel} ${signedValue.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export function formatLocalizedDecimal(value: number | null | undefined): string {

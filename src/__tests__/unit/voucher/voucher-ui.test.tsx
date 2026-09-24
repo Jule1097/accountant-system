@@ -47,6 +47,7 @@ jest.mock('src/lib/api/api-client', () => {
 
     constructor(message: string, status: number, payload: unknown) {
       super(message)
+      this.name = 'ApiRequestError'
       this.status = status
       this.payload = payload
     }
@@ -57,6 +58,12 @@ jest.mock('src/lib/api/api-client', () => {
     isApiRequestError: (value: unknown) => value instanceof MockApiRequestError,
     apiRequest: (...args: unknown[]) => apiRequestMock(...args),
     parseJsonResponse: async (response: Response) => response.json(),
+    resolveApiErrorMessage: (error: unknown, fallbackMessage: string) => {
+      if (error instanceof MockApiRequestError && error.message) return error.message
+      if (error instanceof Error) return error.message
+      if (typeof error === 'object' && error !== null && 'error' in error && typeof error.error === 'string' && error.error) return error.error
+      return fallbackMessage
+    },
   }
 })
 
@@ -563,6 +570,12 @@ describe('Voucher UI', () => {
     expect(screen.getByRole('button', { name: 'Guardando cambios...' })).toBeDisabled()
   })
 
+  it('shows processing text while the document is being parsed', () => {
+    render(<VoucherModalActions mode="create" isProcessing={true} isParsing={true} isValid={false} primaryButtonLabel="Guardar comprobante" onClose={jest.fn()} />)
+
+    expect(screen.getByRole('button', { name: 'Procesando' })).toBeDisabled()
+  })
+
   it('keeps the table skeleton visible while voucher data is loading', () => {
     useVouchersMock.mockReturnValue({ data: undefined, isLoading: true, mutate: jest.fn() })
 
@@ -827,6 +840,29 @@ describe('Voucher UI', () => {
         title: 'Comprobante guardado',
       })
     )
+  })
+
+  it('shows the formatted error message when voucher submission returns an error object', async () => {
+    const errorMessage = 'No se pudo validar la factura.'
+    const submitAction = jest.fn().mockRejectedValue({ error: errorMessage })
+    const { result } = renderHook(() => useVoucherForm({
+      isOpen: true,
+      onOpenChange: jest.fn(),
+      type: 'purchases',
+      mode: 'create',
+      submitAction,
+      ...createVoucherFormOptions(),
+      onSuccess: jest.fn(),
+    }))
+
+    await act(async () => {
+      await result.current.onSubmit(createBaseFormValues())
+    })
+
+    expect(toastAdd).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'error',
+      description: errorMessage,
+    }))
   })
 
   it('shows parser validation messages returned by the API in the toast', async () => {
