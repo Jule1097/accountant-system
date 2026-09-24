@@ -9,6 +9,7 @@ import {
   ConciliationVisibleStatus,
 } from "src/types/conciliation/conciliations";
 import { ParsedVoucherData } from "src/types/parser/gemini-parser";
+import { hasReviewableParsedPayload } from "src/lib/helpers/parser/parser-batch";
 
 const itemsPerPage = 4;
 
@@ -113,58 +114,6 @@ function resolveAmount(payload: ParsedVoucherData | null): number | null {
 
 function resolveCurrency(payload: ParsedVoucherData | null): string | null {
   return payload?.currency || null;
-}
-
-function hasMeaningfulNumber(value: string | null): boolean {
-  if (!value) {
-    return false;
-  }
-
-  return /[1-9]/.test(value);
-}
-
-function hasMeaningfulText(value: string | null): boolean {
-  if (!value) {
-    return false;
-  }
-
-  const normalizedValue = value.trim().toLowerCase();
-
-  if (!normalizedValue || normalizedValue === "null") {
-    return false;
-  }
-
-  return normalizedValue !== "sin tercero identificado";
-}
-
-function hasMeaningfulTaxItems(items: Array<{ amount: number | null }>): boolean {
-  return items.some((item) => typeof item.amount === "number" && item.amount > 0);
-}
-
-function hasMeaningfulVatDetails(
-  items: Array<{ subtotal: number | null; vatAmount: number | null }>
-): boolean {
-  return items.some((item) => {
-    return (typeof item.subtotal === "number" && item.subtotal > 0)
-      || (typeof item.vatAmount === "number" && item.vatAmount > 0);
-  });
-}
-
-function hasReviewableParsedPayload(payload: ParsedVoucherData | null): boolean {
-  if (!payload) {
-    return false;
-  }
-
-  return !!(
-    (hasMeaningfulNumber(payload.posNumber) && hasMeaningfulNumber(payload.number))
-    || hasMeaningfulText(payload.date)
-    || (typeof payload.totalAmount === "number" && payload.totalAmount > 0)
-    || hasMeaningfulText(payload.thirdPartyCuit)
-    || hasMeaningfulText(payload.thirdPartyName)
-    || hasMeaningfulVatDetails(payload.vatDetails)
-    || hasMeaningfulTaxItems(payload.retentions)
-    || hasMeaningfulTaxItems(payload.perceptions)
-  );
 }
 
 function resolveMessage(item: ParserBatchItemContextRecord, visibleStatus: ConciliationVisibleStatus): string {

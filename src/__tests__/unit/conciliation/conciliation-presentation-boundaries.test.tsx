@@ -2,6 +2,7 @@
 
 import { fireEvent, render, screen } from "@testing-library/react";
 import { ConciliationsOverlays } from "src/components/conciliations/conciliations-overlays";
+import { ConciliationSection } from "src/components/conciliations/conciliation-section";
 import { buildConciliationSectionSelectionState } from "src/lib/helpers/conciliation/conciliations-state";
 import type { ConciliationSectionData } from "src/types/conciliation/conciliations";
 
@@ -32,10 +33,122 @@ describe("conciliation presentation boundaries", () => {
     expect(buildConciliationSectionSelectionState(section, ["discardable", "ready"])).toEqual({
       discardableItemIds: ["discardable", "ready"],
       validatedItemIds: ["discardable"],
+      failedItemIds: ["not-discardable"],
       selectedDiscardableItemIds: ["discardable", "ready"],
       selectedValidatedItemIds: ["discardable"],
+      selectedFailedItemIds: [],
       allDiscardableSelected: true,
     });
+  });
+
+  it("derives selected failed items for the bulk retry action", () => {
+    const errorSection: ConciliationSectionData = {
+      key: "error",
+      title: "Error",
+      totalCount: 1,
+      hasMore: false,
+      items: [{
+        id: "failed-item",
+        batchId: "batch-1",
+        type: "sales",
+        documentId: "A-4",
+        date: null,
+        thirdParty: null,
+        amount: null,
+        currency: null,
+        status: "Error",
+        message: "No se pudo procesar.",
+        canReview: false,
+        canRetry: true,
+        canDiscard: true,
+      }],
+    };
+
+    expect(buildConciliationSectionSelectionState(errorSection, ["failed-item"]).selectedFailedItemIds).toEqual(["failed-item"]);
+  });
+
+  it("renders the selected failed count retry control", () => {
+    const onRetrySelected = jest.fn();
+    render(
+      <ConciliationSection
+        section={{
+          key: "error",
+          title: "Error",
+          totalCount: 1,
+          hasMore: false,
+          items: [{
+            id: "failed-item",
+            batchId: "batch-1",
+            type: "sales",
+            documentId: "A-4",
+            date: null,
+            thirdParty: null,
+            amount: null,
+            currency: null,
+            status: "Error",
+            message: "No se pudo procesar.",
+            canReview: false,
+            canRetry: true,
+            canDiscard: true,
+          }],
+        }}
+        selection={{
+          discardableItemIds: ["failed-item"],
+          validatedItemIds: [],
+          failedItemIds: ["failed-item"],
+          selectedDiscardableItemIds: ["failed-item"],
+          selectedValidatedItemIds: [],
+          selectedFailedItemIds: ["failed-item"],
+          allDiscardableSelected: true,
+        }}
+        loadingVouchers={{}}
+        isVoucherSelected={() => true}
+        onToggleVisibleSelection={jest.fn()}
+        onToggleItemSelection={jest.fn()}
+        onReview={jest.fn()}
+        onRegenerate={jest.fn()}
+        onPersist={jest.fn()}
+        onDelete={jest.fn()}
+        onPersistSelected={jest.fn()}
+        onDeleteSelected={jest.fn()}
+        onRetrySelected={onRetrySelected}
+        isRetryingSelected={false}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Regenerar (1)" }));
+    expect(onRetrySelected).toHaveBeenCalled();
+  });
+
+  it("renders a loading state while selected items are being requeued", () => {
+    render(
+      <ConciliationSection
+        section={section}
+        selection={{
+          discardableItemIds: ["discardable", "ready"],
+          validatedItemIds: ["discardable"],
+          failedItemIds: ["not-discardable"],
+          selectedDiscardableItemIds: ["discardable", "ready"],
+          selectedValidatedItemIds: ["discardable"],
+          selectedFailedItemIds: ["not-discardable"],
+          allDiscardableSelected: true,
+        }}
+        loadingVouchers={{}}
+        isVoucherSelected={() => true}
+        onToggleVisibleSelection={jest.fn()}
+        onToggleItemSelection={jest.fn()}
+        onReview={jest.fn()}
+        onRegenerate={jest.fn()}
+        onPersist={jest.fn()}
+        onDelete={jest.fn()}
+        onPersistSelected={jest.fn()}
+        onDeleteSelected={jest.fn()}
+        onRetrySelected={jest.fn()}
+        isRetryingSelected
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Enviando..." })).toBeDisabled();
   });
 
   it("forwards one prepared delete callback for bulk overlays", async () => {

@@ -39,6 +39,42 @@ function createParserBatchItem(
 }
 
 describe("buildConciliationsPageData", () => {
+  it("renders the persisted parser failure reason in the error section", () => {
+    const data = buildConciliationsPageData(
+      { tab: "sales", page: 1 },
+      [{
+        id: "failed-item",
+        batchId: "batch-1",
+        fileName: "invoice.png",
+        mimeType: "image/png",
+        fileSize: 100,
+        fileHash: "hash",
+        storagePath: "path",
+        inputStrategy: "image-visual",
+        status: "failed",
+        parsedPayload: null,
+        validatedPayload: null,
+        currentError: "No se pudo preparar el archivo para procesarlo. Podés regenerar la factura.",
+        currentAttempt: 1,
+        queuedAt: null,
+        processedAt: "2026-09-20T00:00:00.000Z",
+        expiresAt: "2026-09-21T00:00:00.000Z",
+        createdAt: "2026-09-20T00:00:00.000Z",
+        updatedAt: "2026-09-20T00:00:00.000Z",
+        batch: {
+          id: "batch-1",
+          companyId: "company-1",
+          createdByUserId: "user-1",
+          voucherType: "sale",
+          status: "partial",
+          expiresAt: "2026-09-21T00:00:00.000Z",
+        },
+      }],
+    );
+
+    expect(data.sections.find((section) => section.key === "error")?.items[0]?.message).toBe("No se pudo preparar el archivo para procesarlo. Podés regenerar la factura.");
+  });
+
   it("marks placeholder-only parsed payloads as error", () => {
     const data = buildConciliationsPageData(
       { tab: "sales", page: 1 },

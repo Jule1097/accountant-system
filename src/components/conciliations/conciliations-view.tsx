@@ -19,6 +19,7 @@ export function ConciliationsView() {
     isPageLoading,
     isDeleting,
     deleteDialogState,
+    retryBatchAction,
     sections,
     loadingVouchers,
     isReviewModalOpen,
@@ -40,6 +41,7 @@ export function ConciliationsView() {
     getSectionSelectionState,
     handlePersistSection,
     handleDeleteSection,
+    handleRetrySection,
     isVoucherSelected,
   } = useConciliations();
 
@@ -63,6 +65,8 @@ export function ConciliationsView() {
             onDelete={handleDelete}
             onPersistSelected={() => handlePersistSection(section)}
             onDeleteSelected={() => handleDeleteSection(section)}
+            onRetrySelected={() => handleRetrySection(section)}
+            isRetryingSelected={retryBatchAction.isPending}
           />
         ))}
       </ConciliationsContentState>

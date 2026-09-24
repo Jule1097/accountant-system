@@ -126,10 +126,10 @@ export function ConciliationCard({
   return (
     <TooltipProvider delay={120}>
       <div className={`rounded-xl border bg-card px-4 py-3 transition-colors ${isSelected ? "border-[#FF5C00]/50" : "border-border/50"}`}>
-        <div className="flex min-w-0 flex-col gap-3 md:flex-row md:items-start md:justify-between">
-          <div className="flex min-w-0 flex-1 items-start gap-3">
+        <div className="flex min-w-0 flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
             {voucher.canDiscard && (
-              <label className="mt-10 flex shrink-0 items-center">
+              <label className="flex shrink-0 items-center">
                 <input
                   type="checkbox"
                   checked={isSelected}
@@ -140,7 +140,7 @@ export function ConciliationCard({
               </label>
             )}
 
-            <div className={`mt-8 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${getStatusBadgeClassName(voucher.status)}`}>
+            <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${getStatusBadgeClassName(voucher.status)}`}>
               {getStatusIcon(voucher.status)}
             </div>
 
@@ -171,7 +171,7 @@ export function ConciliationCard({
             </div>
           </div>
 
-          <div className="flex shrink-0 items-center gap-2 md:pl-3 mt-10">
+          <div className="flex shrink-0 items-center gap-2 md:pl-3">
             {voucher.canReview && renderActionButton({
               label: getActionLabel("review", voucher),
               tooltip: "Revisar",
