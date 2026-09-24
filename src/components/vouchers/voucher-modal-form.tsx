@@ -24,10 +24,15 @@ export interface VoucherModalFormProps extends Omit<UseVoucherFormProps, "catalo
 function resolvePrimaryButtonLabel(
   mode: VoucherModalMode,
   isProcessing: boolean,
+  isParsing: boolean,
   submitButtonLabel?: string,
 ): string {
   if (!isProcessing) {
     return submitButtonLabel || (mode === "edit" ? "Guardar cambios" : "Guardar Comprobante");
+  }
+
+  if (isParsing) {
+    return "Procesando";
   }
 
   if (submitButtonLabel === "Validar factura") {
@@ -63,6 +68,7 @@ export function VoucherModalForm({
     perceptionFields,
     appendPerception,
     removePerception,
+    isParsing,
     isProcessing,
     pendingConfirmation,
     confirmPendingSubmission,
@@ -115,7 +121,7 @@ export function VoucherModalForm({
   const isEditing = mode === "edit";
   const isViewing = mode === "view";
   const shouldShowDropzone = !isEditing && !isViewing && !initialParsedData && !submitAction;
-  const primaryButtonLabel = resolvePrimaryButtonLabel(mode, isProcessing, submitButtonLabel);
+  const primaryButtonLabel = resolvePrimaryButtonLabel(mode, isProcessing, isParsing, submitButtonLabel);
   const thirdPartyAction = !shouldShowInlineAction || isViewing ? null : (
     <Button type="button" variant="outline" className="w-full" onClick={openInlineModal}>
       {resolveClientSupplierAddButtonLabel(inlineModalType)}
@@ -153,6 +159,7 @@ export function VoucherModalForm({
   const actions = (
     <VoucherModalActions
       mode={mode}
+      isParsing={isParsing}
       isProcessing={isProcessing}
       isValid={isValid}
       primaryButtonLabel={primaryButtonLabel}
