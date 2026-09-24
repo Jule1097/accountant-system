@@ -240,6 +240,8 @@ model ParserBatchItem {
   parsedPayload     Json?
   validatedPayload  Json?
   currentError      String?                  @db.Text
+  failureOrigin     String?                  @db.VarChar(20)
+  failureReason     String?                  @db.VarChar(40)
   currentAttempt    Int                      @default(0)
   queuedAt          DateTime?                @db.Timestamptz
   processedAt       DateTime?                @db.Timestamptz
