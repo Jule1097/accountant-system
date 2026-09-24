@@ -50,6 +50,7 @@ export const apiResponseMessages = {
     itemRetryFailed: "No se pudo reintentar el ítem",
     batchNotFound: "No se encontró el lote solicitado",
     batchQueryFailed: "No se pudo consultar el lote",
-    batchRetryFailed: "No se pudo reintentar el batch",
+    itemUnavailableForRetry: "La factura no está disponible para regeneración",
+    bulkRetryInvalid: "Las facturas seleccionadas son inválidas",
   },
 } as const

@@ -33,10 +33,11 @@ describe("application error response", () => {
 
   it("logs typed unexpected failures before returning the generic response", async () => {
     const consoleError = jest.spyOn(console, "error").mockImplementation()
-    const response = resolveApplicationErrorResponse(new ApplicationError(applicationErrorCodes.unexpected, "Error interno del servidor", "Database operation failed"), { request, operation: "load voucher", entityId: "voucher-1" })
+    const error = Object.assign(new Error("Database operation failed"), { code: "P2022", status: 503 })
+    const response = resolveApplicationErrorResponse(error, { request, operation: "load voucher", entityId: "voucher-1" })
 
     expect(response.status).toBe(httpStatusCodes.internalServerError)
-    expect(consoleError).toHaveBeenCalledWith("Application request failed", expect.objectContaining({ errorCode: applicationErrorCodes.unexpected, operation: "load voucher" }))
+    expect(consoleError).toHaveBeenCalledWith("Application request failed", expect.objectContaining({ errorCode: applicationErrorCodes.unexpected, providerErrorCode: "P2022", providerErrorStatus: 503, operation: "load voucher" }))
 
     consoleError.mockRestore()
   })
