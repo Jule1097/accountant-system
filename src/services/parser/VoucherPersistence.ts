@@ -7,7 +7,6 @@ import { ConciliationPersistResult } from "src/types/conciliation/conciliations"
 import { ParserBatchItemContextRecord, ParserBatchPersistenceJob } from "src/types/parser/parser-batch";
 import { AsyncBatchRunnerService } from "./AsyncBatchRunner";
 import { applicationErrorCodes } from "src/lib/constants/application-error";
-import { apiResponseMessages } from "src/lib/constants/api-response";
 import { conciliationErrorMessages } from "src/lib/constants/conciliation-error";
 import { ApplicationError, isApplicationError } from "src/lib/errors/application-error";
 import { ParserStorageService } from "src/services/parser/ParserStorage";
@@ -85,7 +84,7 @@ export class VoucherPersistenceService {
       }
 
       if (isApplicationError(error) && error.code === applicationErrorCodes.validation) {
-        await this.batchRepository.markItemPersistenceFailed(item.id, apiResponseMessages.conciliation.itemPersistFailed);
+        await this.batchRepository.restoreItemsToValidated([item.id]);
         return {
           status: "failed",
           message: "No se pudo persistir la factura.",

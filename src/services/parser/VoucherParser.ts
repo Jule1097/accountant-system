@@ -3,6 +3,7 @@ import { parseInvoiceImage, parseInvoiceMarkdown, parseInvoiceVisualFieldRepair 
 import {
   getParserBatchExpirationDate,
   getParserBatchMaxFiles,
+  hasReviewableParsedPayload,
   isParserBatchExpired,
 } from "src/lib/helpers/parser/parser-batch";
 import {
@@ -17,7 +18,7 @@ import { getGeminiRepairFields, mergeGeminiRepairFields } from "src/lib/helpers/
 import { CompanyRepository } from "src/repositories/company/company.repository";
 import { ParserBatchRepository } from "src/repositories/parser/parser-batch.repository";
 import { AsyncBatchRunner } from "src/types/parser/async-batch-runner";
-import { ParserBatchAsyncResponse, ParserBatchQueueJob, ParserBatchSingleResponse, ParserVoucherType } from "src/types/parser/parser-batch";
+import { ParserBatchAsyncResponse, ParserBatchQueueJob, ParserBatchSingleResponse, ParserFailureReason, ParserInputStrategy, ParserRetryResponse, ParserVoucherType } from "src/types/parser/parser-batch";
 import { RawGeminiParsedVoucher } from "src/types/parser/gemini-parser";
 import { AsyncBatchRunnerService } from "./AsyncBatchRunner";
 import { CompanyNotificationService } from "src/services/company/CompanyNotification";
@@ -26,6 +27,8 @@ import { ParserStorageService } from "./ParserStorage";
 import { applicationErrorCodes } from "src/lib/constants/application-error";
 import { apiResponseMessages } from "src/lib/constants/api-response";
 import { ApplicationError } from "src/lib/errors/application-error";
+import { parserRetryMessages } from "src/lib/constants/parser";
+import { ParserFailureStage, resolveParserFailureMessage, resolveParserFailureReason } from "src/lib/helpers/parser/parser-failure";
 
 interface PreparedParserPayload {
   strategy: "pdf-text" | "pdf-visual" | "image-visual";
@@ -40,6 +43,10 @@ function isTerminalParserItemStatus(status: string | undefined): boolean {
     || status === "persisting"
     || status === "persisted"
     || status === "discarded";
+}
+
+function resolveFallbackInputStrategy(mimeType: string): ParserInputStrategy {
+  return isParserImageMimeType(mimeType) ? "image-visual" : "pdf-visual";
 }
 
 function ensureParserFileLimit(files: ParserAcceptedFile[]): void {
@@ -238,16 +245,6 @@ export class VoucherParserService {
     return this.batchRepository.findBatchById(companyId, batchId);
   }
 
-  async retryBatch(companyId: string, batchId: string): Promise<void> {
-    const batch = await this.batchRepository.findBatchById(companyId, batchId);
-
-    if (!batch) {
-      throw new ApplicationError(applicationErrorCodes.notFound, "No se encontr\u00f3 el batch solicitado", "Parser batch not found");
-    }
-
-    await this.getRequiredAsyncBatchRunner().triggerParserBatch(batchId);
-  }
-
   async getItem(companyId: string, itemId: string) {
     const item = await this.batchRepository.findItemById(itemId);
 
@@ -260,15 +257,38 @@ export class VoucherParserService {
 
   async retryItem(companyId: string, itemId: string): Promise<ParserBatchQueueJob> {
     const item = await this.getItem(companyId, itemId);
-    const requeuedItem = await this.batchRepository.requeueItem(item.id);
+    await this.retryItems(companyId, [item.id]);
+    const requeuedItem = await this.getItem(companyId, itemId);
     const job = {
       batchId: requeuedItem.batchId,
       itemId: requeuedItem.id,
     };
 
-    await this.getRequiredAsyncBatchRunner().triggerParserBatch(requeuedItem.batchId);
-
     return job;
+  }
+
+  async retryItems(companyId: string, itemIds: string[]): Promise<ParserRetryResponse> {
+    const uniqueItemIds = [...new Set(itemIds)];
+    const requeuedItems = await this.batchRepository.requeueFailedItems(companyId, uniqueItemIds);
+    const batchIds = [...new Set(requeuedItems.map((item) => item.batchId))];
+    let dispatchRecovered = true;
+
+    for (const batchId of batchIds) {
+      try {
+        await this.getRequiredAsyncBatchRunner().triggerParserBatch(batchId);
+      } catch {
+        dispatchRecovered = false;
+      }
+    }
+
+    return {
+      requeuedItems: requeuedItems.length,
+      affectedBatches: batchIds.length,
+      dispatchRecovered,
+      message: dispatchRecovered
+        ? parserRetryMessages.bulkSuccess(requeuedItems.length, batchIds.length)
+        : parserRetryMessages.dispatchPending(requeuedItems.length),
+    };
   }
 
   async recoverPendingItems(limit: number): Promise<number> {
@@ -306,30 +326,42 @@ export class VoucherParserService {
       return;
     }
 
-    const buffer = await this.storageService.downloadFile(item.storagePath);
-    const file: ParserAcceptedFile = {
-      fileName: item.fileName,
-      mimeType: item.mimeType,
-      fileSize: item.fileSize,
-      fileHash: item.fileHash,
-      buffer,
-    };
-    const activeCompanyCuit = await this.getActiveCompanyCuit(item.batch.companyId);
-    const payload = await this.preparePayload(file, item.batch.voucherType, activeCompanyCuit);
     const nextAttempt = item.currentAttempt + 1;
-
-    await this.batchRepository.markItemProcessing(item.id, nextAttempt, payload.strategy);
+    let stage: ParserFailureStage = "download";
+    let inputStrategy = resolveFallbackInputStrategy(item.mimeType);
 
     try {
+      const buffer = await this.storageService.downloadFile(item.storagePath);
+      const file: ParserAcceptedFile = {
+        fileName: item.fileName,
+        mimeType: item.mimeType,
+        fileSize: item.fileSize,
+        fileHash: item.fileHash,
+        buffer,
+      };
+      const activeCompanyCuit = await this.getActiveCompanyCuit(item.batch.companyId);
+      stage = "preparation";
+      const payload = await this.preparePayload(file, item.batch.voucherType, activeCompanyCuit);
+      inputStrategy = payload.strategy;
+      await this.batchRepository.markItemProcessing(item.id, nextAttempt, inputStrategy);
+      stage = "execution";
       const rawResponse = await payload.execute();
+      stage = "response";
       const response = await this.responseService.buildResponse(item.batch.companyId, item.batch.voucherType, rawResponse);
+      stage = "extraction";
+      if (!hasReviewableParsedPayload(response)) {
+        throw new Error("Insufficient parser extraction");
+      }
       await this.batchRepository.markItemParsed(item.id, response, payload.strategy);
-    } catch {
+    } catch (error: unknown) {
+      const failureReason: ParserFailureReason = resolveParserFailureReason(stage, error);
       await this.batchRepository.markItemFailed(
         item.id,
-        apiResponseMessages.voucher.parseFailed,
-        payload.strategy,
-        { attemptNumber: nextAttempt }
+        resolveParserFailureMessage(failureReason),
+        inputStrategy,
+        { attemptNumber: nextAttempt },
+        failureReason,
+        nextAttempt,
       );
     }
 

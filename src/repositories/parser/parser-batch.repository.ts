@@ -12,6 +12,10 @@ import {
 } from "src/types/parser/parser-batch";
 import { ParsedVoucherData } from "src/types/parser/gemini-parser";
 import { VoucherFormPayload } from "src/types/voucher/voucher-form";
+import { ApplicationError } from "src/lib/errors/application-error";
+import { applicationErrorCodes } from "src/lib/constants/application-error";
+import { parserRetryMessages } from "src/lib/constants/parser";
+import { isParserBatchExpired } from "src/lib/helpers/parser/parser-batch";
 
 interface ParserBatchReviewFilter {
   companyId: string;
@@ -85,6 +89,8 @@ function mapParserBatchItem(record: Prisma.ParserBatchItemGetPayload<{ include: 
     parsedPayload: record.parsedPayload as ParsedVoucherData | null,
     validatedPayload: record.validatedPayload as VoucherFormPayload | null,
     currentError: record.currentError,
+    failureOrigin: record.failureOrigin === "parser" ? "parser" : null,
+    failureReason: record.failureReason as ParserBatchItemRecord["failureReason"],
     currentAttempt: record.currentAttempt,
     queuedAt: record.queuedAt?.toISOString() || null,
     processedAt: record.processedAt?.toISOString() || null,
@@ -306,6 +312,8 @@ export class ParserBatchRepository {
           inputStrategy,
           currentAttempt: attemptNumber,
           currentError: null,
+          failureOrigin: null,
+          failureReason: null,
         },
       });
 
@@ -336,6 +344,8 @@ export class ParserBatchRepository {
           validatedPayload: Prisma.JsonNull,
           processedAt: new Date(),
           currentError: null,
+          failureOrigin: null,
+          failureReason: null,
         },
       });
 
@@ -369,6 +379,8 @@ export class ParserBatchRepository {
           validatedPayload: Prisma.JsonNull,
           processedAt: new Date(),
           currentError: null,
+          failureOrigin: null,
+          failureReason: null,
         },
       });
 
@@ -393,7 +405,9 @@ export class ParserBatchRepository {
     itemId: string,
     errorMessage: string,
     inputStrategy: ParserInputStrategy,
-    metadata: Record<string, unknown>
+    metadata: Record<string, unknown>,
+    failureReason: ParserBatchItemRecord["failureReason"] = "unknown",
+    attemptNumber?: number,
   ): Promise<void> {
     await prisma.$transaction(async (tx) => {
       const item = await tx.parserBatchItem.findUniqueOrThrow({
@@ -401,6 +415,7 @@ export class ParserBatchRepository {
           id: itemId,
         },
       });
+      const resolvedAttemptNumber = attemptNumber || item.currentAttempt || 1;
 
       await tx.parserBatchItem.update({
         where: {
@@ -410,24 +425,54 @@ export class ParserBatchRepository {
           status: "failed",
           inputStrategy,
           currentError: errorMessage,
+          failureOrigin: "parser",
+          failureReason,
+          currentAttempt: resolvedAttemptNumber,
           processedAt: new Date(),
         },
       });
 
-      await tx.parserBatchItemAttempt.update({
+      const attempt = await tx.parserBatchItemAttempt.findUnique({
         where: {
           parserBatchItemAttemptItemAttemptNumberUnique: {
             itemId,
-            attemptNumber: item.currentAttempt,
+            attemptNumber: resolvedAttemptNumber,
           },
         },
-        data: {
-          status: "failed",
-          errorMessage,
-          metadata: toPrismaJsonValue(metadata),
-          completedAt: new Date(),
-        },
       });
+
+      if (attempt) {
+        await tx.parserBatchItemAttempt.update({
+          where: {
+            parserBatchItemAttemptItemAttemptNumberUnique: {
+              itemId,
+              attemptNumber: resolvedAttemptNumber,
+            },
+          },
+          data: {
+            status: "failed",
+            inputStrategy,
+            errorMessage,
+            metadata: toPrismaJsonValue(metadata),
+            completedAt: new Date(),
+          },
+        });
+      }
+
+      if (!attempt) {
+        await tx.parserBatchItemAttempt.create({
+          data: {
+            itemId,
+            attemptNumber: resolvedAttemptNumber,
+            status: "failed",
+            inputStrategy,
+            errorMessage,
+            metadata: toPrismaJsonValue(metadata),
+            startedAt: new Date(),
+            completedAt: new Date(),
+          },
+        });
+      }
 
       await syncBatchStatus(tx, item.batchId);
     });
@@ -442,6 +487,8 @@ export class ParserBatchRepository {
         data: {
           status: "queued",
           currentError: null,
+          failureOrigin: null,
+          failureReason: null,
           queuedAt: new Date(),
           processedAt: null,
         },
@@ -457,6 +504,67 @@ export class ParserBatchRepository {
     }
 
     return item;
+  }
+
+  async requeueFailedItems(companyId: string, itemIds: string[]): Promise<ParserBatchItemContextRecord[]> {
+    return prisma.$transaction(async (tx) => {
+      const now = new Date();
+      const records = await tx.parserBatchItem.findMany({
+        where: {
+          id: { in: itemIds },
+          batch: { companyId },
+        },
+        include: parserBatchItemInclude,
+      });
+      const items = records.map(mapParserBatchItemContext);
+
+      if (items.length !== itemIds.length) {
+        throw new ApplicationError(applicationErrorCodes.notFound, parserRetryMessages.itemUnavailable, "Parser retry item is not available for the active company");
+      }
+
+      for (const item of items) {
+        if (item.status !== "failed" || (item.failureOrigin && item.failureOrigin !== "parser")) {
+          throw new ApplicationError(applicationErrorCodes.conflict, parserRetryMessages.itemUnavailable, "Parser retry item is not eligible");
+        }
+
+        if (isParserBatchExpired(item.expiresAt, now)) {
+          throw new ApplicationError(applicationErrorCodes.conflict, parserRetryMessages.itemUnavailable, "Parser retry item has expired");
+        }
+      }
+
+      const updateResult = await tx.parserBatchItem.updateMany({
+        where: {
+          id: { in: itemIds },
+          status: "failed",
+          expiresAt: { gt: now },
+          batch: { companyId },
+        },
+        data: {
+          status: "queued",
+          currentError: null,
+          failureOrigin: null,
+          failureReason: null,
+          queuedAt: new Date(),
+          processedAt: null,
+        },
+      });
+
+      if (updateResult.count !== itemIds.length) {
+        throw new ApplicationError(applicationErrorCodes.conflict, parserRetryMessages.itemUnavailable, "Parser retry item changed before requeue");
+      }
+
+      const batchIds = [...new Set(items.map((item) => item.batchId))];
+      for (const batchId of batchIds) {
+        await syncBatchStatus(tx, batchId);
+      }
+
+      const updatedRecords = await tx.parserBatchItem.findMany({
+        where: { id: { in: itemIds } },
+        include: parserBatchItemInclude,
+      });
+
+      return updatedRecords.map(mapParserBatchItemContext);
+    });
   }
 
   async listExpiredItems(now: Date, limit: number): Promise<ParserBatchItemContextRecord[]> {
@@ -503,6 +611,9 @@ export class ParserBatchRepository {
         data: {
           status: "validated",
           validatedPayload: toPrismaJsonValue(validatedPayload),
+          currentError: null,
+          failureOrigin: null,
+          failureReason: null,
         },
       });
 
@@ -564,6 +675,8 @@ export class ParserBatchRepository {
         data: {
           status: "persisting",
           currentError: null,
+          failureOrigin: null,
+          failureReason: null,
         },
       });
 
@@ -584,17 +697,31 @@ export class ParserBatchRepository {
       return;
     }
 
-    await prisma.parserBatchItem.updateMany({
-      where: {
-        id: {
-          in: itemIds,
+    await prisma.$transaction(async (tx) => {
+      const items = await tx.parserBatchItem.findMany({
+        where: {
+          id: { in: itemIds },
+          status: "persisting",
         },
-        status: "persisting",
-      },
-      data: {
-        status: "validated",
-        currentError: null,
-      },
+        select: { batchId: true },
+      });
+
+      await tx.parserBatchItem.updateMany({
+        where: {
+          id: { in: itemIds },
+          status: "persisting",
+        },
+        data: {
+          status: "validated",
+          currentError: null,
+          failureOrigin: null,
+          failureReason: null,
+        },
+      });
+
+      for (const batchId of [...new Set(items.map((item) => item.batchId))]) {
+        await syncBatchStatus(tx, batchId);
+      }
     });
   }
 
@@ -628,6 +755,8 @@ export class ParserBatchRepository {
         data: {
           status: "persisted",
           currentError: null,
+          failureOrigin: null,
+          failureReason: null,
         },
       });
 
@@ -636,19 +765,8 @@ export class ParserBatchRepository {
   }
 
   async markItemPersistenceFailed(itemId: string, errorMessage: string): Promise<void> {
-    await prisma.$transaction(async (tx) => {
-      const item = await tx.parserBatchItem.update({
-        where: {
-          id: itemId,
-        },
-        data: {
-          status: "failed",
-          currentError: errorMessage,
-        },
-      });
-
-      await syncBatchStatus(tx, item.batchId);
-    });
+    void errorMessage;
+    await this.restoreItemsToValidated([itemId]);
   }
 
   async discardItem(itemId: string): Promise<ParserBatchItemContextRecord> {

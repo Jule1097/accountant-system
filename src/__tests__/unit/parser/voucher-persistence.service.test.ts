@@ -7,7 +7,6 @@ import { VoucherFormPayload } from "src/types/voucher/voucher-form";
 import { ParserStorageService } from "src/services/parser/ParserStorage";
 import { applicationErrorCodes } from "src/lib/constants/application-error";
 import { ApplicationError } from "src/lib/errors/application-error";
-import { apiResponseMessages } from "src/lib/constants/api-response";
 
 jest.mock("src/repositories/parser/parser-batch.repository");
 jest.mock("src/services/voucher/Voucher");
@@ -129,7 +128,7 @@ describe("VoucherPersistenceService", () => {
     expect(batchRepositoryMock.markItemPersisted).toHaveBeenCalledWith("item-1");
   });
 
-  it("marks the item as failed when the validated payload has a zeroed voucher number", async () => {
+  it("restores validated work when the validated payload has a zeroed voucher number", async () => {
     const item = createPersistingItem();
 
     item.validatedPayload = {
@@ -139,7 +138,7 @@ describe("VoucherPersistenceService", () => {
     };
 
     batchRepositoryMock.findItemById.mockResolvedValue(item);
-    batchRepositoryMock.markItemPersistenceFailed.mockResolvedValue();
+    batchRepositoryMock.restoreItemsToValidated.mockResolvedValue();
 
     await service.processJob({
       batchId: "batch-1",
@@ -147,7 +146,7 @@ describe("VoucherPersistenceService", () => {
     });
 
     expect(voucherServiceMock.createVoucher).not.toHaveBeenCalled();
-    expect(batchRepositoryMock.markItemPersistenceFailed).toHaveBeenCalledWith("item-1", apiResponseMessages.conciliation.itemPersistFailed);
+    expect(batchRepositoryMock.restoreItemsToValidated).toHaveBeenCalledWith(["item-1"]);
   });
 
   it("restores validated work instead of exposing provider details after a technical failure", async () => {
