@@ -71,7 +71,6 @@ export function useConciliations() {
   const [pendingDeleteItem, setPendingDeleteItem] = useState<ConciliationItem | null>(null);
   const [pendingBulkDeleteItemIds, setPendingBulkDeleteItemIds] = useState<string[]>([]);
   const [deleteDialogMode, setDeleteDialogMode] = useState<"single" | "bulk" | null>(null);
-  const handledNotificationIdRef = useRef<string | null>(null);
   const handledStaleBatchPathRef = useRef<string | null>(null);
   const sourceQuery = useMemo(() => readConciliationsQuery(searchParams), [searchParams]);
   const path = buildConciliationsPath(sourceQuery);
@@ -89,7 +88,6 @@ export function useConciliations() {
   );
   const tableQueryState = useTableQueryState({ pathname, parameters: conciliationTableParameters, pageKey: "page", totalPages: data?.totalPages });
   const query = tableQueryState.query;
-  const notificationId = query.notificationId;
   const reviewItemKey = buildCompanyPathKey(
     activeCompanyId,
     reviewItemId ? `/api/vouchers/parse/items/${reviewItemId}` : null,
@@ -169,12 +167,6 @@ export function useConciliations() {
 
     handledStaleBatchPathRef.current = staleBatchPath;
     void (async () => {
-      if (notificationId) {
-        await apiRequest(`/api/notifications/${notificationId}`, {
-          method: "DELETE",
-        }).catch(() => undefined);
-      }
-
       toastManager.add({
         type: "success",
         title: "Carga resuelta",
@@ -182,24 +174,7 @@ export function useConciliations() {
       });
       router.replace(`${pathname}?${buildConciliationsQueryString({ tab: query.tab, page: 1 })}`, { scroll: false });
     })();
-  }, [data, notificationId, pathname, query, router, toastManager]);
-
-  useEffect(() => {
-    if (!notificationId || !data || (query.batchId && data.totalCount === 0)) {
-      return;
-    }
-
-    if (handledNotificationIdRef.current === notificationId) {
-      return;
-    }
-
-    handledNotificationIdRef.current = notificationId;
-    void apiRequest(`/api/notifications/${notificationId}`, {
-      method: "DELETE",
-    }).then(() => {
-      router.replace(`${pathname}?${buildConciliationsQueryString(query)}`, { scroll: false });
-    }).catch(() => undefined);
-  }, [data, notificationId, pathname, query, router]);
+  }, [data, pathname, query, router, toastManager]);
 
   const isPageLoading = isCompanyLoading || (isLoading && !data);
 

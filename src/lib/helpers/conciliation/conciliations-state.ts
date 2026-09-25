@@ -7,7 +7,6 @@ export const conciliationTableParameters = {
   batchId: { defaultValue: undefined, parse: (value: string | null) => value ?? undefined },
   tab: { defaultValue: conciliationQueryDefaults.tab, allowedValues: conciliationTabs },
   page: { defaultValue: conciliationQueryDefaults.page, parse: (value: string | null) => Number(value), normalize: (value: number) => Number.isInteger(value) && value > 0 ? value : conciliationQueryDefaults.page },
-  notificationId: { defaultValue: undefined, parse: (value: string | null) => value ?? undefined },
 };
 
 export function readConciliationsQuery(searchParams: URLSearchParams): ConciliationsQueryState {

@@ -2,7 +2,6 @@ export const conciliationQueryParams = {
   batchId: "batchId",
   tab: "tab",
   page: "page",
-  notificationId: "notificationId",
 } as const
 
 export const conciliationQueryDefaults = {
