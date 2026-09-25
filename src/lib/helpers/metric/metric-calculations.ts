@@ -210,7 +210,7 @@ export function calculateVoucherSummary(vouchers: Voucher[], type: VoucherRecord
     if (!party) return
     const currency = getAnalyticsCurrencyKey(voucher.currency)
     const key = `${currency}:${party.name}:${party.cuit || ""}`
-    const total = getSignedNumber(voucher, voucher.paidAmount)
+    const total = getSignedNumber(voucher, voucher.totalAmount)
     const current = partyTotals.get(key)
     if (current) current.total += total
     if (!current) partyTotals.set(key, { currency, name: party.name, total })
