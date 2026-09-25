@@ -108,16 +108,32 @@ describe("analytics calculations", () => {
 
   it("builds filtered sales and purchases summaries from the complete result", () => {
     const sale = buildVoucher({ client: { name: "Client A", cuit: "20-11111111-2" }, paidAmount: "80.00", netAmount: "130.00", saldo: "50.00" })
-    const creditNote = buildVoucher({ id: "voucher-2", client: { name: "Client A", cuit: "20-11111111-2" }, voucherTypeCategory: "credit_note", paidAmount: "20.00", netAmount: "20.00", saldo: "0.00", status: "paid" })
+    const creditNote = buildVoucher({ id: "voucher-2", client: { name: "Client A", cuit: "20-11111111-2" }, voucherTypeCategory: "credit_note", totalAmount: "20.00", paidAmount: "20.00", netAmount: "20.00", saldo: "0.00", status: "paid" })
 
     expect(calculateVoucherSummary([sale, creditNote], "sale")).toEqual({
       totalCount: 2,
       documentTotal: { ARS: 110 },
       cashTotal: { ARS: 60 },
-      topParty: { ARS: { name: "Client A", total: 60 } },
+      topParty: { ARS: { name: "Client A", total: 120 } },
       pendingCount: 1,
       nonFiscalAmount: {},
     })
+  })
+
+  it("selects the top client by signed total amount without payment data", () => {
+    const clientA = buildVoucher({ id: "voucher-client-a", clientId: "client-a", client: { name: "Client A", cuit: "20-11111111-2" }, totalAmount: "1000.00", netAmount: "1000.00", paidAmount: "0.00", paymentDate: null, status: "pending" })
+    const clientACreditNote = buildVoucher({ id: "voucher-client-a-credit", clientId: "client-a", client: { name: "Client A", cuit: "20-11111111-2" }, voucherTypeCategory: "credit_note", totalAmount: "100.00", netAmount: "100.00", paidAmount: "0.00", paymentDate: null, status: "pending" })
+    const clientB = buildVoucher({ id: "voucher-client-b", clientId: "client-b", client: { name: "Client B", cuit: "27-22222222-3" }, totalAmount: "800.00", netAmount: "800.00", paidAmount: "800.00", paymentDate: "2026-01-20", status: "paid" })
+
+    expect(calculateVoucherSummary([clientA, clientACreditNote, clientB], "sale").topParty).toEqual({ ARS: { name: "Client A", total: 900 } })
+  })
+
+  it("selects the top supplier by signed total amount without payment data", () => {
+    const supplierA = buildVoucher({ id: "voucher-supplier-a", type: "purchase", clientId: null, supplierId: "supplier-a", supplier: { name: "Supplier A", cuit: "30-11111111-9" }, totalAmount: "1200.00", netAmount: "1200.00", paidAmount: "0.00", paymentDate: null, status: "pending" })
+    const supplierACreditNote = buildVoucher({ id: "voucher-supplier-a-credit", type: "purchase", clientId: null, supplierId: "supplier-a", supplier: { name: "Supplier A", cuit: "30-11111111-9" }, voucherTypeCategory: "credit_note", totalAmount: "200.00", netAmount: "200.00", paidAmount: "0.00", paymentDate: null, status: "pending" })
+    const supplierB = buildVoucher({ id: "voucher-supplier-b", type: "purchase", clientId: null, supplierId: "supplier-b", supplier: { name: "Supplier B", cuit: "30-22222222-8" }, totalAmount: "900.00", netAmount: "900.00", paidAmount: "900.00", paymentDate: "2026-01-20", status: "paid" })
+
+    expect(calculateVoucherSummary([supplierA, supplierACreditNote, supplierB], "purchase").topParty).toEqual({ ARS: { name: "Supplier A", total: 1000 } })
   })
 
   it("aggregates all effectively collected sales by client, currency, and signed amount", () => {
