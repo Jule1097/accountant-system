@@ -19,6 +19,10 @@ export type ParserBatchItemStatus =
 
 export type ParserInputStrategy = "pdf-text" | "pdf-visual" | "image-visual";
 
+export type ParserFailureOrigin = "parser";
+
+export type ParserFailureReason = "temporary_service" | "unreadable_file" | "preparation_failed" | "insufficient_extraction" | "unknown";
+
 export interface ParserBatchItemAttemptTrace {
   id: string;
   attemptNumber: number;
@@ -44,6 +48,8 @@ export interface ParserBatchItemRecord {
   parsedPayload: ParsedVoucherData | null;
   validatedPayload: VoucherFormPayload | null;
   currentError: string | null;
+  failureOrigin?: ParserFailureOrigin | null;
+  failureReason?: ParserFailureReason | null;
   currentAttempt: number;
   queuedAt: string | null;
   processedAt: string | null;
@@ -93,6 +99,13 @@ export interface ParserBatchItemCreateInput {
 export interface ParserBatchQueueJob {
   batchId: string;
   itemId: string;
+}
+
+export interface ParserRetryResponse {
+  requeuedItems: number;
+  affectedBatches: number;
+  dispatchRecovered: boolean;
+  message: string;
 }
 
 export interface ParserBatchPersistenceJob {

@@ -14,7 +14,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     return createAuthJsonResponse(response, { success: true })
   } catch (error) {
-    console.error("Authentication logout failed", { path: request.nextUrl.pathname, operation: "logout", errorName: error instanceof Error ? error.name : "UnknownError" })
     return resolveAuthErrorResponse(error, response)
   }
 }

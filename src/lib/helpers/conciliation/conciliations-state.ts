@@ -1,5 +1,5 @@
-import { ApiRequestError } from "src/lib/api/api-client";
 import { conciliationQueryDefaults, conciliationQueryParams, conciliationTabs } from "src/lib/constants/conciliation";
+import { resolveApiErrorMessage } from "src/lib/api/api-client";
 import { parseUrlState } from "src/lib/helpers/shared/url-state";
 import { ConciliationSectionData, ConciliationSectionSelectionState, ConciliationsPageData, ConciliationsQueryState } from "src/types/conciliation/conciliations";
 
@@ -7,7 +7,6 @@ export const conciliationTableParameters = {
   batchId: { defaultValue: undefined, parse: (value: string | null) => value ?? undefined },
   tab: { defaultValue: conciliationQueryDefaults.tab, allowedValues: conciliationTabs },
   page: { defaultValue: conciliationQueryDefaults.page, parse: (value: string | null) => Number(value), normalize: (value: number) => Number.isInteger(value) && value > 0 ? value : conciliationQueryDefaults.page },
-  notificationId: { defaultValue: undefined, parse: (value: string | null) => value ?? undefined },
 };
 
 export function readConciliationsQuery(searchParams: URLSearchParams): ConciliationsQueryState {
@@ -31,11 +30,7 @@ export function buildConciliationsPath(query: ConciliationsQueryState): string {
 }
 
 export function resolveActionErrorMessage(error: unknown, fallbackMessage: string): string {
-  if (error instanceof ApiRequestError) {
-    return error.message;
-  }
-
-  return fallbackMessage;
+  return resolveApiErrorMessage(error, fallbackMessage);
 }
 
 export function resolveConciliationsRefreshInterval(data: ConciliationsPageData | undefined): number {
@@ -64,14 +59,18 @@ export function areAllVisibleDiscardableSelected(
 export function buildConciliationSectionSelectionState(section: ConciliationSectionData, selectedItemIds: string[]): ConciliationSectionSelectionState {
   const discardableItemIds = section.items.filter((item) => item.canDiscard).map((item) => item.id)
   const validatedItemIds = section.items.filter((item) => item.status === "Validada").map((item) => item.id)
+  const failedItemIds = section.items.filter((item) => item.status === "Error").map((item) => item.id)
   const selectedDiscardableItemIds = resolveSelectedVisibleItemIds(discardableItemIds, selectedItemIds)
   const selectedValidatedItemIds = resolveSelectedVisibleItemIds(validatedItemIds, selectedItemIds)
+  const selectedFailedItemIds = resolveSelectedVisibleItemIds(failedItemIds, selectedItemIds)
 
   return {
     discardableItemIds,
     validatedItemIds,
+    failedItemIds,
     selectedDiscardableItemIds,
     selectedValidatedItemIds,
+    selectedFailedItemIds,
     allDiscardableSelected: areAllVisibleDiscardableSelected(discardableItemIds, selectedItemIds),
   }
 }

@@ -40,12 +40,8 @@ export function AppSidebar() {
     try {
       await logout();
       router.push("/login");
-    } catch (error) {
-      console.error("Authentication logout failed", {
-        operation: "logout",
-        workflowState: "failed",
-        errorName: error instanceof Error ? error.name : "UnknownError",
-      });
+    } catch {
+      return;
     }
   };
 

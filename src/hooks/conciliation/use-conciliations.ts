@@ -23,10 +23,12 @@ import { useTableQueryState } from "src/hooks/shared/use-table-query-state";
 import {
   ConciliationBulkDiscardResponse,
   ConciliationBulkPersistResponse,
+  ConciliationBulkRetryResponse,
   ConciliationDeleteDialogState,
   ConciliationItem,
   ConciliationItemAction,
   ConciliationPersistBatchActionState,
+  ConciliationRetryBatchActionState,
   ConciliationPersistResult,
   ConciliationSectionData,
   ConciliationSectionSelectionState,
@@ -49,6 +51,10 @@ function getValidatedVisibleItemIds(items: ConciliationItem[], selectedItemIds: 
   return getValidatedVisibleItems(items, selectedItemIds).map((item) => item.id);
 }
 
+function getFailedVisibleItemIds(items: ConciliationItem[], selectedItemIds: string[]): string[] {
+  return items.filter((item) => item.status === "Error" && selectedItemIds.includes(item.id)).map((item) => item.id);
+}
+
 export function useConciliations() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -60,10 +66,11 @@ export function useConciliations() {
   const [loadingVouchers, setLoadingVouchers] = useState<Record<string, ConciliationItemAction | undefined>>({});
   const [reviewItemId, setReviewItemId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isRetryingSelected, setIsRetryingSelected] = useState(false);
+  const retrySubmissionInFlightRef = useRef(false);
   const [pendingDeleteItem, setPendingDeleteItem] = useState<ConciliationItem | null>(null);
   const [pendingBulkDeleteItemIds, setPendingBulkDeleteItemIds] = useState<string[]>([]);
   const [deleteDialogMode, setDeleteDialogMode] = useState<"single" | "bulk" | null>(null);
-  const handledNotificationIdRef = useRef<string | null>(null);
   const handledStaleBatchPathRef = useRef<string | null>(null);
   const sourceQuery = useMemo(() => readConciliationsQuery(searchParams), [searchParams]);
   const path = buildConciliationsPath(sourceQuery);
@@ -81,7 +88,6 @@ export function useConciliations() {
   );
   const tableQueryState = useTableQueryState({ pathname, parameters: conciliationTableParameters, pageKey: "page", totalPages: data?.totalPages });
   const query = tableQueryState.query;
-  const notificationId = query.notificationId;
   const reviewItemKey = buildCompanyPathKey(
     activeCompanyId,
     reviewItemId ? `/api/vouchers/parse/items/${reviewItemId}` : null,
@@ -107,6 +113,7 @@ export function useConciliations() {
   const selectedValidatedItemIds = useMemo(() => {
     return getValidatedVisibleItemIds(visibleItems, selectedItemIds);
   }, [selectedItemIds, visibleItems]);
+  const selectedFailedItemIds = useMemo(() => getFailedVisibleItemIds(visibleItems, selectedItemIds), [selectedItemIds, visibleItems]);
   const persistBatchAction = useMemo<ConciliationPersistBatchActionState>(() => {
     return {
       itemIds: selectedValidatedItemIds,
@@ -114,12 +121,18 @@ export function useConciliations() {
       canPersist: selectedValidatedItemIds.length > 0,
     };
   }, [selectedValidatedItemIds]);
+  const retryBatchAction = useMemo<ConciliationRetryBatchActionState>(() => ({
+    itemIds: selectedFailedItemIds,
+    selectedFailedCount: selectedFailedItemIds.length,
+    canRetry: selectedFailedItemIds.length > 0,
+    isPending: isRetryingSelected,
+  }), [isRetryingSelected, selectedFailedItemIds]);
   const deleteDialogState = useMemo<ConciliationDeleteDialogState>(() => {
     if (deleteDialogMode === "single" && pendingDeleteItem) {
       return {
         isOpen: true,
         title: "Eliminar factura",
-        description: `Vas a eliminar la factura ${pendingDeleteItem.documentId} de conciliaciones. Esta acción no se puede deshacer.`,
+        description: `Vas a eliminar la factura de conciliaciones. Esta acción no se puede deshacer.`,
         mode: "single",
       };
     }
@@ -154,12 +167,6 @@ export function useConciliations() {
 
     handledStaleBatchPathRef.current = staleBatchPath;
     void (async () => {
-      if (notificationId) {
-        await apiRequest(`/api/notifications/${notificationId}`, {
-          method: "DELETE",
-        }).catch(() => undefined);
-      }
-
       toastManager.add({
         type: "success",
         title: "Carga resuelta",
@@ -167,24 +174,7 @@ export function useConciliations() {
       });
       router.replace(`${pathname}?${buildConciliationsQueryString({ tab: query.tab, page: 1 })}`, { scroll: false });
     })();
-  }, [data, notificationId, pathname, query, router, toastManager]);
-
-  useEffect(() => {
-    if (!notificationId || !data || (query.batchId && data.totalCount === 0)) {
-      return;
-    }
-
-    if (handledNotificationIdRef.current === notificationId) {
-      return;
-    }
-
-    handledNotificationIdRef.current = notificationId;
-    void apiRequest(`/api/notifications/${notificationId}`, {
-      method: "DELETE",
-    }).then(() => {
-      router.replace(`${pathname}?${buildConciliationsQueryString(query)}`, { scroll: false });
-    }).catch(() => undefined);
-  }, [data, notificationId, pathname, query, router]);
+  }, [data, pathname, query, router, toastManager]);
 
   const isPageLoading = isCompanyLoading || (isLoading && !data);
 
@@ -312,7 +302,7 @@ export function useConciliations() {
       toastManager.add({
         type: "success",
         title: "Reprocesamiento iniciado",
-        description: `La factura ${item.documentId} volvió a procesarse.`,
+        description: `La factura volvió a procesarse.`,
       });
     } catch (error: unknown) {
       toastManager.add({
@@ -483,7 +473,7 @@ export function useConciliations() {
       toastManager.add({
         type: "success",
         title: "Facturas enviadas",
-        description: `Se enviaron ${payload.queuedItems} facturas seleccionadas a la cola de guardar.`,
+        description: `Se enviaron ${payload.queuedItems} facturas para guardar.`,
       });
     } catch (error: unknown) {
       toastManager.add({
@@ -491,6 +481,45 @@ export function useConciliations() {
         title: "No se pudieron enviar",
         description: resolveActionErrorMessage(error, "No se pudieron enviar las facturas a guardar."),
       });
+    }
+  }
+
+  async function handleRetrySelected(itemIds?: string[]): Promise<void> {
+    const nextItemIds = itemIds && itemIds.length > 0 ? itemIds : retryBatchAction.itemIds;
+
+    if (!nextItemIds.length || isRetryingSelected || retrySubmissionInFlightRef.current) {
+      return;
+    }
+
+    retrySubmissionInFlightRef.current = true;
+    setIsRetryingSelected(true);
+
+    try {
+      const response = await apiRequest("/api/vouchers/parse/items/retry", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ itemIds: nextItemIds }),
+      });
+      const payload = await response.json() as ConciliationBulkRetryResponse;
+      await revalidateConciliations();
+      router.refresh();
+      selection.toggleMany(nextItemIds, false);
+      toastManager.add({
+        type: "success",
+        title: "Regeneración iniciada",
+        description: payload.message,
+      });
+    } catch (error: unknown) {
+      toastManager.add({
+        type: "error",
+        title: "No se pudo regenerar",
+        description: resolveActionErrorMessage(error, "No se pudieron regenerar las facturas seleccionadas."),
+      });
+    } finally {
+      retrySubmissionInFlightRef.current = false;
+      setIsRetryingSelected(false);
     }
   }
 
@@ -506,6 +535,10 @@ export function useConciliations() {
     void handleDeleteSelected(getSectionSelectionState(section).selectedDiscardableItemIds);
   }
 
+  function handleRetrySection(section: ConciliationSectionData): void {
+    void handleRetrySelected(getSectionSelectionState(section).selectedFailedItemIds);
+  }
+
   return {
     batchId: query.batchId,
     activeTab: query.tab,
@@ -516,6 +549,7 @@ export function useConciliations() {
     readyCount: data?.readyCount || 0,
     validatedCount: data?.validatedCount || 0,
     persistBatchAction,
+    retryBatchAction,
     startIndex: data?.startIndex || 0,
     isPageLoading,
     isDeleting,
@@ -545,6 +579,7 @@ export function useConciliations() {
     handleRegenerate,
     handlePersist,
     handlePersistBatch,
+    handleRetrySelected,
     handleDelete,
     handleDeleteSelected,
     confirmDelete,
@@ -552,5 +587,6 @@ export function useConciliations() {
     confirmDeleteDialog,
     handlePersistSection,
     handleDeleteSection,
+    handleRetrySection,
   };
 }

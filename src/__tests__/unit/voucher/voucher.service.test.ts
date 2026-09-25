@@ -102,6 +102,37 @@ describe('VoucherService', () => {
       await expect(service.createVoucher(voucherData)).rejects.toMatchObject({ code: applicationErrorCodes.duplicate, publicMessage: 'Comprobante duplicado detectado.' })
       expect(repositoryMock.create).not.toHaveBeenCalled()
     })
+
+    it('should map the named fiscal identity constraint to a duplicate error', async () => {
+      const voucherData = createVoucherData()
+
+      repositoryMock.findDuplicate.mockResolvedValue(null)
+      repositoryMock.create.mockRejectedValue({ code: 'P2002', message: 'Unique constraint failed on the constraint: voucher_fiscal_sale_identity_unique', meta: { target: 'voucher_fiscal_sale_identity_unique' } })
+
+      await expect(service.createVoucher(voucherData)).rejects.toMatchObject({ code: applicationErrorCodes.duplicate, publicMessage: 'Comprobante duplicado detectado.' })
+    })
+
+    it('should preserve an unexpected database uniqueness error', async () => {
+      const voucherData = createVoucherData()
+      const error = { code: 'P2002', message: 'Unique constraint failed on the fields: (id)', meta: { target: ['id'] } }
+
+      repositoryMock.findDuplicate.mockResolvedValue(null)
+      repositoryMock.create.mockRejectedValue(error)
+
+      await expect(service.createVoucher(voucherData)).rejects.toBe(error)
+    })
+  })
+
+  describe('updateVoucher', () => {
+    it('should map the named fiscal identity constraint to a duplicate error', async () => {
+      const voucherData = createVoucherData({ id: validUuid })
+
+      repositoryMock.findById.mockResolvedValue(VoucherFactory.create(voucherData))
+      repositoryMock.findDuplicate.mockResolvedValue(null)
+      repositoryMock.update.mockRejectedValue({ code: 'P2002', message: 'Unique constraint failed on the constraint: voucher_fiscal_sale_identity_unique', meta: { target: 'voucher_fiscal_sale_identity_unique' } })
+
+      await expect(service.updateVoucher(companyId, validUuid, voucherData)).rejects.toMatchObject({ code: applicationErrorCodes.duplicate, publicMessage: 'Comprobante duplicado detectado.' })
+    })
   })
 
   describe('Data Isolation (Company ID)', () => {

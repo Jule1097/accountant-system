@@ -506,4 +506,30 @@ describe('Parser Route Handler', () => {
     expect(body.mode).toBe('batch')
     expect(body.batch.id).toBe('batch-uuid')
   })
+
+  it('should return a generic error and log the provider code when batch persistence fails', async () => {
+    const consoleError = jest.spyOn(console, 'error').mockImplementation()
+    const error = Object.assign(new Error('The column failureOrigin does not exist'), { code: 'P2022' })
+    jest.spyOn(VoucherParserService.prototype, 'createBatch').mockRejectedValue(error)
+    const secondFile = {
+      size: 1000,
+      type: 'image/png',
+      name: 'invoice-2.png',
+      arrayBuffer: async () => pngSignature,
+    }
+    const request = createParserRequest({
+      headers: { get: () => companyId },
+      formData: async () => ({
+        get: (key: string) => key === 'voucherKind' ? 'sale' : null,
+        getAll: (key: string) => key === 'files' ? [mockFile, secondFile] : [],
+      }),
+    })
+
+    const response = await POST(request)
+
+    expect(response.status).toBe(500)
+    await expect(response.json()).resolves.toEqual({ error: 'Error interno del servidor' })
+    expect(consoleError).toHaveBeenCalledWith('Application request failed', expect.objectContaining({ operation: 'parse voucher document', providerErrorCode: 'P2022' }))
+    consoleError.mockRestore()
+  })
 })

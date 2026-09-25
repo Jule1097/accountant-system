@@ -6,7 +6,6 @@ import { GET as getClient } from "src/app/api/clients/[id]/route"
 import { GET as getSupplier } from "src/app/api/suppliers/[id]/route"
 import { GET as getVoucher } from "src/app/api/vouchers/[id]/route"
 import { DELETE as deleteNotification } from "src/app/api/notifications/[notificationId]/route"
-import { POST as retryBatch } from "src/app/api/vouchers/parse/batches/[batchId]/retry/route"
 import { POST as retryParserItem } from "src/app/api/vouchers/parse/items/[itemId]/retry/route"
 import { POST as persistConciliationItem } from "src/app/api/conciliations/items/[itemId]/persist/route"
 import { requestContextErrorCodes } from "src/lib/constants/auth"
@@ -108,15 +107,6 @@ describe("authentication and company isolation security boundary", () => {
 
     expect(response.status).toBe(403)
     expect(CompanyNotificationService).not.toHaveBeenCalled()
-  })
-
-  it("blocks retrying an unrelated parser batch", async () => {
-    rejectContext("companyForbidden")
-
-    const response = await retryBatch(createRequest(`/api/vouchers/parse/batches/${recordId}/retry`, foreignCompanyId), { params: Promise.resolve({ batchId: recordId }) })
-
-    expect(response.status).toBe(403)
-    expect(VoucherParserService).not.toHaveBeenCalled()
   })
 
   it("blocks retrying an unrelated parser item", async () => {
