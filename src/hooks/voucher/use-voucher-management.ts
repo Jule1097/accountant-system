@@ -11,14 +11,14 @@ import { buildEffectiveVoucherQuery, buildVoucherMutationQuery, buildVoucherQuer
 import { createVoucherMutationAdapter } from "src/lib/helpers/voucher/voucher-resource-adapter";
 import { revalidateCompanyScope } from "src/lib/helpers/platform/swr";
 import { useCompany } from "src/contexts/company-context";
-import { analyticsDefaultCurrency } from "src/lib/constants/analytics";
+import { voucherAllCurrenciesValue } from "src/lib/constants/voucher";
 import { VoucherApiResponse } from "src/types/voucher/voucher-api";
 import { UseVoucherManagementResult, VoucherListQueryState, VoucherModalMode, VoucherScreenType } from "src/types/voucher/voucher";
 
 const emptyQueryState: VoucherListQueryState = {
   page: 1,
   pageSize: 10,
-  currency: analyticsDefaultCurrency,
+  currency: voucherAllCurrenciesValue,
   sortBy: "date",
   sortOrder: "desc",
   status: undefined,

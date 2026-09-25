@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { DELETE, GET, PUT } from 'src/app/api/vouchers/[id]/route'
-import { POST } from 'src/app/api/vouchers/route'
+import { GET as GET_VOUCHERS, POST } from 'src/app/api/vouchers/route'
 import { GET as GET_SUMMARY } from 'src/app/api/vouchers/summary/route'
 import { applicationErrorCodes } from 'src/lib/constants/application-error'
 import { ApplicationError } from 'src/lib/errors/application-error'
@@ -142,5 +142,36 @@ describe('Voucher API Route Handlers', () => {
 
     expect(response.status).toBe(200)
     expect(voucherServiceMock.prototype.getVoucherSummary).toHaveBeenCalledWith('123e4567-e89b-12d3-a456-426614174000', expect.objectContaining({ type: 'purchase', currency: 'USD', status: 'pending' }))
+  })
+
+  it('omits the currency filter when the request selects all currencies', async () => {
+    voucherServiceMock.prototype.getVoucherSummary = jest.fn().mockResolvedValue({
+      totalCount: 2,
+      documentTotal: { ARS: 100, USD: 50 },
+      cashTotal: { ARS: 80, USD: 40 },
+      topParty: {},
+      pendingCount: 0,
+      nonFiscalAmount: {},
+    })
+    const request = createRequest({
+      nextUrl: { searchParams: new URLSearchParams('type=purchase&currency=') } as NextRequest['nextUrl'],
+    })
+
+    const response = await GET_SUMMARY(request)
+
+    expect(response.status).toBe(200)
+    expect(voucherServiceMock.prototype.getVoucherSummary).toHaveBeenCalledWith('123e4567-e89b-12d3-a456-426614174000', { type: 'purchase', sortBy: 'date', sortOrder: 'desc' })
+  })
+
+  it('omits the currency filter from voucher list requests when the request selects all currencies', async () => {
+    voucherServiceMock.prototype.getVoucherPage = jest.fn().mockResolvedValue({ items: [], page: 1, pageSize: 10, total: 0, totalPages: 1 })
+    const request = createRequest({
+      nextUrl: { searchParams: new URLSearchParams('type=sale&currency=') } as NextRequest['nextUrl'],
+    })
+
+    const response = await GET_VOUCHERS(request)
+
+    expect(response.status).toBe(200)
+    expect(voucherServiceMock.prototype.getVoucherPage).toHaveBeenCalledWith('123e4567-e89b-12d3-a456-426614174000', 1, 10, { type: 'sale', sortBy: 'date', sortOrder: 'desc' })
   })
 })

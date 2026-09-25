@@ -7,6 +7,7 @@ export const voucherCurrencySymbols = {
   ARS: "$",
   USD: "USD",
 } as const
+export const voucherAllCurrenciesValue = ""
 
 export const voucherMoneyScale = 2
 export const voucherMoneyPrecision = 15
