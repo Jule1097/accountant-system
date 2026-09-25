@@ -2,15 +2,17 @@
 
 import useSWR from "swr";
 import { useRouter } from "next/navigation";
-import { buildCompanyPathKey, companyPathFetcher } from "src/lib/helpers/platform/swr";
+import { apiRequest } from "src/lib/api/api-client";
 import { useCompany } from "src/contexts/company-context";
+import { notificationApiPath } from "src/lib/constants/notification";
+import { buildCompanyPathKey, companyPathFetcher } from "src/lib/helpers/platform/swr";
 import { CompanyNotificationRecord, CompanyNotificationsResponse } from "src/types/notification/notification";
 
 export function useNotifications() {
   const router = useRouter();
   const { activeCompanyId, loading: isCompanyLoading } = useCompany();
-  const key = buildCompanyPathKey(activeCompanyId, "/api/notifications", !isCompanyLoading);
-  const { data, isLoading } = useSWR(
+  const key = buildCompanyPathKey(activeCompanyId, notificationApiPath, !isCompanyLoading);
+  const { data, isLoading, mutate } = useSWR(
     key,
     ([companyId, requestPath]) => companyPathFetcher<CompanyNotificationsResponse>(companyId, requestPath),
     {
@@ -23,7 +25,16 @@ export function useNotifications() {
   );
 
   const handleOpenNotification = async (notification: CompanyNotificationRecord): Promise<void> => {
-    router.push(`${notification.targetPath}&notificationId=${notification.id}`);
+    if (!activeCompanyId) {
+      return;
+    }
+
+    await apiRequest(`${notificationApiPath}/${notification.id}`, {
+      method: "DELETE",
+      headers: { "x-company-id": activeCompanyId },
+    });
+    void mutate();
+    router.push(notification.targetPath);
   };
 
   return {
