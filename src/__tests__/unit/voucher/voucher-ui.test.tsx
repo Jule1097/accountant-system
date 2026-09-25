@@ -509,6 +509,7 @@ describe('Voucher UI', () => {
     jest.useFakeTimers()
     const onSearchChange = jest.fn()
     const onStatusChange = jest.fn()
+    const onCurrencyChange = jest.fn()
     const onDateRangeChange = jest.fn()
     const onClearFilters = jest.fn()
     const { container } = render(
@@ -519,12 +520,13 @@ describe('Voucher UI', () => {
         onClearFilters={onClearFilters}
         onStatusChange={onStatusChange}
         onDateRangeChange={onDateRangeChange}
-        onCurrencyChange={jest.fn()}
+        onCurrencyChange={onCurrencyChange}
       />
     )
 
     fireEvent.change(screen.getByPlaceholderText('Buscar por nombre, CUIT...'), { target: { value: 'Acme' } })
     fireEvent.change(screen.getByDisplayValue('Pendiente'), { target: { value: 'paid' } })
+    fireEvent.change(screen.getByLabelText('Moneda'), { target: { value: 'USD' } })
     const [dateFromInput, dateToInput] = Array.from(container.querySelectorAll('input[type="date"]'))
     fireEvent.change(dateFromInput, { target: { value: '2026-08-02' } })
     fireEvent.change(dateToInput, { target: { value: '2026-08-30' } })
@@ -533,9 +535,36 @@ describe('Voucher UI', () => {
 
     expect(onSearchChange).toHaveBeenCalledWith('Acme')
     expect(onStatusChange).toHaveBeenCalledWith('paid')
+    expect(onCurrencyChange).toHaveBeenCalledWith('USD')
     expect(onDateRangeChange).toHaveBeenCalledWith('2026-08-02', '2026-08-30')
     expect(onClearFilters).toHaveBeenCalledTimes(1)
     jest.useRealTimers()
+  })
+
+  it('starts with Todos as the currency filter and does not mark it as active', () => {
+    const onCurrencyChange = jest.fn()
+
+    render(
+      <VoucherTableFilters
+        query={{ page: 1, pageSize: 10, currency: '' }}
+        searchValue=""
+        onSearchChange={jest.fn()}
+        onClearFilters={jest.fn()}
+        onStatusChange={jest.fn()}
+        onCurrencyChange={onCurrencyChange}
+        onDateRangeChange={jest.fn()}
+      />
+    )
+
+    const currencySelect = screen.getByLabelText('Moneda') as HTMLSelectElement
+
+    expect(currencySelect.value).toBe('')
+    expect(Array.from(currencySelect.options).map((option) => option.textContent)).toEqual(['Todos', 'ARS', 'USD'])
+    expect(screen.queryByRole('button', { name: 'Borrar filtros' })).not.toBeInTheDocument()
+
+    fireEvent.change(currencySelect, { target: { value: '' } })
+
+    expect(onCurrencyChange).toHaveBeenCalledWith('')
   })
 
   it('renders table toolbar actions and forwards sorting changes', () => {
@@ -1125,7 +1154,7 @@ describe('Voucher UI', () => {
       )
     })
 
-    expect(replaceMock).toHaveBeenCalledWith('/sales?currency=ARS', { scroll: false })
+    expect(replaceMock).toHaveBeenCalledWith('/sales', { scroll: false })
   })
 
   it('confirms physical deletion, refreshes the table, shows success feedback, and clears voucherId when needed', async () => {
@@ -1179,6 +1208,6 @@ describe('Voucher UI', () => {
         title: 'Comprobante eliminado',
       })
     )
-    expect(replaceMock).toHaveBeenCalledWith('/sales?currency=ARS', { scroll: false })
+    expect(replaceMock).toHaveBeenCalledWith('/sales', { scroll: false })
   })
 })

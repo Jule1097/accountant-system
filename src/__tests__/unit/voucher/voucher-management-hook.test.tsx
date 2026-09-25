@@ -70,7 +70,7 @@ describe("useVoucherManagement", () => {
     expect(useVouchersMock).toHaveBeenLastCalledWith("sale", {
       page: 1,
       pageSize: 10,
-      currency: "ARS",
+      currency: "",
       search: undefined,
       status: undefined,
       dateFrom: undefined,
@@ -82,7 +82,7 @@ describe("useVoucherManagement", () => {
     expect(useVoucherSummaryMock).toHaveBeenLastCalledWith("sale", {
       page: 1,
       pageSize: 10,
-      currency: "ARS",
+      currency: "",
       search: undefined,
       status: undefined,
       dateFrom: undefined,
@@ -94,7 +94,7 @@ describe("useVoucherManagement", () => {
     expect(useVoucherByIdMock).toHaveBeenLastCalledWith("")
 
     await waitFor(() => {
-      expect(replaceMock).toHaveBeenCalledWith("/sales?currency=ARS", { scroll: false })
+      expect(replaceMock).toHaveBeenCalledWith("/sales", { scroll: false })
     })
   })
 
@@ -106,7 +106,7 @@ describe("useVoucherManagement", () => {
     expect(useVouchersMock).toHaveBeenCalledWith("sale", {
       page: 2,
       pageSize: 10,
-      currency: "ARS",
+      currency: "",
       search: undefined,
       dateFrom: undefined,
       dateTo: undefined,
@@ -118,7 +118,7 @@ describe("useVoucherManagement", () => {
     expect(useVoucherSummaryMock).toHaveBeenCalledWith("sale", {
       page: 2,
       pageSize: 10,
-      currency: "ARS",
+      currency: "",
       search: undefined,
       dateFrom: undefined,
       dateTo: undefined,
@@ -138,7 +138,7 @@ describe("useVoucherManagement", () => {
     expect(useVouchersMock).toHaveBeenLastCalledWith("sale", {
       page: 2,
       pageSize: 10,
-      currency: "ARS",
+      currency: "",
       search: undefined,
       dateFrom: undefined,
       dateTo: undefined,
@@ -150,7 +150,7 @@ describe("useVoucherManagement", () => {
     expect(useVoucherSummaryMock).toHaveBeenLastCalledWith("sale", {
       page: 2,
       pageSize: 10,
-      currency: "ARS",
+      currency: "",
       search: undefined,
       dateFrom: undefined,
       dateTo: undefined,
@@ -168,7 +168,7 @@ describe("useVoucherManagement", () => {
     expect(useVouchersMock).toHaveBeenLastCalledWith("sale", {
       page: 2,
       pageSize: 10,
-      currency: "ARS",
+      currency: "",
       search: undefined,
       dateFrom: undefined,
       dateTo: undefined,
@@ -180,7 +180,7 @@ describe("useVoucherManagement", () => {
     expect(useVoucherSummaryMock).toHaveBeenLastCalledWith("sale", {
       page: 2,
       pageSize: 10,
-      currency: "ARS",
+      currency: "",
       search: undefined,
       dateFrom: undefined,
       dateTo: undefined,
@@ -200,5 +200,17 @@ describe("useVoucherManagement", () => {
     })
 
     expect(revalidateCompanyScopeMock).toHaveBeenCalledWith("company-1", ["/api/analytics", "/api/metrics", "/api/dashboard/recent-activity"])
+  })
+
+  it("clears the currency query parameter when resetting filters to Todos", () => {
+    searchParamsState.value = "currency=USD&status=pending"
+
+    const { result } = renderHook(() => useVoucherManagement("sales"))
+
+    act(() => {
+      result.current.handleClearFilters()
+    })
+
+    expect(replaceMock).toHaveBeenCalledWith("/sales", { scroll: false })
   })
 })
