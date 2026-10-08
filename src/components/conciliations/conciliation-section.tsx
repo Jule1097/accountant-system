@@ -12,6 +12,7 @@ export function ConciliationSection({
   onToggleVisibleSelection,
   onToggleItemSelection,
   onReview,
+  onRecover,
   onRegenerate,
   onPersist,
   onDelete,
@@ -99,6 +100,7 @@ export function ConciliationSection({
             isSelected={isVoucherSelected(voucher.id)}
             onSelectionChange={onToggleItemSelection}
             onReview={onReview}
+            onRecover={onRecover || onReview}
             onRegenerate={onRegenerate}
             onPersist={onPersist}
             onDelete={onDelete}

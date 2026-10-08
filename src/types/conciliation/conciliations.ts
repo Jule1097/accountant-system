@@ -8,14 +8,16 @@ export type ConciliationVisibleStatus =
   | "Lista"
   | "Validada"
   | "Duplicada"
-  | "Error";
+  | "Error"
+  | "Limpieza pendiente";
 
 export type ConciliationSectionKey =
   | "processing"
   | "ready"
   | "validated"
   | "duplicate"
-  | "error";
+  | "error"
+  | "cleanup_pending";
 
 export interface ConciliationItem {
   id: string;
@@ -29,6 +31,7 @@ export interface ConciliationItem {
   status: ConciliationVisibleStatus;
   message: string;
   canReview: boolean;
+  canRecover?: boolean;
   canRetry: boolean;
   canDiscard: boolean;
 }
@@ -59,6 +62,7 @@ export interface ConciliationSectionProps {
   onToggleVisibleSelection: (itemIds: string[], checked: boolean) => void
   onToggleItemSelection: (voucher: ConciliationItem, checked: boolean) => void
   onReview: (voucher: ConciliationItem) => void
+  onRecover?: (voucher: ConciliationItem) => void
   onRegenerate: (voucher: ConciliationItem) => void
   onPersist: (voucher: ConciliationItem) => void
   onDelete: (voucher: ConciliationItem) => void
@@ -98,7 +102,14 @@ export interface ConciliationPersistResult {
   message: string;
 }
 
-export type ConciliationItemAction = "reviewing" | "retrying" | "persisting" | "deleting";
+export type ConciliationManualRecoveryResultStatus = "recovered" | "cleanup_pending";
+
+export interface ConciliationManualRecoveryResult {
+  status: ConciliationManualRecoveryResultStatus;
+  message: string;
+}
+
+export type ConciliationItemAction = "reviewing" | "recovering" | "retrying" | "persisting" | "deleting";
 
 export interface ConciliationsQueryState {
   batchId?: string;
@@ -145,6 +156,7 @@ export interface ConciliationsOverlaysProps {
   reviewSourceUrl: string | null
   onReviewModalOpenChange: (open: boolean) => void
   onReviewSubmit: (payload: VoucherFormPayload) => Promise<void>
+  isManualRecovery?: boolean
   deleteDialogState: ConciliationDeleteDialogState
   isDeleting: boolean
   onDeleteDialogOpenChange: (open: boolean) => void

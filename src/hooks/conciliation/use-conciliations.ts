@@ -27,6 +27,7 @@ import {
   ConciliationDeleteDialogState,
   ConciliationItem,
   ConciliationItemAction,
+  ConciliationManualRecoveryResult,
   ConciliationPersistBatchActionState,
   ConciliationRetryBatchActionState,
   ConciliationPersistResult,
@@ -65,6 +66,7 @@ export function useConciliations() {
   const { selectedIds: selectedItemIds } = selection;
   const [loadingVouchers, setLoadingVouchers] = useState<Record<string, ConciliationItemAction | undefined>>({});
   const [reviewItemId, setReviewItemId] = useState<string | null>(null);
+  const [isManualRecovery, setIsManualRecovery] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRetryingSelected, setIsRetryingSelected] = useState(false);
   const retrySubmissionInFlightRef = useRef(false);
@@ -236,6 +238,12 @@ export function useConciliations() {
   }
 
   function handleReview(item: ConciliationItem) {
+    setIsManualRecovery(false);
+    setReviewItemId(item.id);
+  }
+
+  function handleRecover(item: ConciliationItem) {
+    setIsManualRecovery(true);
     setReviewItemId(item.id);
   }
 
@@ -245,6 +253,7 @@ export function useConciliations() {
     }
 
     setReviewItemId(null);
+    setIsManualRecovery(false);
   }
 
   function handleDeleteDialogOpenChange(open: boolean): void {
@@ -262,19 +271,27 @@ export function useConciliations() {
       return;
     }
 
-    updateLoadingState(reviewItemId, "reviewing");
+    updateLoadingState(reviewItemId, isManualRecovery ? "recovering" : "reviewing");
 
     try {
-      await apiRequest(`/api/conciliations/items/${reviewItemId}/validate`, {
+      const response = await apiRequest(`/api/conciliations/items/${reviewItemId}/${isManualRecovery ? "recover" : "validate"}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
       });
+      const recoveryResult = isManualRecovery ? await response.json() as ConciliationManualRecoveryResult : null;
       await revalidateConciliations();
       router.refresh();
       setReviewItemId(null);
+      setIsManualRecovery(false);
+      if (isManualRecovery) {
+        toastManager.add(recoveryResult?.status === "cleanup_pending"
+          ? { type: "warning", title: "Factura guardada", description: recoveryResult.message }
+          : { type: "success", title: "Factura guardada", description: recoveryResult?.message || "La factura se guardó correctamente." });
+        return;
+      }
       toastManager.add({
         type: "success",
         title: "Factura validada",
@@ -560,6 +577,7 @@ export function useConciliations() {
     selectedDiscardCount: selectedVisibleItemIds.length,
     allVisibleDiscardableSelected,
     isReviewModalOpen: reviewItemId !== null,
+    isManualRecovery,
     reviewItem,
     isReviewItemLoading,
     reviewSourceUrl: reviewItemId && activeCompanyId
@@ -573,6 +591,7 @@ export function useConciliations() {
     handleToggleAllDiscardable,
     handleToggleVisibleSelection,
     handleReview,
+    handleRecover,
     handleReviewModalOpenChange,
     handleDeleteDialogOpenChange,
     handleReviewSubmit,
