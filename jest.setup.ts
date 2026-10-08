@@ -8,4 +8,5 @@ process.env.UPSTASH_REDIS_REST_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || '
 process.env.ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS || '*'
 process.env.GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'mock-gemini-key'
 process.env.VOUCHER_PARSER_TEMP_BUCKET = process.env.VOUCHER_PARSER_TEMP_BUCKET || 'mock-temp-bucket'
+process.env.PARSER_UPLOAD_PLAN_SECRET = process.env.PARSER_UPLOAD_PLAN_SECRET || 'mock-parser-upload-plan-secret'
 
