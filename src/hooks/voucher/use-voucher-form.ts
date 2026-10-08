@@ -8,7 +8,7 @@ import { useAuth } from "src/hooks/auth/use-auth";
 import { useVoucherPreview } from "src/hooks/voucher/use-voucher-preview";
 import { ApiRequestError, apiRequest, parseJsonResponse, resolveApiErrorMessage } from "src/lib/api/api-client";
 import { createVoucherFormSchema, VoucherFormValues } from "src/lib/schemas/voucher/voucher-form-schemas";
-import { buildVoucherFormInitialValues, buildVoucherFormPayload, buildVoucherParsedPatch, hasUnresolvedParsedVoucherTaxes, resolveSalesSubtotal } from "src/lib/helpers/voucher/voucher-form";
+import { buildVoucherFormInitialValues, buildVoucherFormPayload, buildVoucherParsedPatch, hasUnresolvedParsedVoucherTaxes } from "src/lib/helpers/voucher/voucher-form";
 import { ParserBatchAsyncResponse } from "src/types/parser/parser-batch";
 import { ParsedVoucherData } from "src/types/parser/gemini-parser";
 import { VoucherApiResponse } from "src/types/voucher/voucher-api";
@@ -141,22 +141,6 @@ export function useVoucherForm({
     control,
     name: "thirdPartyId",
   });
-  const watchedVoucherLetterId = useWatch({
-    control,
-    name: "voucherLetterId",
-  });
-  const watchedTotalAmount = useWatch({
-    control,
-    name: "totalAmount",
-  });
-  const watchedVatAmount = useWatch({
-    control,
-    name: "vatAmount",
-  });
-  const watchedCurrency = useWatch({
-    control,
-    name: "currency",
-  });
   const isProcessing = isParsing || isSubmitting;
   const previewDocument: VoucherPreviewDocument | null = previewSourceUrl && previewFile
     ? {
@@ -256,27 +240,6 @@ export function useVoucherForm({
 
     setValue("createdByUserId", user.id, { shouldDirty: false, shouldTouch: false, shouldValidate: true });
   }, [getValues, setValue, user?.id]);
-
-  useEffect(() => {
-    const normalizedSubtotal = resolveSalesSubtotal(
-      type,
-      watchedVoucherLetterId,
-      watchedTotalAmount,
-      watchedVatAmount,
-      catalogs,
-      watchedCurrency
-    );
-
-    if (normalizedSubtotal === null) {
-      return;
-    }
-
-    if (getValues("subtotal") === normalizedSubtotal) {
-      return;
-    }
-
-    setValue("subtotal", normalizedSubtotal, { shouldValidate: true });
-  }, [catalogs, getValues, setValue, type, watchedCurrency, watchedTotalAmount, watchedVatAmount, watchedVoucherLetterId]);
 
   const applyParsedVoucherData = async (parsedData: ParsedVoucherData): Promise<void> => {
     const patch = buildVoucherParsedPatch(parsedData, getValues(), type, catalogs, thirdParties);

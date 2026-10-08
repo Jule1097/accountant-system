@@ -5,10 +5,11 @@ import { httpStatusCodes } from "src/lib/constants/http";
 import { conciliationBulkPersistSchema } from "src/lib/schemas/conciliation/conciliations-schemas";
 import { VoucherPersistenceService } from "src/services/parser/VoucherPersistence";
 import { resolveApplicationErrorResponse } from "src/lib/helpers/api/application-error-response";
+import { readJsonBody } from "src/lib/helpers/api/request-body";
 
 export async function POST(request: NextRequest): Promise<Response> {
   return executeRequestWithContext(request, async ({ companyId }) => {
-    const body = await request.json();
+    const body = await readJsonBody(request);
     const parsedBody = conciliationBulkPersistSchema.safeParse(body);
 
     if (!parsedBody.success) {

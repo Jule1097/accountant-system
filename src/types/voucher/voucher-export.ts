@@ -45,3 +45,8 @@ export interface VatRateLike {
   name: string
   rate: { toNumber(): number }
 }
+
+export interface TaxJurisdictionLike {
+  id: string
+  name: string
+}

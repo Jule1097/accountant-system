@@ -33,6 +33,7 @@ export function isDiscardableStatus(status: ParserBatchItemContextRecord["status
   return status === "parsed"
     || status === "validated"
     || status === "failed"
+    || status === "cleanup_pending"
     || status === "duplicate";
 }
 
@@ -47,6 +48,10 @@ function resolveVisibleStatus(item: ParserBatchItemContextRecord): ConciliationV
 
   if (item.status === "failed") {
     return "Error";
+  }
+
+  if (item.status === "cleanup_pending") {
+    return "Limpieza pendiente";
   }
 
   if (item.status === "duplicate") {
@@ -77,7 +82,11 @@ function resolveStatusPriority(status: ConciliationVisibleStatus): number {
     return 3;
   }
 
-  return 4;
+  if (status === "Error") {
+    return 4;
+  }
+
+  return 5;
 }
 
 function formatDocumentSegment(value: string | null, size: number): string {
@@ -109,7 +118,11 @@ function resolveThirdPartyName(payload: ParsedVoucherData | null): string | null
 }
 
 function resolveAmount(payload: ParsedVoucherData | null): number | null {
-  return typeof payload?.totalAmount === "number" ? payload.totalAmount : null;
+  if (!payload) return null;
+  const perceptions = payload.perceptions.reduce((total, perception) => total + (perception.amount || 0), 0);
+  return [payload.subtotal, payload.vatAmount, payload.nonTaxableAmount, payload.exemptAmount, perceptions].some((value) => typeof value === "number")
+    ? (payload.subtotal || 0) + (payload.vatAmount || 0) + (payload.nonTaxableAmount || 0) + (payload.exemptAmount || 0) + perceptions
+    : null;
 }
 
 function resolveCurrency(payload: ParsedVoucherData | null): string | null {
@@ -123,6 +136,10 @@ function resolveMessage(item: ParserBatchItemContextRecord, visibleStatus: Conci
 
   if (visibleStatus === "Error") {
     return item.currentError || "No se pudo extraer información suficiente de la factura.";
+  }
+
+  if (visibleStatus === "Limpieza pendiente") {
+    return item.currentError || "La factura fue guardada y requiere eliminar el archivo temporal.";
   }
 
   if (visibleStatus === "Duplicada") {
@@ -142,7 +159,8 @@ function mapConciliationItem(item: ParserBatchItemContextRecord): ConciliationIt
   const canDiscard = visibleStatus === "Lista"
     || visibleStatus === "Validada"
     || visibleStatus === "Duplicada"
-    || visibleStatus === "Error";
+    || visibleStatus === "Error"
+    || visibleStatus === "Limpieza pendiente";
 
   return {
     id: item.id,
@@ -156,6 +174,7 @@ function mapConciliationItem(item: ParserBatchItemContextRecord): ConciliationIt
     status: visibleStatus,
     message: resolveMessage(item, visibleStatus),
     canReview: visibleStatus === "Lista",
+    canRecover: item.status === "failed",
     canRetry: visibleStatus === "Error",
     canDiscard,
   };
@@ -261,6 +280,7 @@ export function buildConciliationsPageData(
     Validada: [],
     Duplicada: [],
     Error: [],
+    "Limpieza pendiente": [],
   });
   const readyItems = groupedItems.Lista;
   const totalCount = sortedItems.length;
@@ -274,6 +294,7 @@ export function buildConciliationsPageData(
     buildAuxiliarySection("validated", "Validadas", groupedItems.Validada),
     buildAuxiliarySection("duplicate", "Duplicadas", groupedItems.Duplicada),
     buildAuxiliarySection("error", "Error", groupedItems.Error),
+    buildAuxiliarySection("cleanup_pending", "Limpieza pendiente", groupedItems["Limpieza pendiente"]),
   ]);
 
   return {

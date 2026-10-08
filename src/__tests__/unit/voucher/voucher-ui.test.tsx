@@ -950,6 +950,20 @@ describe('Voucher UI', () => {
     })
   })
 
+  it('declares explicit input types for voucher modal fields', () => {
+    render(<FiscalPurchaseCoreFieldsHarness />)
+
+    expect(screen.getByPlaceholderText('00-00000000-0')).toHaveAttribute('type', 'text')
+    expect(screen.getByPlaceholderText('Detalle del comprobante')).toHaveAttribute('type', 'text')
+    expect(screen.getByPlaceholderText('00001')).toHaveAttribute('type', 'number')
+    expect(screen.getByPlaceholderText('00000000')).toHaveAttribute('type', 'number')
+    expect(screen.getByPlaceholderText('Transferencia')).toHaveAttribute('type', 'text')
+    const inputs = Array.from(document.querySelectorAll('input'))
+    expect(inputs.every((input) => input.hasAttribute('type'))).toBe(true)
+    expect(document.querySelector('input[type="date"]')).toBeInTheDocument()
+    expect(document.querySelector('input[type="number"]')).toBeInTheDocument()
+  })
+
   it('hydrates batch review parsed data when it arrives after opening the form', async () => {
     const reviewOptions = {
       catalogs: {

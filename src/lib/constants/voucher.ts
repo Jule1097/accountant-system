@@ -46,6 +46,7 @@ export const voucherExportIdentificationValues = { fiscal: "Fiscal", nonFiscal: 
 export const voucherTypeCategories = { standard: "standard", creditNote: "credit_note" } as const
 export const voucherCreditNoteNameTokens = ["nota de credito", "nota de crédito", "nota de crÃ©dito"] as const
 export const voucherStatusValues = { pending: "pending", partial: "partial", paid: "paid" } as const
+export const voucherStatusDisplayValues = { pending: "Pendiente", partial: "Parcial", paid: "Pagado" } as const
 export const voucherSummaryCardCounts = { sales: 4, purchases: 5 } as const
 export const voucherPageSizeOptions = [10, 20, 50] as const
 export const voucherTaxJurisdictionConceptToken = "ingresos brutos"

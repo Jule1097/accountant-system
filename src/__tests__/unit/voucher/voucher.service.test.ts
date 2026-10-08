@@ -80,8 +80,8 @@ describe('VoucherService', () => {
 
       const result = await service.createVoucher(voucherData)
 
-      expect(result.totalAmount.toString()).toBe('150.00')
-      expect(result.netAmount.toString()).toBe('150.00')
+      expect(result.totalAmount.toString()).toBe('142.00')
+      expect(result.netAmount.toString()).toBe('142.00')
     })
 
     it('should derive paid status when paidAmount equals netAmount', async () => {

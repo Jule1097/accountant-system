@@ -15,6 +15,7 @@ import { VoucherFormPayload } from "src/types/voucher/voucher-form";
 import { ApplicationError } from "src/lib/errors/application-error";
 import { applicationErrorCodes } from "src/lib/constants/application-error";
 import { parserRetryMessages } from "src/lib/constants/parser";
+import { conciliationRecoveryMessages } from "src/lib/constants/conciliation";
 import { isParserBatchExpired } from "src/lib/helpers/parser/parser-batch";
 
 interface ParserBatchReviewFilter {
@@ -744,6 +745,32 @@ export class ParserBatchRepository {
 
       await syncBatchStatus(tx, item.batchId);
     });
+  }
+
+  async markItemCleanupPending(itemId: string): Promise<ParserBatchItemContextRecord> {
+    await prisma.$transaction(async (tx) => {
+      const item = await tx.parserBatchItem.update({
+        where: {
+          id: itemId,
+        },
+        data: {
+          status: "cleanup_pending",
+          currentError: conciliationRecoveryMessages.cleanupPending,
+          failureOrigin: null,
+          failureReason: null,
+        },
+      });
+
+      await syncBatchStatus(tx, item.batchId);
+    });
+
+    const item = await this.findItemById(itemId);
+
+    if (!item) {
+      throw new Error("Parser item not found");
+    }
+
+    return item;
   }
 
   async markItemPersisted(itemId: string): Promise<void> {

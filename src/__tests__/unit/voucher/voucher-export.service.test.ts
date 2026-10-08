@@ -237,4 +237,28 @@ describe('VoucherExportService', () => {
     expect(row.date).toEqual(expect.any(Date))
     expect(row.paymentDate).toBeNull()
   })
+
+  it('builds jurisdiction columns from the catalog and preserves an added jurisdiction', () => {
+    const purchase = VoucherFactory.rehydrate({ id: 'v13', companyId: 'company-1', type: 'purchase', voucherTypeId: 'vt-1', voucherTypeName: 'Factura', voucherLetterId: 'vl-a', voucherLetter: 'A', posNumber: '00001', number: '00000013', supplierId: 'supplier-1', supplier: { name: 'Supplier', cuit: '30111111119' }, date: '2026-08-10', currency: 'ARS', exchangeRate: 1, subtotal: 100, vatAmount: 21, totalAmount: 121, paymentMethod: 'Efectivo', status: 'paid', createdByUserId: 'user-1', retentions: [], perceptions: [{ perceptionConceptId: 'perc-iibb', amount: 8, taxJurisdictionName: 'Chubut' }], vatDetails: [] })
+    const { columns, data } = prepareExportWorkbookData('purchases', [purchase], {
+      allVatRates: [],
+      allRetentionConcepts: [],
+      allPerceptionConcepts: [{ id: 'perc-iibb', name: 'Percepción de IIBB' }],
+      allTaxJurisdictions: [{ id: 'tj-chubut', name: 'Chubut' }],
+    })
+
+    expect(columns).toEqual(expect.arrayContaining([expect.objectContaining({ key: 'perc_Chubut' })]))
+    expect(data[0]['perc_Chubut']).toBe(8)
+  })
+
+  it('adds operational details only to current-view exports with localized status', () => {
+    const sale = VoucherFactory.rehydrate({ id: 'v14', companyId: 'company-1', type: 'sale', voucherTypeId: 'vt-1', voucherTypeName: 'Factura', voucherLetterId: 'vl-a', voucherLetter: 'A', posNumber: '00001', number: '00000014', clientId: 'client-1', client: { name: 'Client', cuit: '20111111112' }, date: '2026-08-10', currency: 'ARS', exchangeRate: 1, subtotal: 100, vatAmount: 21, totalAmount: 121, paymentMethod: 'Efectivo', status: 'paid', concept: 'Servicio', comments: 'Revisar', createdByUserId: 'user-1', retentions: [], perceptions: [], vatDetails: [] })
+    const currentView = prepareExportWorkbookData('sales', [sale], { allVatRates: [], allRetentionConcepts: [], allPerceptionConcepts: [], mode: 'filters' })
+    const declaration = prepareExportWorkbookData('sales', [sale], { allVatRates: [], allRetentionConcepts: [], allPerceptionConcepts: [], mode: 'declaration' })
+
+    expect(currentView.columns.map((column) => column.key)).toEqual(expect.arrayContaining(['concept', 'comments', 'status']))
+    expect(currentView.columns.map((column) => column.key).slice(-4)).toEqual(['total', 'concept', 'comments', 'status'])
+    expect(currentView.data[0]).toEqual(expect.objectContaining({ concept: 'Servicio', comments: 'Revisar', status: 'Pagado' }))
+    expect(declaration.columns.map((column) => column.key)).not.toEqual(expect.arrayContaining(['concept', 'comments', 'status']))
+  })
 })

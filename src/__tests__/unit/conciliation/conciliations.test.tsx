@@ -9,6 +9,7 @@ const pushMock = jest.fn();
 const handleTabChangeMock = jest.fn();
 const handlePageChangeMock = jest.fn();
 const handleReviewMock = jest.fn();
+const handleRecoverMock = jest.fn();
 const handleRegenerateMock = jest.fn();
 const handlePersistMock = jest.fn();
 const handlePersistSectionMock = jest.fn();
@@ -153,6 +154,7 @@ jest.mock("src/hooks/conciliation/use-conciliations", () => ({
             status: "Error",
             message: "No se pudo procesar la factura.",
             canReview: false,
+            canRecover: true,
             canRetry: true,
             canDiscard: true,
           },
@@ -189,6 +191,7 @@ jest.mock("src/hooks/conciliation/use-conciliations", () => ({
     handleToggleAllDiscardable: handleToggleAllDiscardableMock,
     handleToggleVisibleSelection: handleToggleAllDiscardableMock,
     handleReview: handleReviewMock,
+    handleRecover: handleRecoverMock,
     handleReviewModalOpenChange: handleReviewModalOpenChangeMock,
     handleDeleteDialogOpenChange: jest.fn(),
     handleReviewSubmit: handleReviewSubmitMock,
@@ -242,6 +245,7 @@ describe("Login Theme & Conciliations UI", () => {
     expect(screen.getByRole("button", { name: "Revisar factura A 00001-00000075" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Guardar factura A 00001-00000076" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Regenerar factura A 00001-00000077" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cargar manualmente factura A 00001-00000077" })).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /Eliminar factura/ })).toHaveLength(4);
     expect(screen.getAllByRole("button", { name: "Guardar seleccionadas (1)" })).toHaveLength(1);
     expect(screen.getAllByRole("button", { name: "Eliminar seleccionadas (1)" })).toHaveLength(2);
@@ -268,11 +272,13 @@ describe("Login Theme & Conciliations UI", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Revisar factura A 00001-00000075" }));
     fireEvent.click(screen.getByRole("button", { name: "Guardar factura A 00001-00000076" }));
     fireEvent.click(screen.getByRole("button", { name: "Regenerar factura A 00001-00000077" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cargar manualmente factura A 00001-00000077" }));
     fireEvent.click(screen.getByRole("button", { name: "Eliminar factura A 00001-00000078" }));
 
     expect(handleReviewMock).toHaveBeenCalledWith(expect.objectContaining({ id: "item-ready" }));
     expect(handlePersistMock).toHaveBeenCalledWith(expect.objectContaining({ id: "item-validated" }));
     expect(handleRegenerateMock).toHaveBeenCalledWith(expect.objectContaining({ id: "item-error" }));
+    expect(handleRecoverMock).toHaveBeenCalledWith(expect.objectContaining({ id: "item-error" }));
     expect(handleDeleteMock).toHaveBeenCalledWith(expect.objectContaining({ id: "item-duplicate" }));
   });
 

@@ -53,6 +53,22 @@ describe("bulk parser retry API", () => {
     expect(service.retryItems).not.toHaveBeenCalled();
   });
 
+  it("returns a controlled response when the bulk retry JSON is malformed", async () => {
+    const service = new VoucherParserService() as jest.Mocked<VoucherParserService>;
+    service.retryItems = jest.fn();
+    (VoucherParserService as jest.MockedClass<typeof VoucherParserService>).mockImplementation(() => service);
+
+    const response = await POST(new NextRequest("http://localhost/api/vouchers/parse/items/retry", {
+      method: "POST",
+      body: "{invalid",
+      headers: { "content-type": "application/json" },
+    }));
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ error: "El cuerpo de la solicitud es inv\u00e1lido." });
+    expect(service.retryItems).not.toHaveBeenCalled();
+  });
+
   it("rejects a payload over the established bulk operation limit", async () => {
     const service = new VoucherParserService() as jest.Mocked<VoucherParserService>;
     service.retryItems = jest.fn();

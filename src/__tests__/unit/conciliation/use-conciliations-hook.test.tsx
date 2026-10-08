@@ -2,6 +2,7 @@
 
 import { act, renderHook, waitFor } from "@testing-library/react"
 import { useConciliations } from "src/hooks/conciliation/use-conciliations"
+import { apiRequest } from "src/lib/api/api-client"
 
 const pushMock = jest.fn()
 const replaceMock = jest.fn()
@@ -157,5 +158,34 @@ describe("useConciliations", () => {
     )
     expect(result.current.isReviewModalOpen).toBe(true)
     expect(result.current.reviewSourceUrl).toBe("/api/conciliations/items/item-1/source?companyId=company-1")
+  })
+
+  it("submits failed items through the direct manual recovery endpoint", async () => {
+    searchParamsState.value = "tab=sales&page=1"
+    const recoveryResponse = Object.create(null) as Response
+    recoveryResponse.json = async () => ({ status: "recovered", message: "La factura se guardó correctamente." })
+    jest.mocked(apiRequest).mockResolvedValue(recoveryResponse)
+
+    const { result } = renderHook(() => useConciliations())
+    act(() => result.current.handleRecover({
+      id: "item-1",
+      batchId: "batch-1",
+      type: "sales",
+      documentId: "A 00001-00000001",
+      date: "2026-08-28",
+      thirdParty: "Acme",
+      amount: 1000,
+      currency: "ARS",
+      status: "Error",
+      message: "Error",
+      canReview: false,
+      canRecover: true,
+      canRetry: true,
+      canDiscard: true,
+    }))
+
+    await act(async () => result.current.handleReviewSubmit({} as never))
+
+    expect(apiRequest).toHaveBeenCalledWith("/api/conciliations/items/item-1/recover", expect.objectContaining({ method: "POST" }))
   })
 })

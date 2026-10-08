@@ -8,6 +8,8 @@ import {
   parseClientSupplierListQuery,
 } from 'src/lib/helpers/third-party/third-party-api'
 import { resolveApplicationErrorResponse } from 'src/lib/helpers/api/application-error-response'
+import { readJsonBody } from 'src/lib/helpers/api/request-body'
+import { resolveZodValidationResponse } from 'src/lib/helpers/api/validation-response'
 import { clientSupplierSchema } from 'src/lib/schemas/third-party/third-party-schemas'
 
 export async function GET(request: NextRequest) {
@@ -36,11 +38,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   return executeRequestWithContext(request, async ({ companyId }) => {
-    const body = await request.json()
+    const body = await readJsonBody(request)
 
     const parsed = clientSupplierSchema.safeParse(body)
     if (!parsed.success) {
-      return NextResponse.json({ error: apiResponseMessages.common.invalidData, details: parsed.error.format() }, { status: httpStatusCodes.badRequest })
+      return resolveZodValidationResponse(parsed.error)
     }
 
     const clientService = new ClientService()

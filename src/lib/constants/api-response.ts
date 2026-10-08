@@ -1,5 +1,7 @@
 export const apiResponseMessages = {
   common: {
+    invalidRequestBody: "El cuerpo de la solicitud es inv\u00e1lido.",
+    invalidMultipartBody: "La carga de archivos es inv\u00e1lida.",
     invalidSearchParameters: "Parámetros de búsqueda inválidos.",
     invalidData: "Datos inválidos",
     internalServerError: "Error interno del servidor",

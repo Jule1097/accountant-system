@@ -2,9 +2,9 @@ import { NextRequest } from 'next/server'
 import { applicationErrorCodes } from 'src/lib/constants/application-error'
 import { ApplicationError } from 'src/lib/errors/application-error'
 import { GET as getClients, POST as postClient } from 'src/app/api/clients/route'
-import { DELETE as deleteClient } from 'src/app/api/clients/[id]/route'
+import { DELETE as deleteClient, PUT as updateClient } from 'src/app/api/clients/[id]/route'
 import { GET as getSuppliers, POST as postSupplier } from 'src/app/api/suppliers/route'
-import { DELETE as deleteSupplier } from 'src/app/api/suppliers/[id]/route'
+import { DELETE as deleteSupplier, PUT as updateSupplier } from 'src/app/api/suppliers/[id]/route'
 import { ClientService } from 'src/services/third-party/Client'
 import { SupplierService } from 'src/services/third-party/Supplier'
 
@@ -26,6 +26,7 @@ type ClientServiceMock = jest.MockedClass<typeof ClientService> & {
   prototype: {
     getClientPage: jest.Mock
     createClient: jest.Mock
+    updateClient: jest.Mock
     deleteClient: jest.Mock
   }
 }
@@ -34,6 +35,7 @@ type SupplierServiceMock = jest.MockedClass<typeof SupplierService> & {
   prototype: {
     getSupplierPage: jest.Mock
     createSupplier: jest.Mock
+    updateSupplier: jest.Mock
     deleteSupplier: jest.Mock
   }
 }
@@ -44,6 +46,7 @@ function createRequest(overrides: Partial<NextRequest> = {}) {
   } as NextRequest['nextUrl']
 
   return {
+    url: 'http://localhost/api/third-party',
     headers: { get: () => '123e4567-e89b-12d3-a456-426614174000' },
     json: async () => ({}),
     nextUrl,
@@ -148,6 +151,30 @@ describe('Clients API Route Handlers', () => {
       error: 'No se puede eliminar el cliente porque tiene comprobantes asociados.',
     })
   })
+
+  it('returns the actionable validation message for invalid client data', async () => {
+    const response = await postClient(createRequest({ json: async () => ({ name: '', cuit: 'invalid-cuit' }) }))
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual(expect.objectContaining({ error: 'El nombre es obligatorio' }))
+    expect(clientServiceMock.prototype.createClient).not.toHaveBeenCalled()
+  })
+
+  it('returns a controlled response when client JSON is malformed', async () => {
+    const response = await postClient(createRequest({ json: async () => { throw new SyntaxError('Unexpected token') } }))
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({ error: 'El cuerpo de la solicitud es inv\u00e1lido.' })
+    expect(clientServiceMock.prototype.createClient).not.toHaveBeenCalled()
+  })
+
+  it('returns a controlled response when client update JSON is malformed', async () => {
+    const response = await updateClient(createRequest({ json: async () => { throw new SyntaxError('Unexpected token') } }), { params: Promise.resolve({ id: 'client-1' }) })
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({ error: 'El cuerpo de la solicitud es inv\u00e1lido.' })
+    expect(clientServiceMock.prototype.updateClient).not.toHaveBeenCalled()
+  })
 })
 
 describe('Suppliers API Route Handlers', () => {
@@ -230,5 +257,21 @@ describe('Suppliers API Route Handlers', () => {
     expect(await response.json()).toEqual({
       error: 'No se puede eliminar el proveedor porque tiene comprobantes asociados.',
     })
+  })
+
+  it('returns a controlled response when supplier JSON is malformed', async () => {
+    const response = await postSupplier(createRequest({ json: async () => { throw new SyntaxError('Unexpected token') } }))
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({ error: 'El cuerpo de la solicitud es inv\u00e1lido.' })
+    expect(supplierServiceMock.prototype.createSupplier).not.toHaveBeenCalled()
+  })
+
+  it('returns a controlled response when supplier update JSON is malformed', async () => {
+    const response = await updateSupplier(createRequest({ json: async () => { throw new SyntaxError('Unexpected token') } }), { params: Promise.resolve({ id: 'supplier-1' }) })
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({ error: 'El cuerpo de la solicitud es inv\u00e1lido.' })
+    expect(supplierServiceMock.prototype.updateSupplier).not.toHaveBeenCalled()
   })
 })

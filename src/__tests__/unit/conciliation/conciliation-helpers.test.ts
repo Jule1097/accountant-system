@@ -198,4 +198,23 @@ describe("buildConciliationsPageData", () => {
 
     expect(items.every((item) => item.canDiscard)).toBe(true);
   });
+
+  it("renders cleanup-pending items with only deletion available", () => {
+    const data = buildConciliationsPageData(
+      { tab: "sales", page: 1 },
+      [{
+        ...createParserBatchItem(null),
+        status: "cleanup_pending",
+        currentError: "La factura fue guardada y requiere eliminar el archivo temporal.",
+      }],
+    );
+    const item = flattenPageItems(data)[0];
+
+    expect(item?.status).toBe("Limpieza pendiente");
+    expect(item?.message).toBe("La factura fue guardada y requiere eliminar el archivo temporal.");
+    expect(item?.canReview).toBe(false);
+    expect(item?.canRecover).toBe(false);
+    expect(item?.canRetry).toBe(false);
+    expect(item?.canDiscard).toBe(true);
+  });
 });

@@ -23,7 +23,7 @@ export class Purchase extends Voucher {
 
   calculateTotalAmount(): Money {
     const perceptions = sumMoneyAmounts(this.perceptions, new Money(voucherZeroAmount, this.currency), (amount) => new Money(normalizeOptionalMoneyAmount(amount), this.currency))
-    this.totalAmount = this.baseTotal().add(perceptions)
+    this.totalAmount = this.subtotal.add(this.vatAmount).add(this.nonTaxableAmount).add(this.exemptAmount).add(perceptions)
     return this.totalAmount
   }
 

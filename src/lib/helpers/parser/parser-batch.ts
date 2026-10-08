@@ -97,7 +97,8 @@ export function hasReviewableParsedPayload(payload: ParsedVoucherData | null): b
 
   return (hasMeaningfulNumber(payload.posNumber) && hasMeaningfulNumber(payload.number))
     || hasMeaningfulText(payload.date)
-    || (typeof payload.totalAmount === "number" && payload.totalAmount > 0)
+    || (typeof payload.subtotal === "number" && payload.subtotal > 0)
+    || (typeof payload.vatAmount === "number" && payload.vatAmount > 0)
     || hasMeaningfulText(payload.thirdPartyCuit)
     || hasMeaningfulText(payload.thirdPartyName)
     || hasMeaningfulVatDetails(payload.vatDetails)
