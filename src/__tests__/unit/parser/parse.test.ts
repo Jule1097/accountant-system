@@ -1,596 +1,92 @@
-import { NextRequest } from 'next/server'
-import { POST } from 'src/app/api/vouchers/parse/route'
-import { parseInvoiceImage, parseInvoiceMarkdown, parseInvoiceVisualFieldRepair } from 'src/lib/integrations/gemini'
-import { requireRequestContext } from 'src/lib/helpers/auth/request-context'
-import { parserFileValidationMessages } from 'src/lib/constants/parser'
-import { getParserBatchMaxFiles } from 'src/lib/helpers/parser/parser-batch'
-import { resolveParserPdfStrategy } from 'src/lib/helpers/parser/parser-pdf'
-import { CatalogRepository } from 'src/repositories/catalog/catalog.repository'
-import { ClientRepository } from 'src/repositories/third-party/client.repository'
-import { CompanyRepository } from 'src/repositories/company/company.repository'
-import { SupplierRepository } from 'src/repositories/third-party/supplier.repository'
-import { VoucherParserService } from 'src/services/parser/VoucherParser'
+import { NextRequest } from "next/server"
+import { POST as initializeUpload } from "src/app/api/vouchers/parse/uploads/route"
+import { POST as confirmUpload } from "src/app/api/vouchers/parse/route"
+import { requireRequestContext } from "src/lib/helpers/auth/request-context"
+import { parserFileValidationMessages } from "src/lib/constants/parser"
+import { inputLimits } from "src/lib/constants/input-limits"
+import { ApplicationError } from "src/lib/errors/application-error"
+import { applicationErrorCodes } from "src/lib/constants/application-error"
+import { VoucherParserService } from "src/services/parser/VoucherParser"
+import { ParsedVoucherData } from "src/types/parser/gemini-parser"
 
-jest.mock('src/lib/integrations/gemini')
-jest.mock('src/repositories/third-party/client.repository')
-jest.mock('src/repositories/third-party/supplier.repository')
-jest.mock('src/repositories/company/company.repository')
-jest.mock('src/repositories/catalog/catalog.repository')
-jest.mock('src/lib/helpers/parser/parser-pdf', () => ({
-  resolveParserPdfStrategy: jest.fn(),
-}))
-jest.mock('src/lib/helpers/auth/request-context', () => {
-  const { RequestContextError } = jest.requireActual('src/lib/errors/request-context')
-  const { requestContextErrorCodes } = jest.requireActual('src/lib/constants/auth')
-  return {
-    requireRequestContext: jest.fn(async (request: NextRequest) => {
-      const companyId = request.headers.get('x-company-id')
-      if (!companyId) throw new RequestContextError(requestContextErrorCodes.companyRequired)
-      return { userId: 'user-1', companyId }
-    }),
-  }
-})
+jest.mock("src/lib/helpers/auth/request-context", () => ({ requireRequestContext: jest.fn() }))
 
-function createParserRequest(request: object): NextRequest {
-  const nextRequest = new NextRequest('http://localhost')
-  Object.entries(request).forEach(([key, value]) => Object.defineProperty(nextRequest, key, { value, writable: true }))
-  return nextRequest
+const companyId = "11111111-1111-4111-8111-111111111111"
+const userId = "22222222-2222-4222-8222-222222222222"
+const itemId = "33333333-3333-4333-8333-333333333333"
+
+function createJsonRequest(path: string, body: unknown): NextRequest {
+  return new NextRequest(`http://localhost${path}`, { method: "POST", body: JSON.stringify(body), headers: { "content-type": "application/json", "x-company-id": companyId } })
 }
 
-const pdfSignature = Uint8Array.from([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x37]).buffer
-const pngSignature = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).buffer
+function createParsedVoucherData(): ParsedVoucherData {
+  return { posNumber: null, number: null, date: null, currency: null, exchangeRate: null, subtotal: null, vatAmount: null, nonTaxableAmount: null, exemptAmount: null, otherTaxesAmount: null, totalAmount: null, concept: null, paymentMethod: null, status: null, paymentDate: null, paidAmount: null, comments: null, thirdPartyCuit: null, thirdPartyName: null, voucherType: "Factura", voucherLetter: "A", vatDetails: [], retentions: [], perceptions: [], thirdPartyId: null }
+}
 
-describe('Parser Route Handler', () => {
-  const companyId = 'company-uuid'
-  const mockFile = {
-    size: 1000,
-    type: 'application/pdf',
-    name: 'invoice.pdf',
-    arrayBuffer: async () => pdfSignature,
-  }
-
+describe("Parser direct upload route handlers", () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    ;(resolveParserPdfStrategy as jest.Mock).mockResolvedValue({
-      strategy: 'pdf-visual',
-      markdown: null,
-      pdfType: 'TextBased',
-    })
-
-    CompanyRepository.prototype.findById = jest.fn().mockResolvedValue({
-      id: companyId,
-      name: 'TEEM',
-      cuit: '30-11111111-9',
-    })
-
-    CatalogRepository.prototype.getVatRates = jest.fn().mockResolvedValue([
-      { id: 'vat-21', name: '21%', rate: 0.21 },
-      { id: 'vat-105', name: '10.5%', rate: 0.105 },
-    ])
-
-    CatalogRepository.prototype.getRetentionConcepts = jest.fn().mockResolvedValue([
-      { id: 'ret-gan', name: 'Retención de Ganancias Sufrida' },
-    ])
-
-    CatalogRepository.prototype.getPerceptionConcepts = jest.fn().mockResolvedValue([
-      { id: 'per-iibb', name: 'Percepción de Ingresos Brutos' },
-      { id: 'per-iva', name: 'Percepción de IVA' },
-    ])
-
-    CatalogRepository.prototype.getTaxJurisdictions = jest.fn().mockResolvedValue([
-      { id: 'jur-caba', name: 'CABA' },
-      { id: 'jur-pba', name: 'Buenos Aires' },
-    ])
+    jest.mocked(requireRequestContext).mockResolvedValue({ userId, companyId })
   })
 
-  it('should reject requests without active company header with 400', async () => {
-    const request = createParserRequest({
-      headers: { get: () => null },
-    })
+  it("returns a signed plan for valid metadata", async () => {
+    jest.spyOn(VoucherParserService.prototype, "createUploadPlan").mockResolvedValue({ planToken: "plan-token", expiresAt: "2026-10-08T12:15:00.000Z", bucket: "parser-temp", uploads: [] })
 
-    const response = await POST(request)
+    const response = await initializeUpload(createJsonRequest("/api/vouchers/parse/uploads", { voucherKind: "sale", files: [{ fileName: "invoice.pdf", mimeType: "application/pdf", fileSize: 1000 }] }))
+
+    expect(response.status).toBe(201)
+    await expect(response.json()).resolves.toEqual(expect.objectContaining({ planToken: "plan-token" }))
+  })
+
+  it("rejects the configured file-count limit before issuing authorizations", async () => {
+    const files = Array.from({ length: inputLimits.maxParserFiles + 1 }, (_, index) => ({ fileName: `invoice-${index}.pdf`, mimeType: "application/pdf", fileSize: 1000 }))
+
+    const response = await initializeUpload(createJsonRequest("/api/vouchers/parse/uploads", { voucherKind: "sale", files }))
+
     expect(response.status).toBe(400)
-    expect((await response.json()).error).toBe('Falta la empresa activa')
+    await expect(response.json()).resolves.toEqual({ error: parserFileValidationMessages.maxFilesExceeded })
+    expect(VoucherParserService.prototype.createUploadPlan).not.toHaveBeenCalled()
   })
 
-  it('should reject requests without file with 400', async () => {
-    const request = createParserRequest({
-      headers: { get: () => companyId },
-      formData: async () => ({
-        get: (key: string) => {
-          if (key === 'voucherKind') {
-            return 'sale'
-          }
+  it("preserves the existing single-file response after confirmation", async () => {
+    jest.spyOn(VoucherParserService.prototype, "confirmUpload").mockResolvedValue({ mode: "single", data: createParsedVoucherData() })
 
-          return null
-        },
-        getAll: () => [],
-      }),
-    })
-
-    const response = await POST(request)
-    expect(response.status).toBe(400)
-    expect((await response.json()).error).toBe('No se proveyó ningún archivo')
-  })
-
-  it('should reject files exceeding 2MB with 400', async () => {
-    const request = createParserRequest({
-      headers: { get: () => companyId },
-      formData: async () => ({
-        get: (key: string) => {
-          if (key === 'voucherKind') {
-            return 'sale'
-          }
-
-          if (key === 'file') {
-            return {
-              size: 3 * 1024 * 1024,
-              type: 'application/pdf',
-              name: 'large.pdf',
-              arrayBuffer: async () => new ArrayBuffer(8),
-            }
-          }
-
-          return null
-        },
-        getAll: () => [],
-      }),
-    })
-
-    const response = await POST(request)
-    expect(response.status).toBe(400)
-    expect((await response.json()).error).toBe('El archivo large.pdf excede el límite de 2MB para PDFs.')
-  })
-
-  it('should parse document and find the related third party in clients', async () => {
-    ;(parseInvoiceImage as jest.Mock).mockResolvedValue({
-      posNumber: '00002',
-      number: '00000123',
-      date: '2026-08-06',
-      currency: '$',
-      exchangeRate: 1,
-      subtotal: 100,
-      vatAmount: 21,
-      totalAmount: 121,
-      thirdPartyCuit: '30222222229',
-      thirdPartyName: 'Test Client',
-      voucherType: 'Factura',
-      voucherLetter: 'A',
-    })
-
-    ClientRepository.prototype.findByCuitAndCompany = jest.fn().mockResolvedValue({ id: 'client-uuid-123' })
-    SupplierRepository.prototype.findByCuitAndCompany = jest.fn().mockResolvedValue(null)
-
-    const request = createParserRequest({
-      headers: { get: () => companyId },
-      formData: async () => ({
-        get: (key: string) => {
-          if (key === 'file') {
-            return mockFile
-          }
-
-          if (key === 'voucherKind') {
-            return 'sale'
-          }
-
-          return null
-        },
-        getAll: () => [],
-      }),
-    })
-
-    const response = await POST(request)
-    const body = await response.json()
+    const response = await confirmUpload(createJsonRequest("/api/vouchers/parse", { planToken: "plan-token", itemIds: [itemId] }))
 
     expect(response.status).toBe(200)
-    expect(parseInvoiceImage).toHaveBeenCalledWith(
-      expect.any(String),
-      'application/pdf',
-      expect.objectContaining({
-        activeCompanyCuit: '30-11111111-9',
-        voucherKind: 'sale',
-      })
-    )
-    expect(body.thirdPartyCuit).toBe('30-22222222-9')
-    expect(body.thirdPartyName).toBe('Test Client')
-    expect(body.thirdPartyId).toBe('client-uuid-123')
-    expect(body.exchangeRate).toBe(1)
+    await expect(response.json()).resolves.toEqual(createParsedVoucherData())
   })
 
-  it('should repair only corrupted markdown text fields with visual parsing', async () => {
-    ;(resolveParserPdfStrategy as jest.Mock).mockResolvedValue({
-      strategy: 'pdf-text',
-      markdown: 'Factura A\nCliente: Aseguradora de Cr�ditos\nConcepto: Comisi�n mensual\nTotal: 121',
-      pdfType: 'TextBased',
-    })
-    ;(parseInvoiceMarkdown as jest.Mock).mockResolvedValue({
-      posNumber: '00002',
-      number: '00000123',
-      date: '2026-08-06',
-      currency: '$',
-      exchangeRate: 1,
-      subtotal: 100,
-      vatAmount: 21,
-      totalAmount: 121,
-      thirdPartyCuit: '30222222229',
-      thirdPartyName: 'Aseguradora de Cr�ditos',
-      concept: 'Comisi�n mensual',
-      voucherType: 'Factura',
-      voucherLetter: 'A',
-    })
-    ;(parseInvoiceVisualFieldRepair as jest.Mock).mockResolvedValue({
-      thirdPartyName: 'Aseguradora de Créditos',
-      concept: 'Comisión mensual',
-    })
+  it("preserves the accepted batch response after confirmation", async () => {
+    jest.spyOn(VoucherParserService.prototype, "confirmUpload").mockResolvedValue({ mode: "batch", batch: { id: "44444444-4444-4444-8444-444444444444" } as never })
 
-    ClientRepository.prototype.findByCuitAndCompany = jest.fn().mockResolvedValue({ id: 'client-uuid-123' })
-    SupplierRepository.prototype.findByCuitAndCompany = jest.fn().mockResolvedValue(null)
-
-    const request = createParserRequest({
-      headers: { get: () => companyId },
-      formData: async () => ({
-        get: (key: string) => {
-          if (key === 'file') {
-            return mockFile
-          }
-
-          if (key === 'voucherKind') {
-            return 'sale'
-          }
-
-          return null
-        },
-        getAll: () => [],
-      }),
-    })
-
-    const response = await POST(request)
-    const body = await response.json()
-
-    expect(response.status).toBe(200)
-    expect(parseInvoiceMarkdown).toHaveBeenCalled()
-    expect(parseInvoiceVisualFieldRepair).toHaveBeenCalledWith(
-      expect.any(String),
-      'application/pdf',
-      ['thirdPartyName', 'concept'],
-      expect.objectContaining({
-        activeCompanyCuit: '30-11111111-9',
-        voucherKind: 'sale',
-      })
-    )
-    expect(parseInvoiceImage).not.toHaveBeenCalled()
-    expect(body.thirdPartyName).toBe('Aseguradora de Créditos')
-    expect(body.concept).toBe('Comisión mensual')
-    expect(body.subtotal).toBe(100)
-    expect(body.vatAmount).toBe(21)
-  })
-
-  it('should nullify shared third party fields when CUIT matches the active company CUIT', async () => {
-    ;(parseInvoiceImage as jest.Mock).mockResolvedValue({
-      posNumber: '00002',
-      number: '00000123',
-      date: '2026-08-06',
-      currency: '$',
-      exchangeRate: 1,
-      subtotal: 100,
-      vatAmount: 21,
-      totalAmount: 121,
-      thirdPartyCuit: '30-11111111-9',
-      thirdPartyName: 'TEEM',
-      voucherType: 'Factura',
-      voucherLetter: 'A',
-    })
-
-    ClientRepository.prototype.findByCuitAndCompany = jest.fn().mockResolvedValue(null)
-    SupplierRepository.prototype.findByCuitAndCompany = jest.fn().mockResolvedValue(null)
-
-    const request = createParserRequest({
-      headers: { get: () => companyId },
-      formData: async () => ({
-        get: (key: string) => {
-          if (key === 'voucherKind') {
-            return 'sale'
-          }
-
-          if (key === 'file') {
-            return mockFile
-          }
-
-          return null
-        },
-        getAll: () => [],
-      }),
-    })
-
-    const response = await POST(request)
-    const body = await response.json()
-
-    expect(response.status).toBe(200)
-    expect(body.thirdPartyCuit).toBeNull()
-    expect(body.thirdPartyName).toBeNull()
-    expect(body.thirdPartyId).toBeNull()
-  })
-
-  it('should resolve vatDetails, retentions, and perceptions using database catalog lookups', async () => {
-    ;(parseInvoiceImage as jest.Mock).mockResolvedValue({
-      posNumber: '00002',
-      number: '00000123',
-      date: '2026-08-06',
-      currency: '$',
-      exchangeRate: 1,
-      subtotal: 100,
-      vatAmount: 21,
-      nonTaxableAmount: 5,
-      exemptAmount: 3,
-      otherTaxesAmount: 7,
-      totalAmount: 146,
-      thirdPartyCuit: '30-22222222-9',
-      thirdPartyName: 'Supplier ABC',
-      voucherType: 'Factura',
-      voucherLetter: 'A',
-      vatDetails: [
-        { vatRateName: '21%', subtotal: 100, vatAmount: 21 },
-        { vatRateName: 'NonExistentVAT', subtotal: 50, vatAmount: 0 },
-      ],
-      retentions: [
-        { conceptName: 'Retención de Ganancias Sufrida', amount: 50, province: 'CABA' },
-      ],
-      perceptions: [
-        { conceptName: 'Percepción de Ingresos Brutos', amount: 15, province: 'CABA' },
-        { conceptName: 'ConceptoInexistente', amount: 99, province: 'Buenos Aires' },
-      ],
-    })
-
-    ClientRepository.prototype.findByCuitAndCompany = jest.fn().mockResolvedValue(null)
-    SupplierRepository.prototype.findByCuitAndCompany = jest.fn().mockResolvedValue(null)
-
-    const request = createParserRequest({
-      headers: { get: () => companyId },
-      formData: async () => ({
-        get: (key: string) => {
-          if (key === 'voucherKind') {
-            return 'sale'
-          }
-
-          if (key === 'file') {
-            return mockFile
-          }
-
-          return null
-        },
-        getAll: () => [],
-      }),
-    })
-
-    const response = await POST(request)
-    const body = await response.json()
-
-    expect(response.status).toBe(200)
-    expect(body.nonTaxableAmount).toBe(5)
-    expect(body.exemptAmount).toBe(3)
-    expect(body.otherTaxesAmount).toBe(7)
-    expect(body.vatDetails).toEqual([
-      { vatRateId: 'vat-21', vatRateName: '21%', subtotal: 100, vatAmount: 21 },
-      { vatRateId: null, vatRateName: 'NonExistentVAT', subtotal: 50, vatAmount: 0 },
-    ])
-    expect(body.retentions).toEqual([
-      {
-        retentionConceptId: 'ret-gan',
-        taxJurisdictionId: 'jur-caba',
-        conceptName: 'Retención de Ganancias Sufrida',
-        amount: 50,
-        taxJurisdictionName: 'CABA',
-      },
-    ])
-    expect(body.perceptions).toEqual([])
-  })
-
-  it('should keep conservative null and empty-array fallback values when extraction is incomplete', async () => {
-    ;(parseInvoiceImage as jest.Mock).mockResolvedValue({
-      posNumber: '00002',
-      number: '00000123',
-      voucherType: 'Factura',
-      voucherLetter: 'B',
-    })
-
-    ClientRepository.prototype.findByCuitAndCompany = jest.fn().mockResolvedValue(null)
-    SupplierRepository.prototype.findByCuitAndCompany = jest.fn().mockResolvedValue(null)
-
-    const request = createParserRequest({
-      headers: { get: () => companyId },
-      formData: async () => ({
-        get: (key: string) => {
-          if (key === 'voucherKind') {
-            return 'sale'
-          }
-
-          if (key === 'file') {
-            return mockFile
-          }
-
-          return null
-        },
-        getAll: () => [],
-      }),
-    })
-
-    const response = await POST(request)
-    const body = await response.json()
-
-    expect(response.status).toBe(200)
-    expect(body.date).toBeNull()
-    expect(body.thirdPartyCuit).toBeNull()
-    expect(body.thirdPartyName).toBeNull()
-    expect(body.thirdPartyId).toBeNull()
-    expect(body.exchangeRate).toBeNull()
-    expect(body.vatDetails).toEqual([])
-    expect(body.retentions).toEqual([])
-    expect(body.perceptions).toEqual([])
-  })
-
-  it('should reject images exceeding 4MB with 400', async () => {
-    const request = createParserRequest({
-      headers: { get: () => companyId },
-      formData: async () => ({
-        get: (key: string) => {
-          if (key === 'voucherKind') {
-            return 'sale'
-          }
-
-          if (key === 'file') {
-            return {
-              size: 5 * 1024 * 1024,
-              type: 'image/png',
-              name: 'large.png',
-              arrayBuffer: async () => new ArrayBuffer(8),
-            }
-          }
-
-          return null
-        },
-        getAll: () => [],
-      }),
-    })
-
-    const response = await POST(request)
-    expect(response.status).toBe(400)
-    expect((await response.json()).error).toBe('El archivo large.png excede el límite de 4MB para imágenes.')
-  })
-
-  it('should reject a batch exceeding the maximum file count with the public validation message', async () => {
-    const files = Array.from({ length: getParserBatchMaxFiles() + 1 }, (_, index) => ({
-      size: 1000,
-      type: 'application/pdf',
-      name: `invoice-${index}.pdf`,
-      arrayBuffer: async () => pdfSignature,
-    }))
-    const request = createParserRequest({
-      headers: { get: () => companyId },
-      formData: async () => ({
-        get: (key: string) => key === 'voucherKind' ? 'sale' : null,
-        getAll: (key: string) => key === 'files' ? files : [],
-      }),
-    })
-
-    const response = await POST(request)
-
-    expect(response.status).toBe(400)
-    await expect(response.json()).resolves.toEqual({ error: `Se permiten hasta ${getParserBatchMaxFiles()} archivos por carga.` })
-  })
-
-  it('should reject an aggregate upload exceeding the configured size limit with the public validation message', async () => {
-    const files = Array.from({ length: 7 }, (_, index) => ({
-      size: 4 * 1024 * 1024,
-      type: 'image/png',
-      name: `invoice-${index}.png`,
-      arrayBuffer: async () => {
-        const buffer = new Uint8Array(4 * 1024 * 1024)
-        buffer.set(new Uint8Array(pngSignature))
-        buffer[buffer.length - 1] = index
-        return buffer.buffer
-      },
-    }))
-    const request = createParserRequest({
-      headers: { get: () => companyId },
-      formData: async () => ({
-        get: (key: string) => key === 'voucherKind' ? 'sale' : null,
-        getAll: (key: string) => key === 'files' ? files : [],
-      }),
-    })
-
-    const response = await POST(request)
-
-    expect(response.status).toBe(400)
-    await expect(response.json()).resolves.toEqual({ error: parserFileValidationMessages.totalSizeExceeded })
-  })
-
-  it('should return a controlled response when multipart data is malformed', async () => {
-    const request = createParserRequest({
-      headers: { get: () => companyId },
-      formData: async () => { throw new TypeError('Malformed multipart body') },
-    })
-
-    const response = await POST(request)
-
-    expect(response.status).toBe(400)
-    await expect(response.json()).resolves.toEqual({ error: 'La carga de archivos es inv\u00e1lida.' })
-  })
-
-  it('should create an async batch when more than one file is submitted', async () => {
-    jest.mocked(requireRequestContext).mockResolvedValue({ userId: 'user-uuid', companyId })
-    jest.spyOn(VoucherParserService.prototype, 'createBatch').mockResolvedValue({
-      mode: 'batch',
-      batch: {
-        id: 'batch-uuid',
-        companyId,
-        createdByUserId: 'user-uuid',
-        voucherType: 'sale',
-        status: 'queued',
-        totalFiles: 2,
-        expiresAt: '2026-08-16T00:00:00.000Z',
-        createdAt: '2026-08-15T00:00:00.000Z',
-        updatedAt: '2026-08-15T00:00:00.000Z',
-        items: [],
-      },
-    })
-
-    const secondFile = {
-      size: 1000,
-      type: 'image/png',
-      name: 'invoice-2.png',
-      arrayBuffer: async () => pngSignature,
-    }
-    const request = createParserRequest({
-      headers: { get: () => companyId },
-      formData: async () => ({
-        get: (key: string) => {
-          if (key === 'voucherKind') {
-            return 'sale'
-          }
-
-          return null
-        },
-        getAll: (key: string) => {
-          if (key === 'files') {
-            return [mockFile, secondFile]
-          }
-
-          return []
-        },
-      }),
-    })
-
-    const response = await POST(request)
-    const body = await response.json()
+    const response = await confirmUpload(createJsonRequest("/api/vouchers/parse", { planToken: "plan-token", itemIds: [itemId] }))
 
     expect(response.status).toBe(202)
-    expect(body.mode).toBe('batch')
-    expect(body.batch.id).toBe('batch-uuid')
+    await expect(response.json()).resolves.toEqual({ mode: "batch", batch: { id: "44444444-4444-4444-8444-444444444444" } })
   })
 
-  it('should return a generic error and log the provider code when batch persistence fails', async () => {
-    const consoleError = jest.spyOn(console, 'error').mockImplementation()
-    const error = Object.assign(new Error('The column failureOrigin does not exist'), { code: 'P2022' })
-    jest.spyOn(VoucherParserService.prototype, 'createBatch').mockRejectedValue(error)
-    const secondFile = {
-      size: 1000,
-      type: 'image/png',
-      name: 'invoice-2.png',
-      arrayBuffer: async () => pngSignature,
-    }
-    const request = createParserRequest({
-      headers: { get: () => companyId },
-      formData: async () => ({
-        get: (key: string) => key === 'voucherKind' ? 'sale' : null,
-        getAll: (key: string) => key === 'files' ? [mockFile, secondFile] : [],
-      }),
-    })
+  it("returns malformed JSON through the public validation contract", async () => {
+    const request = new NextRequest("http://localhost/api/vouchers/parse", { method: "POST", headers: { "content-type": "application/json", "x-company-id": companyId } })
+    jest.spyOn(request, "json").mockRejectedValue(new SyntaxError("invalid json"))
 
-    const response = await POST(request)
+    const response = await confirmUpload(request)
 
-    expect(response.status).toBe(500)
-    await expect(response.json()).resolves.toEqual({ error: 'Error interno del servidor' })
-    expect(consoleError).toHaveBeenCalledWith('Application request failed', expect.objectContaining({ operation: 'parse voucher document', providerErrorCode: 'P2022' }))
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({ error: "El cuerpo de la solicitud es inválido." })
+  })
+
+  it("maps expired plans and unexpected provider errors safely", async () => {
+    jest.spyOn(VoucherParserService.prototype, "confirmUpload").mockRejectedValueOnce(new ApplicationError(applicationErrorCodes.validation, "La carga de archivos expiró o no es válida."))
+    const expiredResponse = await confirmUpload(createJsonRequest("/api/vouchers/parse", { planToken: "plan-token", itemIds: [itemId] }))
+    expect(expiredResponse.status).toBe(400)
+
+    const consoleError = jest.spyOn(console, "error").mockImplementation()
+    jest.spyOn(VoucherParserService.prototype, "confirmUpload").mockRejectedValueOnce(Object.assign(new Error("provider secret"), { code: "STORAGE_ERROR", status: 503 }))
+    const providerResponse = await confirmUpload(createJsonRequest("/api/vouchers/parse", { planToken: "plan-token", itemIds: [itemId] }))
+    expect(providerResponse.status).toBe(500)
+    await expect(providerResponse.json()).resolves.toEqual({ error: "Error interno del servidor" })
+    expect(consoleError).toHaveBeenCalledWith("Application request failed", expect.objectContaining({ operation: "confirm parser upload", providerErrorCode: "STORAGE_ERROR" }))
     consoleError.mockRestore()
   })
 })

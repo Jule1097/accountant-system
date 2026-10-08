@@ -5,7 +5,7 @@ import { ParserStorageService } from "src/services/parser/ParserStorage"
 import { VoucherParserService } from "src/services/parser/VoucherParser"
 import { AsyncBatchRunner } from "src/types/parser/async-batch-runner"
 import { ParserBatchItemContextRecord } from "src/types/parser/parser-batch"
-import { ParserAcceptedFile } from "src/lib/helpers/parser/parser-file"
+import { ParserUploadFileMetadata } from "src/types/parser/parser-upload"
 
 jest.mock("src/repositories/parser/parser-batch.repository")
 jest.mock("src/services/parser/ParserStorage")
@@ -55,13 +55,11 @@ function createService(): { service: VoucherParserService; repository: jest.Mock
   return { service, repository, runner }
 }
 
-function createAcceptedFile(index: number): ParserAcceptedFile {
+function createUploadFile(index: number): ParserUploadFileMetadata {
   return {
     fileName: `invoice-${index}.pdf`,
     mimeType: "application/pdf",
     fileSize: 100,
-    buffer: Buffer.from(`file-${index}`),
-    fileHash: `hash-${index}`,
   }
 }
 
@@ -94,8 +92,8 @@ describe("parser item ownership security boundary", () => {
 
   it("rejects a parser request with more than the supported file count", async () => {
     const { service } = createService()
-    const files = Array.from({ length: 21 }, (_, index) => createAcceptedFile(index))
+    const files = Array.from({ length: 21 }, (_, index) => createUploadFile(index))
 
-    await expect(service.createBatch(companyId, "55555555-5555-4555-8555-555555555555", "sale", files)).rejects.toMatchObject({ code: applicationErrorCodes.validation })
+    await expect(service.createUploadPlan(companyId, "55555555-5555-4555-8555-555555555555", { voucherKind: "sale", files })).rejects.toMatchObject({ code: applicationErrorCodes.validation })
   })
 })

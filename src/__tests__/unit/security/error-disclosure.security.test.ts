@@ -64,11 +64,11 @@ describe("error disclosure security boundary", () => {
 
   it("does not propagate raw storage provider errors", async () => {
     const secret = "storage-token-private-path";
-    const upload = jest.fn().mockResolvedValue({ error: { message: secret } });
-    const from = jest.fn().mockReturnValue({ upload });
+    const createSignedUploadUrl = jest.fn().mockResolvedValue({ error: { message: secret } });
+    const from = jest.fn().mockReturnValue({ createSignedUploadUrl });
     jest.mocked(createSupabaseAdminClient).mockReturnValue({ storage: { from } } as never);
 
-    const error = await new ParserStorageService().uploadFile("safe/path.pdf", Buffer.from("pdf"), "application/pdf").catch((value: unknown) => value);
+    const error = await new ParserStorageService().createSignedUploadUrl("safe/path.pdf").catch((value: unknown) => value);
 
     expect(error).toBeInstanceOf(Error);
     expect((error as Error).message).toBe("Parser storage operation failed");
