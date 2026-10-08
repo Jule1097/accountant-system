@@ -1,6 +1,6 @@
 # Accountant System
 
-Accountant System is a comprehensive, multi-company financial and accounting management platform designed to automate invoice processing, tax retentions, ledger reconciliations, and fiscal reporting with speed and accuracy.
+Accountant System is a comprehensive, financial and accounting management platform designed to automate invoice processing, tax retentions, ledger reconciliations, and fiscal reporting with speed and accuracy.
 
 ---
 
