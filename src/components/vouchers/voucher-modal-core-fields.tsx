@@ -4,6 +4,7 @@ import { LocalizedDecimalInput } from "src/components/ui/localized-decimal-input
 import { VoucherFormValues } from "src/hooks/voucher/use-voucher-form";
 import { shouldRequireVoucherExchangeRate } from "src/lib/helpers/voucher/voucher-form";
 import { getFormattedAmount } from "src/lib/helpers/platform/formatting";
+import { calculateVoucherAmounts } from "src/lib/helpers/voucher/voucher-calculations";
 import { VoucherApiResponse } from "src/types/voucher/voucher-api";
 import { VoucherModalMode } from "src/types/voucher/voucher";
 import { cn } from "src/lib/shared/utils";
@@ -56,12 +57,19 @@ export function VoucherModalCoreFields({
   const documentIdentificationMode = useWatch({ control, name: "documentIdentificationMode" });
   const selectedPosNumber = useWatch({ control, name: "posNumber" });
   const selectedNumber = useWatch({ control, name: "number" });
+  const subtotal = useWatch({ control, name: "subtotal" });
+  const vatAmount = useWatch({ control, name: "vatAmount" });
+  const nonTaxableAmount = useWatch({ control, name: "nonTaxableAmount" });
+  const exemptAmount = useWatch({ control, name: "exemptAmount" });
+  const retentions = useWatch({ control, name: "retentions" });
+  const perceptions = useWatch({ control, name: "perceptions" });
   const selectedThirdParty = thirdParties.find((thirdParty) => thirdParty.id === selectedThirdPartyId);
   const shouldShowExchangeRate = shouldRequireVoucherExchangeRate(selectedCurrency || "$");
   const isDisabled = isProcessing || mode === "view";
   const isNonFiscalPurchase = type === "purchases" && documentIdentificationMode === voucherDocumentIdentificationModes.nonFiscal;
   const shouldShowVoucherLetterError = type !== "purchases" || Boolean(selectedPosNumber || selectedNumber);
   const applicableVoucherTypes = filterVoucherTypesByApplicability(catalogs.voucherTypes, type === "sales" ? voucherTypeApplicabilityValues.sale : voucherTypeApplicabilityValues.purchase);
+  const calculatedAmounts = calculateVoucherAmounts({ type: type === "sales" ? "sale" : "purchase", subtotal: subtotal || 0, vatAmount: vatAmount || 0, nonTaxableAmount: nonTaxableAmount || 0, exemptAmount: exemptAmount || 0, retentions: (retentions || []).map((item) => item.amount || 0), perceptions: (perceptions || []).map((item) => item.amount || 0) });
 
   return (
     <div className="flex flex-col gap-4">
@@ -96,7 +104,7 @@ export function VoucherModalCoreFields({
         <div className="grid grid-cols-2 gap-3">
           <div className={fieldContainerClass}>
             <label className={labelClass}>CUIT</label>
-            <Input value={selectedThirdParty?.cuit || (isNonFiscalPurchase ? voucherNonFiscalDisplayValues.cuit : "")} placeholder="00-00000000-0" className="bg-card h-[38px] text-[13px] px-3" disabled readOnly />
+            <Input type="text" value={selectedThirdParty?.cuit || (isNonFiscalPurchase ? voucherNonFiscalDisplayValues.cuit : "")} placeholder="00-00000000-0" className="bg-card h-[38px] text-[13px] px-3" disabled readOnly />
           </div>
           <div className={fieldContainerClass}>
             <label className={labelClass}>Moneda</label>
@@ -135,7 +143,7 @@ export function VoucherModalCoreFields({
         <div className="grid gap-3">
           <div className={fieldContainerClass}>
             <label className={labelClass}>Concepto</label>
-            <Input placeholder="Detalle del comprobante" className="bg-card h-[38px] text-[13px] px-3" disabled={isDisabled} {...register("concept")} />
+            <Input type="text" placeholder="Detalle del comprobante" className="bg-card h-[38px] text-[13px] px-3" disabled={isDisabled} {...register("concept")} />
             {errors.concept && <p className={errorClass}>{errors.concept.message}</p>}
           </div>
           <div className={fieldContainerClass}>
@@ -190,13 +198,13 @@ export function VoucherModalCoreFields({
         <div className="grid grid-cols-3 gap-3">
           <div className={cn(fieldContainerClass, "col-span-1")}>
             <label className={labelClass}>Pto. Venta</label>
-            <Input placeholder={isNonFiscalPurchase ? voucherNonFiscalDisplayValues.fiscalField : "00001"} className="bg-card h-[38px] text-[13px] px-3" disabled={isDisabled || isNonFiscalPurchase} {...register("posNumber")} onBlur={handlePosBlur} />
+            <Input type="number" placeholder={isNonFiscalPurchase ? voucherNonFiscalDisplayValues.fiscalField : "00001"} className="bg-card h-[38px] text-[13px] px-3" disabled={isDisabled || isNonFiscalPurchase} {...register("posNumber")} onBlur={handlePosBlur} />
             {errors.posNumber && <p className={errorClass}>{errors.posNumber.message}</p>}
           </div>
 
           <div className={cn(fieldContainerClass, "col-span-2")}>
             <label className={labelClass}>Número</label>
-            <Input placeholder={isNonFiscalPurchase ? voucherNonFiscalDisplayValues.number : "00000000"} className="bg-card h-[38px] text-[13px] px-3" disabled={isDisabled || isNonFiscalPurchase} {...register("number")} onBlur={handleNumberBlur} />
+            <Input type="number" placeholder={isNonFiscalPurchase ? voucherNonFiscalDisplayValues.number : "00000000"} className="bg-card h-[38px] text-[13px] px-3" disabled={isDisabled || isNonFiscalPurchase} {...register("number")} onBlur={handleNumberBlur} />
             {errors.number && <p className={errorClass}>{errors.number.message}</p>}
           </div>
         </div>
@@ -223,16 +231,17 @@ export function VoucherModalCoreFields({
             {errors.vatAmount && <p className={errorClass}>{errors.vatAmount.message}</p>}
           </div>
         </div>
-        <div className={fieldContainerClass}>
-          <label className={labelClass}>Importe Total</label>
-          <Controller
-            control={control}
-            name="totalAmount"
-            render={({ field }) => <LocalizedDecimalInput value={field.value} onChange={field.onChange} onBlur={() => field.onBlur()} className="bg-card h-[38px] text-[13px] px-3 font-semibold text-[#FF5C00]" disabled={isDisabled} />}
-          />
-          {errors.totalAmount && <p className={errorClass}>{errors.totalAmount.message}</p>}
+        <div className="grid grid-cols-2 gap-3">
+          <div className={fieldContainerClass}>
+            <label className={labelClass}>Total bruto</label>
+            <div className="flex h-[38px] items-center rounded-md border border-input bg-muted px-3 text-[13px] font-semibold text-[#FF5C00]" aria-readonly="true">{getFormattedAmount(selectedCurrency || "$", calculatedAmounts.grossAmount)}</div>
+          </div>
+          <div className={fieldContainerClass}>
+            <label className={labelClass}>{type === "sales" ? "Neto a cobrar" : "Neto a pagar"}</label>
+            <div className="flex h-[38px] items-center rounded-md border border-input bg-muted px-3 text-[13px] font-semibold text-[#FF5C00]" aria-readonly="true">{getFormattedAmount(selectedCurrency || "$", calculatedAmounts.netAmount)}</div>
+          </div>
         </div>
-        <div className="grid grid-cols-3 gap-3">
+        {type === "purchases" ? <div className="grid grid-cols-2 gap-3">
           <div className={fieldContainerClass}>
             <label className={labelClass}>No Gravado</label>
             <Controller
@@ -251,16 +260,7 @@ export function VoucherModalCoreFields({
             />
             {errors.exemptAmount && <p className={errorClass}>{errors.exemptAmount.message}</p>}
           </div>
-          <div className={fieldContainerClass}>
-            <label className={labelClass}>Otros Imp.</label>
-            <Controller
-              control={control}
-              name="otherTaxesAmount"
-              render={({ field }) => <LocalizedDecimalInput value={field.value} onChange={field.onChange} onBlur={() => field.onBlur()} className="bg-card h-[38px] text-[13px] px-3" disabled={isDisabled} />}
-            />
-            {errors.otherTaxesAmount && <p className={errorClass}>{errors.otherTaxesAmount.message}</p>}
-          </div>
-        </div>
+        </div> : null}
         <div className="grid grid-cols-2 gap-3">
           <div className={fieldContainerClass}>
             <label className={labelClass}>Estado</label>
@@ -277,7 +277,7 @@ export function VoucherModalCoreFields({
           </div>
           <div className={fieldContainerClass}>
             <label className={labelClass}>Medio de Pago</label>
-            <Input placeholder="Transferencia" className="bg-card h-[38px] text-[13px] px-3" disabled={isDisabled} {...register("paymentMethod")} />
+            <Input type="text" placeholder="Transferencia" className="bg-card h-[38px] text-[13px] px-3" disabled={isDisabled} {...register("paymentMethod")} />
             {errors.paymentMethod && <p className={errorClass}>{errors.paymentMethod.message}</p>}
           </div>
         </div>
@@ -289,11 +289,11 @@ export function VoucherModalCoreFields({
           </div>
           <div className={fieldContainerClass}>
             <label className={labelClass}>Importe Pagado</label>
-          <Controller
-            control={control}
-            name="paidAmount"
-            render={({ field }) => <LocalizedDecimalInput value={field.value} onChange={field.onChange} onBlur={() => field.onBlur()} className="bg-card h-[38px] text-[13px] px-3" disabled={isDisabled} />}
-          />
+            <Controller
+              control={control}
+              name="paidAmount"
+              render={({ field }) => <LocalizedDecimalInput value={field.value} onChange={field.onChange} onBlur={() => field.onBlur()} className="bg-card h-[38px] text-[13px] px-3" disabled={isDisabled} />}
+            />
             {errors.paidAmount && <p className={errorClass}>{errors.paidAmount.message}</p>}
           </div>
         </div>

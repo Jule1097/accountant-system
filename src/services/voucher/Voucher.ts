@@ -12,6 +12,7 @@ import { SupplierRepositoryContract } from 'src/types/third-party/supplier-repos
 import { IdentificationModeConversionRequiredError, PossibleNonFiscalDuplicateError } from 'src/lib/errors/voucher/voucher-errors'
 import { calculateVoucherSummary } from 'src/lib/helpers/metric/metric-calculations'
 import { isFiscalVoucherIdentityConstraintError } from 'src/lib/helpers/voucher/fiscal-identity'
+import { voucherZeroAmount } from 'src/lib/constants/voucher'
 
 function rethrowVoucherPersistenceError(error: unknown): never {
   if (isFiscalVoucherIdentityConstraintError(error)) throw new ApplicationError(applicationErrorCodes.duplicate, apiResponseMessages.voucher.duplicate, 'Duplicate voucher detected by fiscal identity constraint')
@@ -50,7 +51,7 @@ export class VoucherService {
   }
 
   async createVoucher(input: VoucherFactoryInput): Promise<Voucher> {
-    const resolvedInput = await this.resolvePurchaseIdentificationMode(input)
+    const resolvedInput = await this.resolvePurchaseIdentificationMode(this.normalizeVoucherInput(input))
     const isApplicable = await this.repository.isVoucherTypeApplicable(resolvedInput.voucherTypeId, resolvedInput.type as 'sale' | 'purchase')
     if (isApplicable === false) throw new ApplicationError(applicationErrorCodes.validation, voucherTypeNotApplicableMessage, 'Voucher type is not applicable to the selected workflow')
     const voucher = VoucherFactory.create(resolvedInput)
@@ -76,7 +77,7 @@ export class VoucherService {
       throw new ApplicationError(applicationErrorCodes.notFound, apiResponseMessages.voucher.notFoundWithPeriod, 'Voucher not found')
     }
 
-    const resolvedInput = await this.resolvePurchaseIdentificationMode({ ...input, companyId, id }, existing)
+    const resolvedInput = await this.resolvePurchaseIdentificationMode(this.normalizeVoucherInput({ ...input, companyId, id }), existing)
     const isApplicable = await this.repository.isVoucherTypeApplicable(resolvedInput.voucherTypeId, resolvedInput.type as 'sale' | 'purchase')
     if (isApplicable === false) throw new ApplicationError(applicationErrorCodes.validation, voucherTypeNotApplicableMessage, 'Voucher type is not applicable to the selected workflow')
     const updatedVoucher = VoucherFactory.create(resolvedInput)
@@ -107,6 +108,11 @@ export class VoucherService {
 
   private isPossibleNonFiscalDuplicate(voucher: Voucher): boolean {
     return voucher.type === 'purchase' && voucher.documentIdentificationMode === voucherDocumentIdentificationModes.nonFiscal
+  }
+
+  private normalizeVoucherInput(input: VoucherFactoryInput): VoucherFactoryInput {
+    if (input.type !== 'purchase') return input
+    return { ...input, otherTaxesAmount: voucherZeroAmount }
   }
 
   private async resolvePurchaseIdentificationMode(input: VoucherFactoryInput, existing?: Voucher): Promise<VoucherFactoryInput> {

@@ -58,9 +58,9 @@ describe('Zod Validation Schemas', () => {
       if (result.success) {
         expect(result.data.posNumber).toBe('00001')
         expect(result.data.number).toBe('00000123')
-        expect(result.data.accountingPeriod.getFullYear()).toBe(2026)
-        expect(result.data.accountingPeriod.getMonth()).toBe(6)
-        expect(result.data.accountingPeriod.getDate()).toBe(1)
+        expect(result.data.accountingPeriod.getUTCFullYear()).toBe(2026)
+        expect(result.data.accountingPeriod.getUTCMonth()).toBe(6)
+        expect(result.data.accountingPeriod.getUTCDate()).toBe(1)
       }
     })
 
@@ -159,6 +159,37 @@ describe('Zod Validation Schemas', () => {
         currency: 'USD',
         exchangeRate: 175,
       }).success).toBe(true)
+    })
+
+    it.each([
+      ['posNumber', '123456'],
+      ['number', '123456789'],
+      ['paymentMethod', 'a'.repeat(101)],
+    ])('should reject %s values that exceed database limits', (field, value) => {
+      expect(voucherSchema.safeParse({
+        ...baseVoucher,
+        type: 'sale',
+        clientId: validUuid,
+        [field]: value,
+      }).success).toBe(false)
+    })
+
+    it.each(['62026-09-01', '2026-02-30', '1899-12-31', '2101-01-01'])('should reject invalid canonical voucher dates: %s', (date) => {
+      expect(voucherSchema.safeParse({
+        ...baseVoucher,
+        type: 'sale',
+        clientId: validUuid,
+        date,
+      }).success).toBe(false)
+    })
+
+    it('should reject invalid canonical payment dates without coercing them', () => {
+      expect(voucherSchema.safeParse({
+        ...baseVoucher,
+        type: 'sale',
+        clientId: validUuid,
+        paymentDate: '2026-02-30',
+      }).success).toBe(false)
     })
   })
 })

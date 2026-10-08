@@ -7,6 +7,7 @@ import {
 import { voucherDocumentIdentificationModes, voucherTaxJurisdictionRequiredMessage } from "src/lib/constants/voucher";
 import { inputLimits } from "src/lib/constants/input-limits";
 import type { VoucherFormCatalogState } from "src/types/voucher/voucher-form";
+import { canonicalDateStringSchema } from "src/lib/schemas/platform/date-schemas";
 
 function normalizeOptionalNumberInput(value: unknown): number {
   if (value === "" || value === null || value === undefined) {
@@ -33,7 +34,7 @@ const perceptionFormSchema = z.object({
 });
 
 export const voucherFormSchema = z.object({
-  date: z.string().min(1, "La fecha es obligatoria"),
+  date: canonicalDateStringSchema("La fecha debe ser válida y no estar vacia."),
   voucherTypeId: z.string().min(1, "El tipo de comprobante es obligatorio"),
   voucherLetterId: z.string(),
   posNumber: z.string().regex(/^$|^\d{1,5}$/, "El punto de venta debe tener hasta 5 digitos"),
@@ -48,11 +49,11 @@ export const voucherFormSchema = z.object({
   nonTaxableAmount: z.number({ message: "Debe ser un numero" }).min(0, "No puede ser negativo"),
   exemptAmount: z.number({ message: "Debe ser un numero" }).min(0, "No puede ser negativo"),
   otherTaxesAmount: z.number({ message: "Debe ser un numero" }).min(0, "No puede ser negativo"),
-  totalAmount: z.number({ message: "Debe ser un numero" }).min(0.01, "El total debe ser mayor a 0"),
+  totalAmount: z.number({ message: "Debe ser un numero" }).nonnegative("No puede ser negativo").optional(),
   concept: z.string().trim().max(inputLimits.maxFreeTextLength, "El concepto no puede superar los 5000 caracteres").optional(),
   paymentMethod: z.string().min(1, "El medio de pago es obligatorio"),
   status: z.enum(["pending", "partial", "paid"], { message: "El estado es obligatorio" }),
-  paymentDate: z.string().optional(),
+  paymentDate: z.union([z.literal(""), canonicalDateStringSchema("La fecha de pago debe tener formato AAAA-MM-DD y ser válida.")]).optional(),
   paidAmount: z.preprocess(
     normalizeOptionalNumberInput,
     z.number({ message: "Debe ser un numero" }).min(0, "No puede ser negativo")

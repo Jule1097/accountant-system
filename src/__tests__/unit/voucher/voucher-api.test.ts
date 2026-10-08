@@ -21,6 +21,7 @@ jest.mock('src/lib/helpers/auth/request-context', () => {
 
 function createRequest(overrides: Partial<NextRequest> = {}) {
   return {
+    url: 'http://localhost/api/vouchers',
     headers: { get: () => '123e4567-e89b-12d3-a456-426614174000' },
     json: async () => ({}),
     nextUrl: { searchParams: new URLSearchParams() },
@@ -67,6 +68,51 @@ describe('Voucher API Route Handlers', () => {
 
     expect(response.status).toBe(409)
     expect(await response.json()).toEqual({ error: 'Comprobante duplicado detectado.' })
+  })
+
+  it('returns the actionable validation message for invalid voucher data', async () => {
+    const response = await POST(createRequest({
+      json: async () => ({
+        type: 'sale',
+        voucherTypeId: '123e4567-e89b-12d3-a456-426614174001',
+        voucherLetterId: '123e4567-e89b-12d3-a456-426614174002',
+        posNumber: '1',
+        number: '123456789',
+        clientId: '123e4567-e89b-12d3-a456-426614174003',
+        date: '2026-08-08',
+        currency: '$',
+        exchangeRate: 1,
+        subtotal: 100,
+        vatAmount: 21,
+        totalAmount: 121,
+        paymentMethod: 'Transferencia',
+        status: 'pending',
+        createdByUserId: '123e4567-e89b-12d3-a456-426614174004',
+        retentions: [],
+        perceptions: [],
+        vatDetails: [],
+      }),
+    }))
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual(expect.objectContaining({ error: 'El n\u00famero de comprobante debe tener hasta 8 d\u00edgitos' }))
+    expect(voucherServiceMock.prototype.createVoucher).not.toHaveBeenCalled()
+  })
+
+  it('returns a controlled response when voucher JSON is malformed', async () => {
+    const response = await POST(createRequest({ json: async () => { throw new SyntaxError('Unexpected token') } }))
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({ error: 'El cuerpo de la solicitud es inv\u00e1lido.' })
+    expect(voucherServiceMock.prototype.createVoucher).not.toHaveBeenCalled()
+  })
+
+  it('returns a controlled response when voucher update JSON is malformed', async () => {
+    const response = await PUT(createRequest({ json: async () => { throw new SyntaxError('Unexpected token') } }), { params: Promise.resolve({ id: 'voucher-1' }) })
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({ error: 'El cuerpo de la solicitud es inv\u00e1lido.' })
+    expect(voucherServiceMock.prototype.updateVoucher).not.toHaveBeenCalled()
   })
 
   it('returns 404 when voucher detail does not exist', async () => {

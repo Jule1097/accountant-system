@@ -3,11 +3,11 @@ import { UnsupportedVoucherTypeError } from "src/lib/errors/voucher/voucher-erro
 import { Purchase } from "src/models/voucher/Purchase"
 import { Sale } from "src/models/voucher/Sale"
 import { Voucher } from "src/models/voucher/Voucher"
-import { voucherTypeValues } from "src/lib/constants/voucher"
+import { voucherTypeValues, voucherZeroAmount } from "src/lib/constants/voucher"
 import type { PurchaseVoucherInput, SaleVoucherInput, VoucherFactoryInput } from "src/types/voucher/domain"
 
 function toSaleVoucherInput(input: VoucherFactoryInput): SaleVoucherInput {
-  return { ...input, type: voucherTypeValues.sale, clientId: input.clientId ?? null, client: input.client ?? null, retentions: input.retentions ?? [], perceptions: [] }
+  return { ...input, type: voucherTypeValues.sale, clientId: input.clientId ?? null, client: input.client ?? null, nonTaxableAmount: voucherZeroAmount, exemptAmount: voucherZeroAmount, otherTaxesAmount: voucherZeroAmount, retentions: input.retentions ?? [], perceptions: [] }
 }
 
 function toPurchaseVoucherInput(input: VoucherFactoryInput): PurchaseVoucherInput {

@@ -8,6 +8,7 @@ import {
 import { voucherCurrencyCodes, voucherCurrencySymbols, voucherTaxJurisdictionAbbreviationToken, voucherTaxJurisdictionConceptToken } from "src/lib/constants/voucher";
 import { resolveGeminiCatalogMatch } from "src/lib/helpers/parser/gemini-parser";
 import { roundToTwoDecimals } from "src/lib/helpers/platform/formatting";
+import { formatCanonicalDate, parseCanonicalDate } from "src/lib/helpers/platform/canonical-date";
 import { resolveVoucherRecordType } from "src/lib/helpers/voucher/voucher-management";
 import { Money } from "src/models/voucher/Money";
 import { Sale } from "src/models/voucher/Sale";
@@ -209,14 +210,7 @@ function parseVoucherDateValue(value: VoucherFormNullableDateValue | undefined):
   if (!value) {
     return null;
   }
-
-  const parsedDate = value instanceof Date ? value : new Date(value);
-
-  if (Number.isNaN(parsedDate.getTime())) {
-    return null;
-  }
-
-  return parsedDate;
+  return value instanceof Date ? parseCanonicalDate(formatCanonicalDate(value)) : parseCanonicalDate(value);
 }
 
 function serializeRequiredVoucherDate(value: VoucherFormDateValue): string {
@@ -232,9 +226,8 @@ function serializeRequiredVoucherDate(value: VoucherFormDateValue): string {
 function serializeOptionalVoucherDate(value: VoucherFormDateValue | undefined): string | undefined {
   const parsedDate = parseVoucherDateValue(value);
 
-  if (!parsedDate) {
-    return undefined;
-  }
+  if (!parsedDate && value) throw new Error("Validated voucher date is invalid");
+  if (!parsedDate) return undefined;
 
   return parsedDate.toISOString();
 }
@@ -242,9 +235,8 @@ function serializeOptionalVoucherDate(value: VoucherFormDateValue | undefined): 
 function serializeNullableVoucherDate(value: VoucherFormNullableDateValue): string | null {
   const parsedDate = parseVoucherDateValue(value);
 
-  if (!parsedDate) {
-    return null;
-  }
+  if (!parsedDate && value) throw new Error("Validated voucher date is invalid");
+  if (!parsedDate) return null;
 
   return parsedDate.toISOString();
 }
@@ -409,7 +401,7 @@ export function buildVoucherFormInitialValues(initialVoucher?: VoucherApiRespons
     vatAmount: roundToTwoDecimals(Number(initialVoucher.vatAmount || 0)),
     nonTaxableAmount: roundToTwoDecimals(Number(initialVoucher.nonTaxableAmount || 0)),
     exemptAmount: roundToTwoDecimals(Number(initialVoucher.exemptAmount || 0)),
-    otherTaxesAmount: roundToTwoDecimals(Number(initialVoucher.otherTaxesAmount || 0)),
+    otherTaxesAmount: initialVoucher.type === "sale" ? 0 : 0,
     totalAmount: roundToTwoDecimals(Number(initialVoucher.totalAmount || 0)),
     concept: normalizeVoucherText(initialVoucher.concept),
     paymentMethod: normalizeVoucherText(initialVoucher.paymentMethod),
@@ -423,15 +415,14 @@ export function buildVoucherFormInitialValues(initialVoucher?: VoucherApiRespons
   };
 }
 
-export function resolveSalesSubtotal(type: VoucherScreenType, voucherLetterId: string, totalAmount: number, vatAmount: number, catalogs: VoucherFormCatalogState, currency: "$" | "USD" = "$"): number | null {
+export function resolveSalesSubtotal(type: VoucherScreenType, voucherLetterId: string, totalAmount: number | undefined, vatAmount: number, catalogs: VoucherFormCatalogState, currency: "$" | "USD" = "$"): number | null {
   if (type !== "sales" || resolveVoucherLetterById(voucherLetterId, catalogs)?.letter !== "B") return null;
-  const subtotal = Sale.resolveSubtotalFromTaxIncludedTotal(new Money(totalAmount.toString(), currency), new Money(vatAmount.toString(), currency));
+  const subtotal = Sale.resolveSubtotalFromTaxIncludedTotal(new Money((totalAmount || 0).toString(), currency), new Money(vatAmount.toString(), currency));
   return Number(subtotal.toString());
 }
 
 export function buildVoucherFormPayload(values: VoucherFormValues, type: VoucherScreenType, catalogs: VoucherFormCatalogState): VoucherFormPayload {
   const voucherApiType = resolveVoucherRecordType(type);
-  const normalizedSubtotal = resolveSalesSubtotal(type, values.voucherLetterId, values.totalAmount, values.vatAmount, catalogs, values.currency);
   const retentionConceptNames = new Map(catalogs.retentionConcepts.map((concept) => [concept.id, concept.name]));
   const perceptionConceptNames = new Map(catalogs.perceptionConcepts.map((concept) => [concept.id, concept.name]));
   return {
@@ -446,12 +437,11 @@ export function buildVoucherFormPayload(values: VoucherFormValues, type: Voucher
     date: values.date,
     currency: values.currency,
     exchangeRate: normalizeVoucherExchangeRate(values.currency, values.exchangeRate),
-    subtotal: normalizedSubtotal ?? values.subtotal,
+    subtotal: values.subtotal,
     vatAmount: values.vatAmount,
-    nonTaxableAmount: values.nonTaxableAmount,
-    exemptAmount: values.exemptAmount,
-    otherTaxesAmount: values.otherTaxesAmount,
-    totalAmount: values.totalAmount,
+    nonTaxableAmount: voucherApiType === "sale" ? 0 : values.nonTaxableAmount,
+    exemptAmount: voucherApiType === "sale" ? 0 : values.exemptAmount,
+    otherTaxesAmount: 0,
     concept: normalizeOptionalVoucherText(values.concept),
     paymentMethod: values.paymentMethod,
     status: values.status,
@@ -470,8 +460,6 @@ export function buildVoucherParsedPatch(parsedData: ParsedVoucherData, currentVa
   const voucherLetterId = resolveParsedVoucherLetterId(parsedData.voucherLetter, catalogs, parsedData.voucherType);
   const thirdPartyId = resolveVoucherThirdPartyId(parsedData, thirdParties);
   const parsedCurrency = normalizeVoucherCurrency(parsedData.currency);
-  const nextValues = { ...currentValues, voucherLetterId: voucherLetterId || currentValues.voucherLetterId, totalAmount: toVoucherFormNumber(parsedData.totalAmount) ?? currentValues.totalAmount, vatAmount: toVoucherFormNumber(parsedData.vatAmount) ?? currentValues.vatAmount };
-  const subtotal = resolveSalesSubtotal(type, nextValues.voucherLetterId, nextValues.totalAmount, nextValues.vatAmount, catalogs, parsedCurrency || currentValues.currency);
   return {
     date: parsedData.date || currentValues.date,
     voucherTypeId: voucherTypeId || currentValues.voucherTypeId,
@@ -482,12 +470,11 @@ export function buildVoucherParsedPatch(parsedData: ParsedVoucherData, currentVa
     thirdPartyCuit: parsedData.thirdPartyCuit || currentValues.thirdPartyCuit,
     currency: parsedCurrency || currentValues.currency,
     exchangeRate: parsedCurrency ? normalizeVoucherExchangeRate(parsedCurrency, toVoucherFormNumber(parsedData.exchangeRate)) : currentValues.exchangeRate,
-    subtotal: subtotal ?? toVoucherFormNumber(parsedData.subtotal) ?? currentValues.subtotal,
+    subtotal: toVoucherFormNumber(parsedData.subtotal) ?? currentValues.subtotal,
     vatAmount: toVoucherFormNumber(parsedData.vatAmount) ?? currentValues.vatAmount,
     nonTaxableAmount: toVoucherFormNumber(parsedData.nonTaxableAmount) ?? currentValues.nonTaxableAmount,
     exemptAmount: toVoucherFormNumber(parsedData.exemptAmount) ?? currentValues.exemptAmount,
-    otherTaxesAmount: toVoucherFormNumber(parsedData.otherTaxesAmount) ?? currentValues.otherTaxesAmount,
-    totalAmount: toVoucherFormNumber(parsedData.totalAmount) ?? currentValues.totalAmount,
+    otherTaxesAmount: 0,
     concept: normalizeVoucherText(parsedData.concept) || currentValues.concept,
     paymentMethod: normalizeVoucherText(parsedData.paymentMethod) || currentValues.paymentMethod,
     status: parsedData.status === "pending" || parsedData.status === "partial" || parsedData.status === "paid" ? parsedData.status : currentValues.status,
