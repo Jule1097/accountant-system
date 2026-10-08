@@ -39,11 +39,14 @@ export class VoucherExportService {
     const allVatRates = await this.catalogRepository.getVatRates()
     const allRetentionConcepts = await this.catalogRepository.getRetentionConcepts()
     const allPerceptionConcepts = await this.catalogRepository.getPerceptionConcepts()
+    const allTaxJurisdictions = await this.catalogRepository.getTaxJurisdictions()
 
     const { columns, data } = prepareExportWorkbookData(params.type, vouchers, {
       allVatRates,
       allRetentionConcepts,
       allPerceptionConcepts,
+      allTaxJurisdictions,
+      mode: params.mode,
     })
 
     const titleText = params.type === 'sales' ? 'Libro IVA Ventas' : 'Libro IVA Compras'
