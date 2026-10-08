@@ -19,4 +19,16 @@ describe("useConciliationRasterPreview", () => {
 
     expect(result.current).toEqual(expect.objectContaining({ zoom: 1, rotation: 0 }))
   })
+
+  it("allows reducing image zoom to twenty-five percent", () => {
+    const { result } = renderHook(() => useConciliationRasterPreview())
+
+    act(() => {
+      result.current.zoomOut()
+      result.current.zoomOut()
+      result.current.zoomOut()
+    })
+
+    expect(result.current.zoom).toBe(0.25)
+  })
 })

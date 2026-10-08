@@ -1,6 +1,6 @@
 /** @jest-environment jsdom */
 
-import { render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { ConciliationReviewPreview } from "src/components/conciliations/conciliation-review-preview";
 
 jest.mock("next/dynamic", () => ({
@@ -32,6 +32,22 @@ describe("ConciliationReviewPreview", () => {
   });
 
   it("renders image preview for image files", () => {
+    const { container } = render(
+      <ConciliationReviewPreview
+        sourceUrl="/api/conciliations/items/item-1/source"
+        mimeType="image/png"
+        fileName="factura.png"
+      />
+    );
+
+    const image = screen.getByRole("img", { name: "factura.png" });
+
+    expect(image).toBeInTheDocument();
+    expect(image).toHaveStyle({ width: "auto", height: "auto" });
+    expect(container.querySelector(".overflow-y-scroll")).not.toBeNull();
+  });
+
+  it("uses the natural image dimensions for the preview area", async () => {
     render(
       <ConciliationReviewPreview
         sourceUrl="/api/conciliations/items/item-1/source"
@@ -40,7 +56,16 @@ describe("ConciliationReviewPreview", () => {
       />
     );
 
-    expect(screen.getByRole("img", { name: "factura.png" })).toBeInTheDocument();
+    const image = screen.getByRole("img", { name: "factura.png" });
+
+    Object.defineProperty(image, "naturalWidth", { configurable: true, value: 1920 });
+    Object.defineProperty(image, "naturalHeight", { configurable: true, value: 1080 });
+    act(() => fireEvent.load(image));
+
+    await waitFor(() => {
+      expect(image).toHaveAttribute("width", "1920");
+      expect(image).toHaveAttribute("height", "1080");
+    });
   });
 
   it("renders pdf preview component for pdf files", () => {
