@@ -8,5 +8,4 @@ export const inputLimits = {
   maxBulkItemIds: 1000,
   maxParserFiles: 20,
   maxParserRequestBytes: 24 * 1024 * 1024,
-  maxParserTransportBodySize: "32mb",
 } as const

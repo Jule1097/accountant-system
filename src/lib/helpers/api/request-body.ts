@@ -15,7 +15,3 @@ export async function readJsonBody(request: Request): Promise<Record<string, unk
   if (typeof body !== "object" || body === null || Array.isArray(body)) throw new ApplicationError(applicationErrorCodes.validation, apiResponseMessages.common.invalidRequestBody, "Request JSON object validation failed")
   return body as Record<string, unknown>
 }
-
-export function readFormData(request: Request): Promise<FormData> {
-  return readRequestBody(() => request.formData(), apiResponseMessages.common.invalidMultipartBody, "Request multipart parsing failed")
-}
