@@ -9,7 +9,9 @@ import { useVoucherPreview } from "src/hooks/voucher/use-voucher-preview";
 import { ApiRequestError, apiRequest, parseJsonResponse, resolveApiErrorMessage } from "src/lib/api/api-client";
 import { createVoucherFormSchema, VoucherFormValues } from "src/lib/schemas/voucher/voucher-form-schemas";
 import { buildVoucherFormInitialValues, buildVoucherFormPayload, buildVoucherParsedPatch, hasUnresolvedParsedVoucherTaxes } from "src/lib/helpers/voucher/voucher-form";
+import { uploadParserFilesDirectly } from "src/lib/helpers/parser/parser-browser-upload";
 import { ParserBatchAsyncResponse } from "src/types/parser/parser-batch";
+import { ParserUploadPlanResponse } from "src/types/parser/parser-upload";
 import { ParsedVoucherData } from "src/types/parser/gemini-parser";
 import { VoucherApiResponse } from "src/types/voucher/voucher-api";
 import { VoucherModalMode, VoucherScreenType } from "src/types/voucher/voucher";
@@ -21,6 +23,7 @@ import {
 } from "src/types/voucher/voucher-form";
 import { resolveVoucherRecordType } from "src/lib/helpers/voucher/voucher-management";
 import { feedbackTypes } from "src/lib/constants/feedback";
+import { parserResponseModes } from "src/lib/constants/parser";
 import { possibleNonFiscalDuplicateMessage, purchaseIdentificationConversionMessage, voucherConfirmationKinds, voucherDocumentIdentificationModes, voucherParsedTaxReviewMessage, voucherParsedTaxReviewTitle } from "src/lib/constants/voucher";
 
 export type { VoucherFormValues } from "src/lib/schemas/voucher/voucher-form-schemas";
@@ -56,7 +59,7 @@ function toFileArray(files: FileList | null): File[] {
 function isParserBatchResponse(
   value: ParserBatchAsyncResponse | ParsedVoucherData
 ): value is ParserBatchAsyncResponse {
-  return "mode" in value && value.mode === "batch";
+  return "mode" in value && value.mode === parserResponseModes.batch;
 }
 
 function resolveVoucherSuccessMessage(mode: VoucherModalMode, type: VoucherScreenType): string {
@@ -266,18 +269,18 @@ export function useVoucherForm({
     setIsParsing(true);
 
     try {
-      const formData = new FormData();
       const voucherKind = resolveVoucherRecordType(type);
-
-      for (const file of files) {
-        formData.append("files", file);
-      }
-
-      formData.append("voucherKind", voucherKind);
-
+      const uploadPlanResponse = await apiRequest("/api/vouchers/parse/uploads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ voucherKind, files: files.map((file) => ({ fileName: file.name, mimeType: file.type, fileSize: file.size })) }),
+      });
+      const uploadPlan = await parseJsonResponse<ParserUploadPlanResponse>(uploadPlanResponse);
+      await uploadParserFilesDirectly(uploadPlan.bucket, files, uploadPlan.uploads);
       const response = await apiRequest("/api/vouchers/parse", {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planToken: uploadPlan.planToken, itemIds: uploadPlan.uploads.map((upload) => upload.itemId) }),
       });
       const parsedResponse = await parseJsonResponse<ParserBatchAsyncResponse | ParsedVoucherData>(response);
 
