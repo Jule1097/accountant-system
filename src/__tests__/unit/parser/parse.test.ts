@@ -2,6 +2,8 @@ import { NextRequest } from 'next/server'
 import { POST } from 'src/app/api/vouchers/parse/route'
 import { parseInvoiceImage, parseInvoiceMarkdown, parseInvoiceVisualFieldRepair } from 'src/lib/integrations/gemini'
 import { requireRequestContext } from 'src/lib/helpers/auth/request-context'
+import { parserFileValidationMessages } from 'src/lib/constants/parser'
+import { getParserBatchMaxFiles } from 'src/lib/helpers/parser/parser-batch'
 import { resolveParserPdfStrategy } from 'src/lib/helpers/parser/parser-pdf'
 import { CatalogRepository } from 'src/repositories/catalog/catalog.repository'
 import { ClientRepository } from 'src/repositories/third-party/client.repository'
@@ -453,6 +455,65 @@ describe('Parser Route Handler', () => {
     const response = await POST(request)
     expect(response.status).toBe(400)
     expect((await response.json()).error).toBe('El archivo large.png excede el límite de 4MB para imágenes.')
+  })
+
+  it('should reject a batch exceeding the maximum file count with the public validation message', async () => {
+    const files = Array.from({ length: getParserBatchMaxFiles() + 1 }, (_, index) => ({
+      size: 1000,
+      type: 'application/pdf',
+      name: `invoice-${index}.pdf`,
+      arrayBuffer: async () => pdfSignature,
+    }))
+    const request = createParserRequest({
+      headers: { get: () => companyId },
+      formData: async () => ({
+        get: (key: string) => key === 'voucherKind' ? 'sale' : null,
+        getAll: (key: string) => key === 'files' ? files : [],
+      }),
+    })
+
+    const response = await POST(request)
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({ error: `Se permiten hasta ${getParserBatchMaxFiles()} archivos por carga.` })
+  })
+
+  it('should reject an aggregate upload exceeding the configured size limit with the public validation message', async () => {
+    const files = Array.from({ length: 7 }, (_, index) => ({
+      size: 4 * 1024 * 1024,
+      type: 'image/png',
+      name: `invoice-${index}.png`,
+      arrayBuffer: async () => {
+        const buffer = new Uint8Array(4 * 1024 * 1024)
+        buffer.set(new Uint8Array(pngSignature))
+        buffer[buffer.length - 1] = index
+        return buffer.buffer
+      },
+    }))
+    const request = createParserRequest({
+      headers: { get: () => companyId },
+      formData: async () => ({
+        get: (key: string) => key === 'voucherKind' ? 'sale' : null,
+        getAll: (key: string) => key === 'files' ? files : [],
+      }),
+    })
+
+    const response = await POST(request)
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({ error: parserFileValidationMessages.totalSizeExceeded })
+  })
+
+  it('should return a controlled response when multipart data is malformed', async () => {
+    const request = createParserRequest({
+      headers: { get: () => companyId },
+      formData: async () => { throw new TypeError('Malformed multipart body') },
+    })
+
+    const response = await POST(request)
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({ error: 'La carga de archivos es inv\u00e1lida.' })
   })
 
   it('should create an async batch when more than one file is submitted', async () => {

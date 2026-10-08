@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { apiResponseMessages } from "src/lib/constants/api-response"
 import { httpStatusCodes } from "src/lib/constants/http"
 import { resolveApplicationErrorResponse } from "src/lib/helpers/api/application-error-response"
+import { readFormData } from "src/lib/helpers/api/request-body"
 import { executeRequestWithContext } from "src/lib/helpers/api/request-handler"
 import { collectParserAcceptedFiles } from "src/lib/helpers/parser/parser-file"
 import { parserBatchUploadSchema } from "src/lib/schemas/parser/parser-batch-schemas"
@@ -9,7 +10,7 @@ import { VoucherParserService } from "src/services/parser/VoucherParser"
 
 export async function POST(request: NextRequest): Promise<Response> {
   return executeRequestWithContext(request, async ({ companyId, userId }) => {
-    const formData = await request.formData()
+    const formData = await readFormData(request)
     const parsedUpload = parserBatchUploadSchema.safeParse({ voucherType: formData.get("voucherKind") })
     if (!parsedUpload.success) return NextResponse.json({ error: apiResponseMessages.voucher.parseContextInvalid }, { status: httpStatusCodes.badRequest })
     const files = await collectParserAcceptedFiles(formData)

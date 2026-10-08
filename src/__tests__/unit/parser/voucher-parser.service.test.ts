@@ -223,7 +223,7 @@ describe("VoucherParserService", () => {
         currentAttempt: 0,
         queuedAt: null,
         processedAt: null,
-        expiresAt: "2026-09-30T00:00:00.000Z",
+        expiresAt: "2027-09-30T00:00:00.000Z",
         createdAt: "2026-08-20T00:00:00.000Z",
         updatedAt: "2026-08-20T00:00:00.000Z",
         batch: {
@@ -232,7 +232,7 @@ describe("VoucherParserService", () => {
           createdByUserId: userId,
           voucherType: "sale",
           status: "queued",
-          expiresAt: "2026-09-30T00:00:00.000Z",
+          expiresAt: "2027-09-30T00:00:00.000Z",
         },
       })
       .mockResolvedValueOnce({
@@ -251,7 +251,7 @@ describe("VoucherParserService", () => {
         currentAttempt: 1,
         queuedAt: null,
         processedAt: "2026-08-20T00:00:00.000Z",
-        expiresAt: "2026-09-30T00:00:00.000Z",
+        expiresAt: "2027-09-30T00:00:00.000Z",
         createdAt: "2026-08-20T00:00:00.000Z",
         updatedAt: "2026-08-20T00:00:00.000Z",
         batch: {
@@ -260,7 +260,7 @@ describe("VoucherParserService", () => {
           createdByUserId: userId,
           voucherType: "sale",
           status: "partial",
-          expiresAt: "2026-09-30T00:00:00.000Z",
+          expiresAt: "2027-09-30T00:00:00.000Z",
         },
       });
     storageServiceMock.downloadFile.mockResolvedValue(Buffer.from("content"));
@@ -299,7 +299,7 @@ describe("VoucherParserService", () => {
       currentAttempt: 0,
       queuedAt: null,
       processedAt: null,
-      expiresAt: "2026-09-30T00:00:00.000Z",
+      expiresAt: "2027-09-30T00:00:00.000Z",
       createdAt: "2026-08-20T00:00:00.000Z",
       updatedAt: "2026-08-20T00:00:00.000Z",
       batch: {
@@ -308,7 +308,7 @@ describe("VoucherParserService", () => {
         createdByUserId: userId,
         voucherType: "sale",
         status: "queued",
-        expiresAt: "2026-09-30T00:00:00.000Z",
+        expiresAt: "2027-09-30T00:00:00.000Z",
       },
     };
     const secret = "gemini-api-key-user-email@example.com";
@@ -339,7 +339,7 @@ describe("VoucherParserService", () => {
       currentAttempt: 0,
       queuedAt: null,
       processedAt: null,
-      expiresAt: "2026-09-30T00:00:00.000Z",
+      expiresAt: "2027-09-30T00:00:00.000Z",
       createdAt: "2026-08-20T00:00:00.000Z",
       updatedAt: "2026-08-20T00:00:00.000Z",
       batch: {
@@ -348,7 +348,7 @@ describe("VoucherParserService", () => {
         createdByUserId: userId,
         voucherType: "sale",
         status: "queued",
-        expiresAt: "2026-09-30T00:00:00.000Z",
+        expiresAt: "2027-09-30T00:00:00.000Z",
       },
     };
     batchRepositoryMock.findItemById.mockResolvedValueOnce(item).mockResolvedValueOnce(null);
@@ -383,7 +383,7 @@ describe("VoucherParserService", () => {
       currentAttempt: 0,
       queuedAt: null,
       processedAt: null,
-      expiresAt: "2026-09-30T00:00:00.000Z",
+      expiresAt: "2027-09-30T00:00:00.000Z",
       createdAt: "2026-08-20T00:00:00.000Z",
       updatedAt: "2026-08-20T00:00:00.000Z",
       batch: {
@@ -392,7 +392,7 @@ describe("VoucherParserService", () => {
         createdByUserId: userId,
         voucherType: "sale",
         status: "queued",
-        expiresAt: "2026-09-30T00:00:00.000Z",
+        expiresAt: "2027-09-30T00:00:00.000Z",
       },
     };
     batchRepositoryMock.findItemById.mockResolvedValueOnce(item).mockResolvedValueOnce(null);

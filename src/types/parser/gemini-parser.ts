@@ -24,6 +24,7 @@ export interface RawGeminiParsedVoucher {
   exemptAmount?: number
   otherTaxesAmount?: number
   totalAmount?: number
+  taxIncludedAmount?: number
   concept?: string
   paymentMethod?: string
   status?: string
@@ -112,7 +113,7 @@ export interface ParsedVoucherData {
   nonTaxableAmount: number | null
   exemptAmount: number | null
   otherTaxesAmount: number | null
-  totalAmount: number | null
+  totalAmount?: number | null
   concept: string | null
   paymentMethod: string | null
   status: string | null
