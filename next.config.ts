@@ -3,6 +3,9 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   output: "standalone",
   serverExternalPackages: ["@firecrawl/pdf-inspector"],
+  experimental: {
+    proxyClientMaxBodySize: "32mb",
+  },
   async redirects() {
     return [
       {

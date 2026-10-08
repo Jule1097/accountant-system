@@ -7,6 +7,8 @@ import { voucherSchema } from "src/lib/schemas/voucher/voucher-schemas";
 import { normalizeVoucherFormPayload } from "src/lib/helpers/voucher/voucher-form";
 import { ConciliationsService } from "src/services/conciliation/Conciliations";
 import { resolveApplicationErrorResponse } from "src/lib/helpers/api/application-error-response";
+import { readJsonBody } from "src/lib/helpers/api/request-body";
+import { resolveZodValidationResponse } from "src/lib/helpers/api/validation-response";
 
 export async function POST(
   request: NextRequest,
@@ -20,12 +22,12 @@ export async function POST(
       return NextResponse.json({ error: apiResponseMessages.conciliation.invalidItem }, { status: httpStatusCodes.badRequest });
     }
 
-    const body = await request.json();
+    const body = await readJsonBody(request);
     const payload = { ...body, companyId };
     const parsedPayload = voucherSchema.safeParse(payload);
 
     if (!parsedPayload.success) {
-      return NextResponse.json({ error: apiResponseMessages.conciliation.invalidValidatedData }, { status: httpStatusCodes.badRequest });
+      return resolveZodValidationResponse(parsedPayload.error);
     }
 
     const conciliationsService = new ConciliationsService();
