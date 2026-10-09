@@ -5,5 +5,8 @@ describe("Next.js configuration", () => {
     expect(nextConfig.output).toBe("standalone")
     expect(nextConfig.serverExternalPackages).toContain("@firecrawl/pdf-inspector")
   })
-})
 
+  it("does not configure a parser transport body-size override", () => {
+    expect(nextConfig).not.toHaveProperty("experimental.proxyClientMaxBodySize")
+  })
+})

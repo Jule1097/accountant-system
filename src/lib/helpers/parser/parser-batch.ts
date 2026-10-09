@@ -4,11 +4,9 @@ import {
   ParserBatchRecord,
   ParserBatchStatus,
 } from "src/types/parser/parser-batch";
-import { inputLimits } from "src/lib/constants/input-limits";
 import { ParsedVoucherData } from "src/types/parser/gemini-parser";
 
 const parserBatchExpirationHours = 24;
-const parserBatchMaxFiles = inputLimits.maxParserFiles;
 
 function hasItemsWithStatus(items: ParserBatchItemRecord[], statuses: ParserBatchItemStatus[]): boolean {
   return items.some((item) => statuses.includes(item.status));
@@ -16,10 +14,6 @@ function hasItemsWithStatus(items: ParserBatchItemRecord[], statuses: ParserBatc
 
 export function getParserBatchExpirationDate(now: Date = new Date()): Date {
   return new Date(now.getTime() + parserBatchExpirationHours * 60 * 60 * 1000);
-}
-
-export function getParserBatchMaxFiles(): number {
-  return parserBatchMaxFiles;
 }
 
 export function resolveParserBatchStatus(items: ParserBatchItemRecord[]): ParserBatchStatus {

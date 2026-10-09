@@ -7,6 +7,7 @@ import { ApiRequestError } from "src/lib/api/api-client"
 
 const toastAdd = jest.fn()
 const apiRequestMock = jest.fn()
+const uploadToSignedUrlMock = jest.fn()
 
 jest.mock("src/components/ui/toast", () => ({
   useToastManager: () => ({ add: toastAdd }),
@@ -39,6 +40,11 @@ jest.mock("src/lib/api/api-client", () => ({
   },
   apiRequest: (...args: unknown[]) => apiRequestMock(...args),
   parseJsonResponse: async (response: Response) => response.json(),
+  resolveApiErrorMessage: (error: unknown, fallbackMessage: string) => error instanceof Error ? error.message : fallbackMessage,
+}))
+
+jest.mock("src/lib/integrations/supabase-client", () => ({
+  getSupabaseBrowserClient: () => ({ storage: { from: () => ({ uploadToSignedUrl: uploadToSignedUrlMock }) } }),
 }))
 
 function createCatalogsResponse() {
@@ -269,6 +275,10 @@ describe("Voucher inline third-party creation", () => {
     const file = new File(["voucher"], "voucher.pdf", { type: "application/pdf" })
 
     apiRequestMock.mockImplementation((path: string) => {
+      if (path === "/api/vouchers/parse/uploads") {
+        return Promise.resolve({ json: async () => ({ planToken: "plan-token", expiresAt: "2026-10-08T12:15:00.000Z", bucket: "parser-temp", uploads: [{ itemId: "123e4567-e89b-12d3-a456-426614174018", fileName: "voucher.pdf", mimeType: "application/pdf", fileSize: 7, path: "company/plan/item/voucher.pdf", token: "signed-token" }] }) })
+      }
+
       if (path === "/api/vouchers/parse") {
         return Promise.resolve({
           json: async () => createParsedPayload({
@@ -280,6 +290,7 @@ describe("Voucher inline third-party creation", () => {
 
       return Promise.reject(new Error(`Unhandled request: ${path}`))
     })
+    uploadToSignedUrlMock.mockResolvedValue({ data: { path: "company/plan/item/voucher.pdf" }, error: null })
 
     render(
       <VoucherModalReady

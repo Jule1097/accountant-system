@@ -6,7 +6,6 @@ import { SupplierRepository } from "src/repositories/third-party/supplier.reposi
 import { VoucherParserService } from "src/services/parser/VoucherParser";
 import { ParserStorageService } from "src/services/parser/ParserStorage";
 import { AsyncBatchRunner } from "src/types/parser/async-batch-runner";
-import { ParserAcceptedFile } from "src/lib/helpers/parser/parser-file";
 import { parseInvoiceImage } from "src/lib/integrations/gemini";
 import { ParserBatchItemContextRecord } from "src/types/parser/parser-batch";
 import { ApplicationError } from "src/lib/errors/application-error";
@@ -24,16 +23,6 @@ const companyId = "123e4567-e89b-12d3-a456-426614174001";
 const userId = "123e4567-e89b-12d3-a456-426614174002";
 const batchId = "123e4567-e89b-12d3-a456-426614174003";
 const itemId = "123e4567-e89b-12d3-a456-426614174004";
-
-function createAcceptedFile(): ParserAcceptedFile {
-  return {
-    fileName: "invoice.pdf",
-    mimeType: "application/pdf",
-    fileSize: 1000,
-    fileHash: "hash-1",
-    buffer: Buffer.from("content"),
-  };
-}
 
 describe("VoucherParserService", () => {
   let service: VoucherParserService;
@@ -66,29 +55,6 @@ describe("VoucherParserService", () => {
     (CatalogRepository as jest.MockedClass<typeof CatalogRepository>).prototype.getTaxJurisdictions = jest.fn().mockResolvedValue([]);
     (ClientRepository as jest.MockedClass<typeof ClientRepository>).prototype.findByCuitAndCompany = jest.fn().mockResolvedValue(null);
     (SupplierRepository as jest.MockedClass<typeof SupplierRepository>).prototype.findByCuitAndCompany = jest.fn().mockResolvedValue(null);
-  });
-
-  it("triggers parser batch execution after creating the batch", async () => {
-    const file = createAcceptedFile();
-
-    storageServiceMock.uploadFile.mockResolvedValue();
-    batchRepositoryMock.createBatchWithItems.mockResolvedValue({
-      id: batchId,
-      companyId,
-      createdByUserId: userId,
-      voucherType: "sale",
-      status: "queued",
-      totalFiles: 1,
-      expiresAt: "2026-08-21T00:00:00.000Z",
-      createdAt: "2026-08-20T00:00:00.000Z",
-      updatedAt: "2026-08-20T00:00:00.000Z",
-      items: [],
-    });
-
-    const response = await service.createBatch(companyId, userId, "sale", [file]);
-
-    expect(response.mode).toBe("batch");
-    expect(asyncBatchRunnerMock.triggerParserBatch).toHaveBeenCalledWith(batchId);
   });
 
   it("retries the whole batch when a parser item is requeued", async () => {
