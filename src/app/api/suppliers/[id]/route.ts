@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { executeRequestWithContext } from 'src/lib/helpers/api/request-handler'
-import { apiResponseMessages } from 'src/lib/constants/api-response'
 import { httpStatusCodes } from 'src/lib/constants/http'
 import { supplierNotFoundError } from 'src/lib/constants/messages'
 import { SupplierService } from 'src/services/third-party/Supplier'
 import { resolveApplicationErrorResponse } from 'src/lib/helpers/api/application-error-response'
+import { readJsonBody } from 'src/lib/helpers/api/request-body'
+import { resolveZodValidationResponse } from 'src/lib/helpers/api/validation-response'
 import { supplierSchema } from 'src/lib/schemas/third-party/third-party-schemas'
 
 export async function GET(
@@ -30,11 +31,11 @@ export async function PUT(
 ) {
   return executeRequestWithContext(request, async ({ companyId }) => {
     const { id } = await params
-    const body = await request.json()
+    const body = await readJsonBody(request)
 
     const parsed = supplierSchema.safeParse(body)
     if (!parsed.success) {
-      return NextResponse.json({ error: apiResponseMessages.common.invalidData, details: parsed.error.format() }, { status: httpStatusCodes.badRequest })
+      return resolveZodValidationResponse(parsed.error)
     }
 
     const supplierService = new SupplierService()

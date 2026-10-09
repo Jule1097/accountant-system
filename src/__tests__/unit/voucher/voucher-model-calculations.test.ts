@@ -71,6 +71,20 @@ describe("Voucher domain calculations", () => {
     expect(voucher.calculateNetAmount().toString()).toBe("126.00")
   })
 
+  it("does not include the legacy purchase other-tax field in the calculated gross", () => {
+    const voucher = buildVoucher({
+      type: "purchase",
+      clientId: null,
+      supplierId: "supplier-1",
+      otherTaxesAmount: "8.00",
+      retentions: [],
+      perceptions: [{ perceptionConceptId: "perception-1", amount: "5.00" }],
+    })
+
+    expect(voucher.calculateTotalAmount().toString()).toBe("126.00")
+    expect(voucher.calculateNetAmount().toString()).toBe("126.00")
+  })
+
   it("preserves an explicitly paid status when no payment amount was recorded", () => {
     const voucher = buildVoucher({ status: "paid", paidAmount: "0.00" })
 

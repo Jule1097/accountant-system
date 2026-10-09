@@ -25,12 +25,14 @@ export function ConciliationsView() {
     isReviewModalOpen,
     reviewItem,
     isReviewItemLoading,
+    isManualRecovery,
     reviewSourceUrl,
     handleTabChange,
     handlePageChange,
     handleToggleItemSelection,
     handleToggleVisibleSelection,
     handleReview,
+    handleRecover,
     handleReviewModalOpenChange,
     handleDeleteDialogOpenChange,
     handleReviewSubmit,
@@ -60,6 +62,7 @@ export function ConciliationsView() {
             onToggleVisibleSelection={handleToggleVisibleSelection}
             onToggleItemSelection={handleToggleItemSelection}
             onReview={handleReview}
+            onRecover={handleRecover}
             onRegenerate={handleRegenerate}
             onPersist={handlePersist}
             onDelete={handleDelete}
@@ -83,6 +86,7 @@ export function ConciliationsView() {
         reviewItem={reviewItem}
         isReviewItemLoading={isReviewItemLoading}
         reviewSourceUrl={reviewSourceUrl}
+        isManualRecovery={isManualRecovery}
         onReviewModalOpenChange={handleReviewModalOpenChange}
         onReviewSubmit={handleReviewSubmit}
         deleteDialogState={deleteDialogState}

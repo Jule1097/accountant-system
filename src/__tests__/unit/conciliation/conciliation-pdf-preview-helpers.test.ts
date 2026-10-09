@@ -16,13 +16,13 @@ describe("conciliation pdf preview helpers", () => {
     expect(getConciliationPdfNextZoom(1)).toBe(1.25);
     expect(getConciliationPdfNextZoom(2)).toBe(2);
     expect(getConciliationPdfPreviousZoom(1)).toBe(0.75);
-    expect(getConciliationPdfPreviousZoom(0.75)).toBe(0.75);
+    expect(getConciliationPdfPreviousZoom(0.25)).toBe(0.25);
   });
 
   it("reports when zoom controls should be enabled", () => {
     expect(canIncreaseConciliationPdfZoom(1)).toBe(true);
     expect(canIncreaseConciliationPdfZoom(2)).toBe(false);
     expect(canDecreaseConciliationPdfZoom(1)).toBe(true);
-    expect(canDecreaseConciliationPdfZoom(0.75)).toBe(false);
+    expect(canDecreaseConciliationPdfZoom(0.25)).toBe(false);
   });
 });

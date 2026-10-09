@@ -3,6 +3,10 @@ import { normalizeParserText } from 'src/lib/helpers/parser/parser-text'
 import { normalizeVoucherCurrency } from 'src/lib/helpers/voucher/voucher-form'
 import { resolveGeminiCatalogMatch } from 'src/lib/helpers/parser/gemini-parser'
 import { resolveTaxJurisdictionName } from 'src/lib/domain/tax-jurisdictions'
+import { isCanonicalDate } from 'src/lib/helpers/platform/canonical-date'
+import { voucherCurrencySymbols, voucherOtherTaxesConceptName } from 'src/lib/constants/voucher'
+import { Sale } from 'src/models/voucher/Sale'
+import { Money } from 'src/models/voucher/Money'
 import {
   GeminiParserCatalogs,
   ParsedVoucherData,
@@ -49,23 +53,18 @@ export class GeminiParsedVoucher {
 
     if (isoMatch) {
       const [, year, month, day] = isoMatch
-      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+      const canonicalDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+      return isCanonicalDate(canonicalDate) ? canonicalDate : null
     }
 
     const latinDateMatch = normalizedValue.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/)
 
     if (latinDateMatch) {
       const [, day, month, year] = latinDateMatch
-      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+      const canonicalDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+      return isCanonicalDate(canonicalDate) ? canonicalDate : null
     }
-
-    const parsedDate = new Date(normalizedValue)
-
-    if (isNaN(parsedDate.getTime())) {
-      return null
-    }
-
-    return parsedDate.toISOString().split('T')[0]
+    return null
   }
 
   private normalizeCurrency(value?: string): "$" | "USD" | null {
@@ -175,6 +174,27 @@ export class GeminiParsedVoucher {
     }
   }
 
+  private resolvePurchasePerceptions(perceptions: ReturnType<GeminiParsedVoucher["resolvePerception"]>[], catalogs: GeminiParserCatalogs): ReturnType<GeminiParsedVoucher["resolvePerception"]>[] {
+    const otherTaxesConcept = catalogs.perceptionConcepts.find((concept) => this.isOtherTaxesConcept(concept.name))
+    const knownPerceptions = perceptions.filter((perception) => perception.perceptionConceptId && !this.isOtherTaxesConcept(perception.conceptName))
+    const otherTaxesPerceptions = perceptions.filter((perception) => !perception.perceptionConceptId || this.isOtherTaxesConcept(perception.conceptName))
+    const genericOtherTaxesAmount = otherTaxesPerceptions.length ? 0 : this.extractedData.otherTaxesAmount || 0
+    const otherTaxesAmount = otherTaxesPerceptions.reduce((total, perception) => total + (perception.amount || 0), genericOtherTaxesAmount)
+
+    if (!otherTaxesConcept || otherTaxesAmount <= 0) return knownPerceptions.concat(otherTaxesPerceptions.filter((perception) => perception.perceptionConceptId))
+
+    return [
+      ...knownPerceptions,
+      {
+        perceptionConceptId: otherTaxesConcept.id,
+        taxJurisdictionId: null,
+        conceptName: voucherOtherTaxesConceptName,
+        amount: otherTaxesAmount,
+        taxJurisdictionName: null,
+      },
+    ]
+  }
+
   getLookupThirdPartyCuit(): string | null {
     return this.normalizeThirdPartyCuit(this.extractedData.thirdPartyCuit)
   }
@@ -190,8 +210,12 @@ export class GeminiParsedVoucher {
     const retentions = (this.extractedData.retentions || []).map((retention) => this.resolveRetention(retention, catalogs))
     const perceptions = (this.extractedData.perceptions || []).map((perception) => this.resolvePerception(perception, catalogs))
     const applicableRetentions = voucherKind === "purchase" ? [] : retentions
-    const applicablePerceptions = voucherKind === "sale" ? [] : perceptions
-    const hasOtherTaxesPerception = applicablePerceptions.some((perception) => this.isOtherTaxesConcept(perception.conceptName))
+    const applicablePerceptions = voucherKind === "sale" ? [] : this.resolvePurchasePerceptions(perceptions, catalogs)
+    const isPurchase = voucherKind === "purchase"
+    const resolvedVoucherLetter = this.normalizeVoucherLetterValue(this.extractedData.voucherLetter, this.extractedData.voucherType)
+    const resolvedSubtotal = voucherKind === "sale" && resolvedVoucherLetter === "B" && typeof this.extractedData.taxIncludedAmount === "number" && typeof this.extractedData.vatAmount === "number"
+      ? Number(Sale.resolveSubtotalFromTaxIncludedTotal(new Money(this.extractedData.taxIncludedAmount.toString(), currency || voucherCurrencySymbols.ARS), new Money(this.extractedData.vatAmount.toString(), currency || voucherCurrencySymbols.ARS)).toString())
+      : this.extractedData.subtotal ?? null
 
     return {
       posNumber: this.extractedData.posNumber || null,
@@ -199,12 +223,11 @@ export class GeminiParsedVoucher {
       date: this.normalizeDate(this.extractedData.date),
       currency,
       exchangeRate: this.normalizeExchangeRate(currency, this.extractedData.exchangeRate),
-      subtotal: this.extractedData.subtotal ?? null,
+      subtotal: resolvedSubtotal,
       vatAmount: this.extractedData.vatAmount ?? null,
       nonTaxableAmount: this.extractedData.nonTaxableAmount ?? null,
       exemptAmount: this.extractedData.exemptAmount ?? null,
-      otherTaxesAmount: hasOtherTaxesPerception ? 0 : this.extractedData.otherTaxesAmount ?? null,
-      totalAmount: this.extractedData.totalAmount ?? null,
+      otherTaxesAmount: isPurchase ? 0 : this.extractedData.otherTaxesAmount ?? null,
       concept: this.normalizeTextValue(this.extractedData.concept),
       paymentMethod: this.normalizeTextValue(this.extractedData.paymentMethod),
       status: this.normalizeTextValue(this.extractedData.status),
@@ -214,7 +237,7 @@ export class GeminiParsedVoucher {
       thirdPartyCuit,
       thirdPartyName,
       voucherType: this.normalizeTextValue(this.extractedData.voucherType),
-      voucherLetter: this.normalizeVoucherLetterValue(this.extractedData.voucherLetter, this.extractedData.voucherType),
+      voucherLetter: resolvedVoucherLetter,
       vatDetails: (this.extractedData.vatDetails || []).map((detail) => this.resolveVatDetail(detail, catalogs)),
       retentions: applicableRetentions,
       perceptions: applicablePerceptions,

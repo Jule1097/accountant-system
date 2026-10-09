@@ -18,7 +18,8 @@ function buildSharedPromptParts(options: GeminiParseOptions): string[] {
     "Do not guess values that are not visible on the document.",
     "Keep Credit Note amounts as positive values even if the source document shows them as negative.",
     "Extract the other party on the document as thirdPartyCuit and thirdPartyName.",
-    "Return voucherType, voucherLetter, posNumber, number, date, currency, exchangeRate, subtotal, vatAmount, nonTaxableAmount, exemptAmount, otherTaxesAmount, totalAmount, concept, paymentMethod, status, comments, vatDetails, retentions, and perceptions.",
+    "Return voucherType, voucherLetter, posNumber, number, date, currency, exchangeRate, subtotal, vatAmount, nonTaxableAmount, exemptAmount, otherTaxesAmount, concept, paymentMethod, status, comments, vatDetails, retentions, and perceptions.",
+    "For sales letter B, when the document shows a tax-included amount, return it as taxIncludedAmount so the backend can derive subtotal from it and VAT.",
     "Return voucherType as the document type label and voucherLetter as a single letter only when it is visible on the document.",
     "Never include the voucher letter inside voucherType when it is separately visible, and never return combined labels such as 'Factura A' inside voucherLetter.",
     "Never return abbreviations such as 'FCE' as voucherLetter. Valid voucherLetter examples are A, B, C, or M.",
@@ -82,7 +83,7 @@ function getGeminiResponseSchema() {
       nonTaxableAmount: { type: "number" },
       exemptAmount: { type: "number" },
       otherTaxesAmount: { type: "number" },
-      totalAmount: { type: "number" },
+      taxIncludedAmount: { type: "number" },
       concept: { type: "string" },
       paymentMethod: { type: "string" },
       status: { type: "string" },
@@ -183,13 +184,7 @@ async function parseGeminiResponseWithSchema(
   try {
     return JSON.parse(text) as RawGeminiParsedVoucher;
   } catch (error: unknown) {
-    console.error("Failed to parse Gemini response as JSON", {
-      operation: "parse-gemini-response",
-      workflowState: "failed",
-      providerName: "gemini",
-      errorName: error instanceof Error ? error.name : "UnknownError",
-    });
-    throw new Error("Failed to parse invoice");
+    throw new Error("Failed to parse invoice", { cause: error });
   }
 }
 

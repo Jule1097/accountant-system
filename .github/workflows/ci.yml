@@ -54,6 +54,7 @@ jobs:
           ALLOWED_ORIGINS: ${{ secrets.ALLOWED_ORIGINS }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           VOUCHER_PARSER_TEMP_BUCKET: ${{ secrets.VOUCHER_PARSER_TEMP_BUCKET }}
+          PARSER_UPLOAD_PLAN_SECRET: ${{ secrets.PARSER_UPLOAD_PLAN_SECRET }}
 
       - name: Build Worker
         run: pnpm run build:worker
@@ -71,3 +72,4 @@ jobs:
           ALLOWED_ORIGINS: ${{ secrets.ALLOWED_ORIGINS }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           VOUCHER_PARSER_TEMP_BUCKET: ${{ secrets.VOUCHER_PARSER_TEMP_BUCKET }}
+          PARSER_UPLOAD_PLAN_SECRET: ${{ secrets.PARSER_UPLOAD_PLAN_SECRET }}

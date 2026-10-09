@@ -4,11 +4,9 @@ import {
   ParserBatchRecord,
   ParserBatchStatus,
 } from "src/types/parser/parser-batch";
-import { inputLimits } from "src/lib/constants/input-limits";
 import { ParsedVoucherData } from "src/types/parser/gemini-parser";
 
 const parserBatchExpirationHours = 24;
-const parserBatchMaxFiles = inputLimits.maxParserFiles;
 
 function hasItemsWithStatus(items: ParserBatchItemRecord[], statuses: ParserBatchItemStatus[]): boolean {
   return items.some((item) => statuses.includes(item.status));
@@ -16,10 +14,6 @@ function hasItemsWithStatus(items: ParserBatchItemRecord[], statuses: ParserBatc
 
 export function getParserBatchExpirationDate(now: Date = new Date()): Date {
   return new Date(now.getTime() + parserBatchExpirationHours * 60 * 60 * 1000);
-}
-
-export function getParserBatchMaxFiles(): number {
-  return parserBatchMaxFiles;
 }
 
 export function resolveParserBatchStatus(items: ParserBatchItemRecord[]): ParserBatchStatus {
@@ -97,7 +91,8 @@ export function hasReviewableParsedPayload(payload: ParsedVoucherData | null): b
 
   return (hasMeaningfulNumber(payload.posNumber) && hasMeaningfulNumber(payload.number))
     || hasMeaningfulText(payload.date)
-    || (typeof payload.totalAmount === "number" && payload.totalAmount > 0)
+    || (typeof payload.subtotal === "number" && payload.subtotal > 0)
+    || (typeof payload.vatAmount === "number" && payload.vatAmount > 0)
     || hasMeaningfulText(payload.thirdPartyCuit)
     || hasMeaningfulText(payload.thirdPartyName)
     || hasMeaningfulVatDetails(payload.vatDetails)

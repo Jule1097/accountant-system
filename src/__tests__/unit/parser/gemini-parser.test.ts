@@ -167,4 +167,60 @@ describe("GeminiParsedVoucher", () => {
     expect(response.retentions).toEqual([expect.objectContaining({ retentionConceptId: null, conceptName: "Retención desconocida" })])
     expect(response.perceptions).toEqual([])
   });
+
+  it("aggregates unmapped purchase taxes into the catalog other taxes perception", () => {
+    const parsedVoucher = new GeminiParsedVoucher({
+      voucherLetter: "C",
+      perceptions: [
+        { conceptName: "Impuesto desconocido uno", amount: 3 },
+        { conceptName: "Impuesto desconocido dos", amount: 4 },
+        { conceptName: "Percepción de IVA", amount: 2 },
+      ],
+      otherTaxesAmount: 99,
+    });
+
+    const response = parsedVoucher.toResponse(
+      {
+        vatRates: [],
+        retentionConcepts: [],
+        perceptionConcepts: [
+          { id: "per-other", name: "Otros Impuestos" },
+          { id: "per-iva", name: "Percepción de IVA" },
+        ],
+        taxJurisdictions: [],
+      },
+      null,
+      "purchase",
+    );
+
+    expect(response.perceptions).toEqual(expect.arrayContaining([
+      expect.objectContaining({ perceptionConceptId: "per-other", amount: 7 }),
+      expect.objectContaining({ perceptionConceptId: "per-iva", amount: 2 }),
+    ]));
+    expect(response.perceptions.filter((perception) => perception.perceptionConceptId === "per-other")).toHaveLength(1);
+    expect(response.otherTaxesAmount).toBe(0);
+  });
+
+  it("resolves a sales letter B subtotal from a backend-only tax included amount", () => {
+    const parsedVoucher = new GeminiParsedVoucher({
+      voucherLetter: "B",
+      taxIncludedAmount: 121,
+      vatAmount: 21,
+    });
+
+    const response = parsedVoucher.toResponse(
+      {
+        vatRates: [],
+        retentionConcepts: [],
+        perceptionConcepts: [],
+        taxJurisdictions: [],
+      },
+      null,
+      "sale",
+    );
+
+    expect(response.subtotal).toBe(100);
+    expect(response).not.toHaveProperty("totalAmount");
+    expect(response).not.toHaveProperty("taxIncludedAmount");
+  });
 });

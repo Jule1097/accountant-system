@@ -18,6 +18,7 @@ import { VoucherListResponse, VoucherModalMode, VoucherSummaryResponse } from 's
 
 const toastAdd = jest.fn()
 const apiRequestMock = jest.fn()
+const uploadToSignedUrlMock = jest.fn()
 const useVouchersMock = jest.fn()
 const useVoucherSummaryMock = jest.fn()
 const useVoucherByIdMock = jest.fn()
@@ -66,6 +67,14 @@ jest.mock('src/lib/api/api-client', () => {
     },
   }
 })
+
+jest.mock('src/lib/integrations/supabase-client', () => ({
+  getSupabaseBrowserClient: () => ({
+    storage: {
+      from: () => ({ uploadToSignedUrl: uploadToSignedUrlMock }),
+    },
+  }),
+}))
 
 jest.mock('src/hooks/auth/use-auth', () => ({
   useAuth: () => ({
@@ -948,6 +957,71 @@ describe('Voucher UI', () => {
       expect(Array.from(document.querySelectorAll('p')).some((element) => element.textContent?.includes('Las compras fiscales requieren'))).toBe(false)
       expect(screen.getByTestId('form-valid')).toHaveTextContent('false')
     })
+  })
+
+  it('initializes, uploads directly to Storage, and confirms the parser plan', async () => {
+    const planResponse = {
+      planToken: 'plan-token',
+      expiresAt: '2026-10-08T12:15:00.000Z',
+      bucket: 'parser-temp',
+      uploads: [{ itemId: '123e4567-e89b-12d3-a456-426614174018', fileName: 'invoice.pdf', mimeType: 'application/pdf', fileSize: 8, path: 'company/plan/item/invoice.pdf', token: 'signed-token' }],
+    }
+    apiRequestMock.mockImplementation((path: string) => {
+      if (path === '/api/vouchers/parse/uploads') return Promise.resolve({ json: async () => planResponse })
+      return Promise.resolve({ json: async () => ({ voucherType: 'Factura', voucherLetter: 'A' }) })
+    })
+    uploadToSignedUrlMock.mockResolvedValue({ data: { path: planResponse.uploads[0].path }, error: null })
+    const { result } = renderHook(() => useVoucherForm({
+      isOpen: true,
+      onOpenChange: jest.fn(),
+      type: 'purchases',
+      mode: 'create',
+      ...createVoucherFormOptions(),
+      onSuccess: jest.fn(),
+    }))
+    const fileInput = document.createElement('input')
+    const file = new File(['invoice'], 'invoice.pdf', { type: 'application/pdf' })
+    Object.defineProperty(fileInput, 'files', { configurable: true, value: [file] })
+
+    act(() => result.current.onFileChange({ target: fileInput } as React.ChangeEvent<HTMLInputElement>))
+
+    await waitFor(() => expect(uploadToSignedUrlMock).toHaveBeenCalledWith(planResponse.uploads[0].path, 'signed-token', file, { contentType: 'application/pdf' }))
+    expect(apiRequestMock).toHaveBeenNthCalledWith(1, '/api/vouchers/parse/uploads', expect.objectContaining({ method: 'POST', headers: { 'Content-Type': 'application/json' } }))
+    expect(apiRequestMock).toHaveBeenNthCalledWith(2, '/api/vouchers/parse', expect.objectContaining({ method: 'POST', headers: { 'Content-Type': 'application/json' } }))
+  })
+
+  it('reports a partial direct upload failure without confirming a parser batch', async () => {
+    const planResponse = {
+      planToken: 'plan-token',
+      expiresAt: '2026-10-08T12:15:00.000Z',
+      bucket: 'parser-temp',
+      uploads: [{ itemId: '123e4567-e89b-12d3-a456-426614174018', fileName: 'invoice.pdf', mimeType: 'application/pdf', fileSize: 8, path: 'company/plan/item/invoice.pdf', token: 'signed-token' }],
+    }
+    apiRequestMock.mockImplementation((path: string) => Promise.resolve({ json: async () => path === '/api/vouchers/parse/uploads' ? planResponse : {} }))
+    uploadToSignedUrlMock.mockResolvedValue({ data: null, error: new Error('provider failure') })
+    const { result } = renderHook(() => useVoucherForm({ isOpen: true, onOpenChange: jest.fn(), type: 'purchases', mode: 'create', ...createVoucherFormOptions(), onSuccess: jest.fn() }))
+    const fileInput = document.createElement('input')
+    const file = new File(['invoice'], 'invoice.pdf', { type: 'application/pdf' })
+    Object.defineProperty(fileInput, 'files', { configurable: true, value: [file] })
+
+    act(() => result.current.onFileChange({ target: fileInput } as React.ChangeEvent<HTMLInputElement>))
+
+    await waitFor(() => expect(toastAdd).toHaveBeenCalledWith(expect.objectContaining({ type: 'error', description: 'No se pudo cargar uno de los archivos.' })))
+    expect(apiRequestMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('declares explicit input types for voucher modal fields', () => {
+    render(<FiscalPurchaseCoreFieldsHarness />)
+
+    expect(screen.getByPlaceholderText('00-00000000-0')).toHaveAttribute('type', 'text')
+    expect(screen.getByPlaceholderText('Detalle del comprobante')).toHaveAttribute('type', 'text')
+    expect(screen.getByPlaceholderText('00001')).toHaveAttribute('type', 'number')
+    expect(screen.getByPlaceholderText('00000000')).toHaveAttribute('type', 'number')
+    expect(screen.getByPlaceholderText('Transferencia')).toHaveAttribute('type', 'text')
+    const inputs = Array.from(document.querySelectorAll('input'))
+    expect(inputs.every((input) => input.hasAttribute('type'))).toBe(true)
+    expect(document.querySelector('input[type="date"]')).toBeInTheDocument()
+    expect(document.querySelector('input[type="number"]')).toBeInTheDocument()
   })
 
   it('hydrates batch review parsed data when it arrives after opening the form', async () => {

@@ -1,11 +1,13 @@
 import { createSupabaseAdminClient } from "src/lib/integrations/supabase-server";
-import { parserInternalMessages } from "src/lib/constants/parser";
+import { parserInternalMessages, parserStorageEnvironmentVariables } from "src/lib/constants/parser";
+import { ParserStoredFileMetadata } from "src/types/parser/parser-upload";
+import { httpStatusCodes } from "src/lib/constants/http";
 
 function getParserTempBucket(): string {
-  const value = process.env.VOUCHER_PARSER_TEMP_BUCKET;
+  const value = process.env[parserStorageEnvironmentVariables.tempBucket];
 
   if (!value) {
-    throw new Error("Missing VOUCHER_PARSER_TEMP_BUCKET");
+    throw new Error(`Missing ${parserStorageEnvironmentVariables.tempBucket}`);
   }
 
   return value;
@@ -18,16 +20,28 @@ export class ParserStorageService {
     this.bucketName = getParserTempBucket();
   }
 
-  async uploadFile(path: string, buffer: Buffer, mimeType: string): Promise<void> {
-    const supabase = createSupabaseAdminClient();
-    const { error } = await supabase.storage.from(this.bucketName).upload(path, buffer, {
-      contentType: mimeType,
-      upsert: false,
-    });
+  getBucketName(): string {
+    return this.bucketName;
+  }
 
-    if (error) {
-      throw new Error(parserInternalMessages.storageOperationFailed);
-    }
+  async createSignedUploadUrl(path: string): Promise<{ path: string; token: string }> {
+    const supabase = createSupabaseAdminClient();
+    const { data, error } = await supabase.storage.from(this.bucketName).createSignedUploadUrl(path, { upsert: false });
+
+    if (error || !data?.token) throw new Error(parserInternalMessages.storageOperationFailed);
+
+    return { path: data.path, token: data.token };
+  }
+
+  async getFileMetadata(path: string): Promise<ParserStoredFileMetadata | null> {
+    const supabase = createSupabaseAdminClient();
+    const { data, error } = await supabase.storage.from(this.bucketName).info(path);
+    const errorStatus = error && "status" in error && typeof error.status === "number" ? error.status : undefined;
+
+    if (errorStatus === httpStatusCodes.notFound || errorStatus === httpStatusCodes.badRequest || (!error && !data)) return null;
+    if (error || !data || typeof data.size !== "number" || typeof data.contentType !== "string") throw new Error(parserInternalMessages.storageOperationFailed);
+
+    return { fileSize: data.size, mimeType: data.contentType };
   }
 
   async downloadFile(path: string): Promise<Buffer> {

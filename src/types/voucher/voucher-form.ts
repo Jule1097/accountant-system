@@ -41,7 +41,7 @@ export interface VoucherFormPayload {
   nonTaxableAmount: number;
   exemptAmount: number;
   otherTaxesAmount: number;
-  totalAmount: number;
+  totalAmount?: number;
   concept?: string;
   paymentMethod: string;
   status: "pending" | "partial" | "paid";

@@ -1,10 +1,8 @@
+import { conciliationPdfPreview } from "src/lib/constants/conciliation";
+
 export function buildConciliationPdfWorkerSrc(version: string): string {
   return `https://unpkg.com/pdfjs-dist@${version}/build/pdf.worker.min.mjs`;
 }
-
-const minConciliationPdfZoom = 0.75;
-const maxConciliationPdfZoom = 2;
-const conciliationPdfZoomStep = 0.25;
 
 export function buildConciliationPdfPageLabel(pageNumber: number, pageCount: number | null): string {
   if (!pageCount) {
@@ -24,14 +22,14 @@ export function getConciliationPdfPreviousPage(pageNumber: number): number {
 
 export function getConciliationPdfPageWidth(containerWidth: number): number {
   if (containerWidth <= 0) {
-    return 320;
+    return conciliationPdfPreview.defaultPageWidth;
   }
 
-  return Math.max(containerWidth - 24, 280);
+  return Math.max(containerWidth - conciliationPdfPreview.pageHorizontalPadding, conciliationPdfPreview.minimumPageWidth);
 }
 
 export function getConciliationPdfDefaultZoom(): number {
-  return 1;
+  return conciliationPdfPreview.defaultZoom;
 }
 
 export function buildConciliationPdfZoomLabel(zoom: number): string {
@@ -39,17 +37,17 @@ export function buildConciliationPdfZoomLabel(zoom: number): string {
 }
 
 export function getConciliationPdfNextZoom(zoom: number): number {
-  return Math.min(zoom + conciliationPdfZoomStep, maxConciliationPdfZoom);
+  return Math.min(zoom + conciliationPdfPreview.zoomStep, conciliationPdfPreview.maxZoom);
 }
 
 export function getConciliationPdfPreviousZoom(zoom: number): number {
-  return Math.max(zoom - conciliationPdfZoomStep, minConciliationPdfZoom);
+  return Math.max(zoom - conciliationPdfPreview.zoomStep, conciliationPdfPreview.minZoom);
 }
 
 export function canIncreaseConciliationPdfZoom(zoom: number): boolean {
-  return zoom < maxConciliationPdfZoom;
+  return zoom < conciliationPdfPreview.maxZoom;
 }
 
 export function canDecreaseConciliationPdfZoom(zoom: number): boolean {
-  return zoom > minConciliationPdfZoom;
+  return zoom > conciliationPdfPreview.minZoom;
 }

@@ -1,5 +1,5 @@
 import Decimal from 'decimal.js'
-import { voucherOtherTaxesConceptName, voucherPurchaseExportTaxJurisdictionNames, voucherPurchaseExportVatRateNames, voucherZeroAmount } from 'src/lib/constants/voucher'
+import { voucherOtherTaxesConceptName, voucherPurchaseExportTaxJurisdictionNames, voucherPurchaseExportVatRateNames, voucherStatusDisplayValues, voucherZeroAmount } from 'src/lib/constants/voucher'
 import { getPreviousMonthRangeInArgentina } from '../platform/date-timezone'
 import { standardJurisdictions } from 'src/lib/helpers/platform/excel-builder'
 import { normalizeCuit } from 'src/lib/domain/cuit'
@@ -15,6 +15,7 @@ import {
   RetentionConceptLike,
   PerceptionConceptLike,
   VatRateLike,
+  TaxJurisdictionLike,
   VoucherExportRow,
 } from 'src/types/voucher/voucher-export'
 import { VoucherFilterParams } from 'src/types/voucher/voucher'
@@ -102,8 +103,11 @@ export function cleanHeaderName(name: string, category: 'ret' | 'perc'): string 
 
 export function mapSalesVoucherToRow(
   voucher: Sale,
-  saleConcepts: RetentionConceptLike[]
+  saleConcepts: RetentionConceptLike[],
+  taxJurisdictions: TaxJurisdictionLike[] = standardJurisdictions.map((name) => ({ id: name, name })),
+  mode: 'filters' | 'declaration' = 'declaration'
 ): VoucherExportRow {
+  const exportJurisdictions = taxJurisdictions.length ? taxJurisdictions : standardJurisdictions.map((name) => ({ id: name, name }))
   const isLetterC = voucher.voucherLetter === 'C'
   const subtotal = isLetterC ? 0 : toExportNumber(voucher.getSignedValueInArs(voucher.subtotal))
 
@@ -121,14 +125,15 @@ export function mapSalesVoucherToRow(
     subtotal,
     vat: toExportNumber(voucher.getSignedValueInArs(voucher.vatAmount)),
     total: toExportNumber(voucher.getSignedValueInArs(voucher.totalAmount)),
+    ...(mode === 'filters' ? { concept: voucher.concept || '', comments: voucher.comments || '', status: voucherStatusDisplayValues[voucher.status] } : {}),
   }
 
   saleConcepts.forEach((c) => {
     row[`ret_concept_${c.id}`] = 0
   })
 
-  standardJurisdictions.forEach((j) => {
-    row[`ret_${j}`] = 0
+  exportJurisdictions.forEach((jurisdiction) => {
+    row[`ret_${jurisdiction.name}`] = 0
   })
 
   voucher.retentions.forEach((ret) => {
@@ -136,9 +141,8 @@ export function mapSalesVoucherToRow(
     const matchedConcept = saleConcepts.find((c) => c.id === ret.retentionConceptId)
     const isJurisdictionalConcept = requiresVoucherTaxJurisdiction(matchedConcept?.name || ret.conceptName)
     if (isJurisdictionalConcept) {
-      const resolvedName = resolveTaxJurisdictionName(ret.taxJurisdictionName)
-      const isStandard = resolvedName && standardJurisdictions.includes(resolvedName)
-      if (isStandard) {
+      const resolvedName = exportJurisdictions.find((jurisdiction) => jurisdiction.name === ret.taxJurisdictionName || jurisdiction.name === resolveTaxJurisdictionName(ret.taxJurisdictionName))?.name
+      if (resolvedName) {
         row[`ret_${resolvedName}`] = new Decimal((row[`ret_${resolvedName}`] as number) || 0).add(amount).toNumber()
       }
       return
@@ -150,9 +154,8 @@ export function mapSalesVoucherToRow(
       return
     }
 
-    const resolvedName = resolveTaxJurisdictionName(ret.taxJurisdictionName)
-    const isStandard = resolvedName && standardJurisdictions.includes(resolvedName)
-    if (isStandard) {
+    const resolvedName = exportJurisdictions.find((jurisdiction) => jurisdiction.name === ret.taxJurisdictionName || jurisdiction.name === resolveTaxJurisdictionName(ret.taxJurisdictionName))?.name
+    if (resolvedName) {
       row[`ret_${resolvedName}`] = new Decimal((row[`ret_${resolvedName}`] as number) || 0).add(amount).toNumber()
       return
     }
@@ -166,7 +169,9 @@ export function mapPurchasesVoucherToRow(
   voucher: Purchase,
   allVatRates: VatRateLike[],
   activeVatRates: VatRateLike[],
-  purchaseConcepts: PerceptionConceptLike[]
+  purchaseConcepts: PerceptionConceptLike[],
+  taxJurisdictions: TaxJurisdictionLike[] = voucherPurchaseExportTaxJurisdictionNames.map((name) => ({ id: name, name })),
+  mode: 'filters' | 'declaration' = 'declaration'
 ): VoucherExportRow {
   const isLetterC = voucher.voucherLetter === 'C'
   let exempt = toExportNumber(voucher.getSignedValueInArs(voucher.exemptAmount))
@@ -187,6 +192,7 @@ export function mapPurchasesVoucherToRow(
     exchangeRate: Number(voucher.exchangeRate.toString()),
     subtotal,
     total: toExportNumber(voucher.getSignedValueInArs(voucher.totalAmount)),
+    ...(mode === 'filters' ? { concept: voucher.concept || '', comments: voucher.comments || '', status: voucherStatusDisplayValues[voucher.status] } : {}),
   }
 
   activeVatRates.forEach((vr) => {
@@ -197,7 +203,7 @@ export function mapPurchasesVoucherToRow(
     row[`perc_concept_${c.id}`] = 0
   })
 
-  const purchaseExportTaxJurisdictions = getPurchaseExportTaxJurisdictions()
+  const purchaseExportTaxJurisdictions = taxJurisdictions.length ? taxJurisdictions.map((jurisdiction) => jurisdiction.name) : getPurchaseExportTaxJurisdictions()
   const otherTaxesConcept = purchaseConcepts.find((concept) => concept.name === voucherOtherTaxesConceptName)
   purchaseExportTaxJurisdictions.forEach((j) => {
     row[`perc_${j}`] = 0
@@ -266,9 +272,8 @@ export function mapPurchasesVoucherToRow(
     const matchedConcept = purchaseConcepts.find((c) => c.id === perc.perceptionConceptId)
     const isJurisdictionalConcept = requiresVoucherTaxJurisdiction(matchedConcept?.name || perc.conceptName)
     if (isJurisdictionalConcept) {
-      const resolvedName = resolveTaxJurisdictionName(perc.taxJurisdictionName)
-      const isStandard = resolvedName && purchaseExportTaxJurisdictions.includes(resolvedName)
-      if (isStandard) {
+      const resolvedName = purchaseExportTaxJurisdictions.find((name) => name === perc.taxJurisdictionName || name === resolveTaxJurisdictionName(perc.taxJurisdictionName))
+      if (resolvedName) {
         row[`perc_${resolvedName}`] = new Decimal((row[`perc_${resolvedName}`] as number) || 0).add(amount.toString()).toNumber()
       } else {
         otrosPerc = otrosPerc.add(amount)
@@ -282,9 +287,8 @@ export function mapPurchasesVoucherToRow(
       return
     }
 
-    const resolvedName = resolveTaxJurisdictionName(perc.taxJurisdictionName)
-    const isStandard = resolvedName && purchaseExportTaxJurisdictions.includes(resolvedName)
-    if (isStandard) {
+    const resolvedName = purchaseExportTaxJurisdictions.find((name) => name === perc.taxJurisdictionName || name === resolveTaxJurisdictionName(perc.taxJurisdictionName))
+    if (resolvedName) {
       row[`perc_${resolvedName}`] = new Decimal((row[`perc_${resolvedName}`] as number) || 0).add(amount.toString()).toNumber()
       return
     }
@@ -306,12 +310,16 @@ export function prepareExportWorkbookData(
     allVatRates: VatRateLike[]
     allRetentionConcepts: RetentionConceptLike[]
     allPerceptionConcepts: PerceptionConceptLike[]
+    allTaxJurisdictions?: TaxJurisdictionLike[]
+    mode?: 'filters' | 'declaration'
   }
 ): {
   columns: ExportColumnDefinition[]
   data: VoucherExportRow[]
 } {
   const isSales = type === 'sales'
+  const taxJurisdictions = catalogs.allTaxJurisdictions?.length ? [...catalogs.allTaxJurisdictions].sort((left, right) => left.name.localeCompare(right.name)) : undefined
+  const currentView = catalogs.mode === 'filters'
   if (isSales) {
     const saleConcepts = catalogs.allRetentionConcepts
 
@@ -335,15 +343,16 @@ export function prepareExportWorkbookData(
       { header: 'Subtotal', key: 'subtotal', isMonetary: true },
       { header: 'IVA', key: 'vat', isMonetary: true },
       ...dynamicRetentionColumns,
-      ...standardJurisdictions.map((j) => ({
-        header: `Ret IIBB ${j === 'Buenos Aires' ? 'PBA' : j}`,
-        key: `ret_${j}`,
+      ...(taxJurisdictions || standardJurisdictions.map((name) => ({ id: name, name }))).map((jurisdiction) => ({
+        header: `Ret IIBB ${jurisdiction.name === 'Buenos Aires' ? 'PBA' : jurisdiction.name}`,
+        key: `ret_${jurisdiction.name}`,
         isMonetary: true,
       })),
       { header: 'Total', key: 'total', isMonetary: true },
+      ...(currentView ? [{ header: 'Concepto', key: 'concept' }, { header: 'Comentarios', key: 'comments' }, { header: 'Estado', key: 'status' }] : []),
     ]
 
-    const visitor: VoucherVisitor<VoucherExportRow | null> = { visitSale: (voucher) => mapSalesVoucherToRow(voucher, saleConcepts), visitPurchase: () => null }
+    const visitor: VoucherVisitor<VoucherExportRow | null> = { visitSale: (voucher) => mapSalesVoucherToRow(voucher, saleConcepts, taxJurisdictions, catalogs.mode), visitPurchase: () => null }
     const data = vouchers.map((voucher) => voucher.accept(visitor)).filter((row): row is VoucherExportRow => row !== null)
 
     return { columns, data }
@@ -351,8 +360,6 @@ export function prepareExportWorkbookData(
 
   const activeVatRates = getPurchaseExportVatRates(catalogs.allVatRates)
   const purchaseConcepts = catalogs.allPerceptionConcepts.filter((c) => !c.name.toLowerCase().includes('osseg'))
-  const purchaseExportTaxJurisdictions = getPurchaseExportTaxJurisdictions()
-
   const dynamicPerceptionColumns = purchaseConcepts.filter((c) => !requiresVoucherTaxJurisdiction(c.name)).map((c) => ({
     header: cleanHeaderName(c.name, 'perc'),
     key: `perc_concept_${c.id}`,
@@ -378,15 +385,16 @@ export function prepareExportWorkbookData(
       isMonetary: true,
     })),
     ...dynamicPerceptionColumns,
-    ...purchaseExportTaxJurisdictions.map((j) => ({
-      header: `Perc IIBB ${j === 'Buenos Aires' ? 'PBA' : j}`,
-      key: `perc_${j}`,
+    ...(taxJurisdictions || voucherPurchaseExportTaxJurisdictionNames.map((name) => ({ id: name, name }))).map((jurisdiction) => ({
+      header: `Perc IIBB ${jurisdiction.name === 'Buenos Aires' ? 'PBA' : jurisdiction.name}`,
+      key: `perc_${jurisdiction.name}`,
       isMonetary: true,
     })),
     { header: 'Total', key: 'total', isMonetary: true },
+    ...(currentView ? [{ header: 'Concepto', key: 'concept' }, { header: 'Comentarios', key: 'comments' }, { header: 'Estado', key: 'status' }] : []),
   ]
 
-  const visitor: VoucherVisitor<VoucherExportRow | null> = { visitSale: () => null, visitPurchase: (voucher) => mapPurchasesVoucherToRow(voucher, catalogs.allVatRates, activeVatRates, purchaseConcepts) }
+  const visitor: VoucherVisitor<VoucherExportRow | null> = { visitSale: () => null, visitPurchase: (voucher) => mapPurchasesVoucherToRow(voucher, catalogs.allVatRates, activeVatRates, purchaseConcepts, taxJurisdictions, catalogs.mode) }
   const data = vouchers.map((voucher) => voucher.accept(visitor)).filter((row): row is VoucherExportRow => row !== null)
 
   return { columns, data }

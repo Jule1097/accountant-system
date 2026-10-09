@@ -11,6 +11,7 @@ export type ParserBatchItemStatus =
   | "parsed"
   | "duplicate"
   | "failed"
+  | "cleanup_pending"
   | "expired"
   | "validated"
   | "persisting"

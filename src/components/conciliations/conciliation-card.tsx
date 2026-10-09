@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Button } from "src/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "src/components/ui/tooltip";
-import { CheckCircle, Eye, Loader2, RefreshCw, Save, Trash2, TriangleAlert, XCircle } from "lucide-react";
+import { CheckCircle, Eye, FilePenLine, Loader2, RefreshCw, Save, Trash2, TriangleAlert, XCircle } from "lucide-react";
 import { ConciliationItem, ConciliationItemAction } from "src/types/conciliation/conciliations";
 import { getFormattedAmount, getFormattedDate } from "src/lib/helpers/platform/formatting";
 
@@ -11,6 +11,7 @@ interface ConciliationCardProps {
   isSelected: boolean;
   onSelectionChange: (voucher: ConciliationItem, checked: boolean) => void;
   onReview: (voucher: ConciliationItem) => void;
+  onRecover: (voucher: ConciliationItem) => void;
   onRegenerate: (voucher: ConciliationItem) => void;
   onPersist: (voucher: ConciliationItem) => void;
   onDelete: (voucher: ConciliationItem) => void;
@@ -37,6 +38,10 @@ function getStatusBadgeClassName(status: ConciliationItem["status"]): string {
     return "bg-amber-500/10 text-amber-500";
   }
 
+  if (status === "Limpieza pendiente") {
+    return "bg-orange-500/10 text-orange-500";
+  }
+
   return "bg-destructive/10 text-destructive";
 }
 
@@ -57,16 +62,24 @@ function getStatusIcon(status: ConciliationItem["status"]) {
     return <TriangleAlert className="h-4 w-4" />;
   }
 
+  if (status === "Limpieza pendiente") {
+    return <TriangleAlert className="h-4 w-4" />;
+  }
+
   return <XCircle className="h-4 w-4" />;
 }
 
-function getActionLabel(action: "review" | "retry" | "persist" | "delete", voucher: ConciliationItem): string {
+function getActionLabel(action: "review" | "recover" | "retry" | "persist" | "delete", voucher: ConciliationItem): string {
   if (action === "review") {
     return `Revisar factura ${voucher.documentId}`;
   }
 
   if (action === "retry") {
     return `Regenerar factura ${voucher.documentId}`;
+  }
+
+  if (action === "recover") {
+    return `Cargar manualmente factura ${voucher.documentId}`;
   }
 
   if (action === "persist") {
@@ -117,6 +130,7 @@ export function ConciliationCard({
   isSelected,
   onSelectionChange,
   onReview,
+  onRecover,
   onRegenerate,
   onPersist,
   onDelete,
@@ -189,6 +203,16 @@ export function ConciliationCard({
                 : <RefreshCw className="h-3.5 w-3.5" />,
               disabled: isActionPending,
               className: "border-[#FF5C00]/30 bg-[#FF5C00]/10 text-[#FF5C00] hover:bg-[#FF5C00]/15",
+            })}
+            {voucher.canRecover && renderActionButton({
+              label: getActionLabel("recover", voucher),
+              tooltip: activeAction === "recovering" ? "Guardando..." : "Cargar manualmente",
+              onClick: () => onRecover(voucher),
+              icon: activeAction === "recovering"
+                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                : <FilePenLine className="h-3.5 w-3.5" />,
+              disabled: isActionPending,
+              className: "border-violet-500/30 bg-violet-500/10 text-violet-500 hover:bg-violet-500/15",
             })}
             {voucher.status === "Validada" && renderActionButton({
               label: getActionLabel("persist", voucher),

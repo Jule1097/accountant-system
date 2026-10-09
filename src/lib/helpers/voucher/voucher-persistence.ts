@@ -4,6 +4,20 @@ import { Voucher } from "src/models/voucher/Voucher"
 import { VoucherDomainStatus, VoucherFactoryInput, VoucherTypeCategory } from "src/types/voucher/domain"
 import { VoucherPersistenceRecord } from "src/types/voucher/voucher-persistence"
 import { Prisma } from "src/generated/prisma/client"
+import { isCanonicalDate } from "src/lib/helpers/platform/canonical-date"
+import { ApplicationError } from "src/lib/errors/application-error"
+import { applicationErrorCodes } from "src/lib/constants/application-error"
+
+function resolvePersistedDate(value: Date, record: VoucherPersistenceRecord, fieldName: string): string {
+  const canonicalDate = value.toISOString().slice(0, 10)
+  if (isCanonicalDate(canonicalDate)) return value.toISOString()
+  console.error("Voucher date integrity violation", { operation: "map voucher persistence record", entityId: record.id, companyId: record.companyId, fieldName, workflowState: record.status })
+  throw new ApplicationError(applicationErrorCodes.unexpected, "No se pudo leer el comprobante", `Invalid persisted voucher date: ${fieldName}`)
+}
+
+function resolveOptionalPersistedDate(value: Date | null, record: VoucherPersistenceRecord, fieldName: string): string | null {
+  return value ? resolvePersistedDate(value, record, fieldName) : null
+}
 
 function decimalValue(value: { toString(): string } | null, scale: number): string | null {
   return value ? normalizeScaledDecimal(value.toString(), scale) : null
@@ -37,9 +51,9 @@ function mapVoucherPersistenceRecord(record: VoucherPersistenceRecord): VoucherF
     documentIdentificationMode: normalizeVoucherDocumentIdentificationMode(documentIdentificationMode),
     status: normalizeVoucherStatus(record.status),
     voucherTypeCategory: resolveVoucherTypeCategory(voucherType.name),
-    date: date.toISOString(),
-    accountingPeriod: accountingPeriod.toISOString(),
-    paymentDate: paymentDate?.toISOString() ?? null,
+    date: resolvePersistedDate(date, record, "date"),
+    accountingPeriod: resolvePersistedDate(accountingPeriod, record, "accountingPeriod"),
+    paymentDate: resolveOptionalPersistedDate(paymentDate, record, "paymentDate"),
     exchangeRate: normalizeScaledDecimal(record.exchangeRate.toString(), voucherExchangeRateScale),
     subtotal: normalizeMoneyAmount(record.subtotal.toString()),
     vatAmount: normalizeMoneyAmount(record.vatAmount.toString()),

@@ -43,6 +43,14 @@ describe("Auth API Route Handlers", () => {
     await expect(response.json()).resolves.toEqual({ error: "Credenciales inv\u00e1lidas. Por favor verifique e intente nuevamente." })
   })
 
+  it("returns a controlled response when login JSON is malformed", async () => {
+    const response = await login(createRequest({ json: async () => { throw new SyntaxError("Unexpected token") } }))
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({ error: "El cuerpo de la solicitud es inv\u00e1lido." })
+    expect(authSessionServiceMock.prototype.login).not.toHaveBeenCalled()
+  })
+
   it("returns 200 and a token-free response body on logout", async () => {
     authSessionServiceMock.prototype.logout = jest.fn().mockResolvedValue(undefined)
     const response = await logout(createRequest())

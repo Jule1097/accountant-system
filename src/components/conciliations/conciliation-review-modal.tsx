@@ -12,6 +12,7 @@ interface ConciliationReviewModalProps {
   item: ParserBatchItemContextRecord | undefined;
   isLoading: boolean;
   sourceUrl: string | null;
+  isManualRecovery: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (payload: VoucherFormPayload) => Promise<void>;
 }
@@ -30,6 +31,7 @@ export function ConciliationReviewModal({
   item,
   isLoading,
   sourceUrl,
+  isManualRecovery,
   onOpenChange,
   onSubmit,
 }: ConciliationReviewModalProps) {
@@ -43,9 +45,9 @@ export function ConciliationReviewModal({
       isLoadingDetail={isLoading}
       resetKey={item?.id}
       submitAction={onSubmit}
-      submitButtonLabel="Validar factura"
-      titleOverride="Revisar factura"
-      descriptionOverride={resolveReviewDescription(type)}
+      submitButtonLabel={isManualRecovery ? "Guardar factura" : "Validar factura"}
+      titleOverride={isManualRecovery ? "Cargar factura manualmente" : "Revisar factura"}
+      descriptionOverride={isManualRecovery ? "Completá los datos de la factura y comparalos con el documento de origen." : resolveReviewDescription(type)}
       sidePanel={
         <ConciliationReviewPreview
           sourceUrl={sourceUrl}

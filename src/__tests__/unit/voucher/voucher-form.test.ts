@@ -96,14 +96,11 @@ describe("normalizeVoucherFormPayload", () => {
     expect(result.paymentDate).toBeNull();
   });
 
-  it("drops an invalid accounting period so it can be derived later", () => {
-    const result = normalizeVoucherFormPayload({
+  it("rejects an invalid accounting period instead of deriving a fallback", () => {
+    expect(() => normalizeVoucherFormPayload({
       ...basePayload,
       accountingPeriod: "Invalid Date",
-    });
-
-    expect(result.accountingPeriod).toBeUndefined();
-    expect(result.date).toBe("2025-06-02T00:00:00.000Z");
+    })).toThrow("Validated voucher date is invalid");
   });
 });
 
@@ -320,7 +317,24 @@ describe("buildVoucherParsedPatch", () => {
     expect(result.voucherLetterId).toBe("");
   });
 
-  it("calculates the net subtotal when the parser returns a sales total with included VAT", () => {
+  it("uses the parser subtotal without accepting a calculated total", () => {
+    const result = buildVoucherParsedPatch(
+      createParsedData({
+        voucherType: "Factura B",
+        subtotal: 100,
+        vatAmount: 21,
+        currency: "$",
+      }),
+      createCurrentValues(),
+      "sales",
+      parsedCatalogs,
+      [],
+    );
+
+    expect(result.subtotal).toBe(100);
+  });
+
+  it("does not apply a parser total amount to the voucher form patch", () => {
     const result = buildVoucherParsedPatch(
       createParsedData({
         voucherType: "Factura B",
@@ -334,7 +348,13 @@ describe("buildVoucherParsedPatch", () => {
       [],
     );
 
-    expect(result.subtotal).toBe(100);
+    expect(result).not.toHaveProperty("totalAmount");
+  });
+
+  it("does not expose a direct purchase other taxes payload value", () => {
+    const result = buildVoucherFormPayload({ ...purchaseFormValues, otherTaxesAmount: 23 }, "purchases", formCatalogs);
+
+    expect(result.otherTaxesAmount).toBe(0);
   });
 
   it.each([
@@ -448,7 +468,7 @@ describe("Voucher form decimal rounding", () => {
     expect(result.vatAmount).toBe(2.13);
     expect(result.nonTaxableAmount).toBe(1.00);
     expect(result.exemptAmount).toBe(0.12);
-    expect(result.otherTaxesAmount).toBe(0.13);
+    expect(result.otherTaxesAmount).toBe(0);
     expect(result.totalAmount).toBe(13.50);
     expect(result.retentions[0].amount).toBe(1.12);
     expect(result.perceptions[0].amount).toBe(2.13);

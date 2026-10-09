@@ -14,6 +14,7 @@ export function ConciliationsOverlays({
   isDeleting,
   onDeleteDialogOpenChange,
   onConfirmDelete,
+  isManualRecovery = false,
 }: ConciliationsOverlaysProps) {
   return (
     <>
@@ -24,6 +25,7 @@ export function ConciliationsOverlays({
           item={reviewItem}
           isLoading={isReviewItemLoading}
           sourceUrl={reviewSourceUrl}
+          isManualRecovery={isManualRecovery}
           onOpenChange={onReviewModalOpenChange}
           onSubmit={onReviewSubmit}
         />

@@ -1,13 +1,11 @@
 import { createHash } from "node:crypto"
 import { applicationErrorCodes } from "src/lib/constants/application-error"
 import { inputLimits } from "src/lib/constants/input-limits"
-import { parserFileValidationMessages } from "src/lib/constants/parser"
+import { parserFileExtensions, parserFileMimeTypes, parserFileSignatures, parserFileSizeLimits, parserFileValidationMessages, parserHashAlgorithm, parserImageMimeTypes } from "src/lib/constants/parser"
 import { ApplicationError } from "src/lib/errors/application-error"
 import { ParserVoucherType } from "src/types/parser/parser-batch"
+import { ParserUploadFileMetadata } from "src/types/parser/parser-upload"
 
-const maxPdfFileSizeBytes = 2 * 1024 * 1024
-const maxImageFileSizeBytes = 4 * 1024 * 1024
-const acceptedImageMimeTypes = ["image/png", "image/jpeg"]
 const parserFileNameFallback = "archivo"
 const parserFileNameUnsafeCharacters = /[\u0000-\u001F\u007F-\u009F\u202A-\u202E\u2066-\u2069]/g
 const parserFileNameAllowedCharacters = /[^\p{L}\p{N}._ -]/gu
@@ -20,18 +18,14 @@ export interface ParserAcceptedFile {
   fileHash: string
 }
 
-function isParserFileEntry(value: FormDataEntryValue): value is File {
-  return typeof value === "object" && "arrayBuffer" in value && "name" in value
-}
-
 function hasPrefix(buffer: Buffer, prefix: Buffer): boolean {
   return buffer.subarray(0, prefix.length).equals(prefix)
 }
 
 function hasParserContentSignature(buffer: Buffer, mimeType: string): boolean {
-  if (isParserPdfMimeType(mimeType)) return hasPrefix(buffer, Buffer.from("%PDF-"))
-  if (mimeType === "image/png") return hasPrefix(buffer, Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
-  if (mimeType === "image/jpeg") return hasPrefix(buffer, Buffer.from([0xff, 0xd8, 0xff]))
+  if (isParserPdfMimeType(mimeType)) return hasPrefix(buffer, Buffer.from(parserFileSignatures.pdf))
+  if (mimeType === parserFileMimeTypes.png) return hasPrefix(buffer, Buffer.from([...parserFileSignatures.png]))
+  if (mimeType === parserFileMimeTypes.jpeg) return hasPrefix(buffer, Buffer.from([...parserFileSignatures.jpeg]))
   return false
 }
 
@@ -45,27 +39,31 @@ export function sanitizeParserFileName(fileName: string): string {
 export function resolveParserMimeType(file: File): string {
   if (file.type) return file.type
   const normalizedName = file.name.toLowerCase()
-  if (normalizedName.endsWith(".pdf")) return "application/pdf"
-  if (normalizedName.endsWith(".png")) return "image/png"
-  if (normalizedName.endsWith(".jpg") || normalizedName.endsWith(".jpeg")) return "image/jpeg"
-  return "application/octet-stream"
+  if (normalizedName.endsWith(parserFileExtensions.pdf)) return parserFileMimeTypes.pdf
+  if (normalizedName.endsWith(parserFileExtensions.png)) return parserFileMimeTypes.png
+  if (parserFileExtensions.jpeg.some((extension) => normalizedName.endsWith(extension))) return parserFileMimeTypes.jpeg
+  return parserFileMimeTypes.unknown
 }
 
 export function isParserPdfMimeType(mimeType: string): boolean {
-  return mimeType === "application/pdf"
+  return mimeType === parserFileMimeTypes.pdf
 }
 
 export function isParserImageMimeType(mimeType: string): boolean {
-  return acceptedImageMimeTypes.includes(mimeType)
+  return parserImageMimeTypes.includes(mimeType as (typeof parserImageMimeTypes)[number])
 }
 
 export function ensureParserFileSize(fileName: string, mimeType: string, fileSize: number): void {
   const safeFileName = sanitizeParserFileName(fileName)
-  if (isParserPdfMimeType(mimeType) && fileSize <= maxPdfFileSizeBytes) return
-  if (isParserImageMimeType(mimeType) && fileSize <= maxImageFileSizeBytes) return
+  if (isParserPdfMimeType(mimeType) && fileSize <= parserFileSizeLimits.pdf) return
+  if (isParserImageMimeType(mimeType) && fileSize <= parserFileSizeLimits.image) return
   if (isParserPdfMimeType(mimeType)) throw new ApplicationError(applicationErrorCodes.validation, parserFileValidationMessages.pdfSizeExceeded(safeFileName), "Parser PDF file size validation failed")
   if (isParserImageMimeType(mimeType)) throw new ApplicationError(applicationErrorCodes.validation, parserFileValidationMessages.imageSizeExceeded(safeFileName), "Parser image file size validation failed")
   throw new ApplicationError(applicationErrorCodes.validation, parserFileValidationMessages.unsupportedType(safeFileName), "Parser file type validation failed")
+}
+
+export function ensureParserFileCount(fileCount: number): void {
+  if (fileCount > inputLimits.maxParserFiles) throw new ApplicationError(applicationErrorCodes.validation, parserFileValidationMessages.maxFilesExceeded, "Parser batch file limit validation failed")
 }
 
 export function ensureParserTotalFileSize(files: Pick<ParserAcceptedFile, "fileSize">[]): void {
@@ -74,7 +72,18 @@ export function ensureParserTotalFileSize(files: Pick<ParserAcceptedFile, "fileS
 }
 
 export function buildParserFileHash(buffer: Buffer): string {
-  return createHash("sha256").update(buffer).digest("hex")
+  return createHash(parserHashAlgorithm).update(buffer).digest("hex")
+}
+
+export function ensureParserUploadMetadata(files: ParserUploadFileMetadata[]): void {
+  ensureParserFileCount(files.length)
+  for (const file of files) ensureParserFileSize(file.fileName, file.mimeType, file.fileSize)
+  ensureParserTotalFileSize(files)
+}
+
+export function ensureParserStoredFileMetadata(expected: ParserUploadFileMetadata, actual: Pick<ParserUploadFileMetadata, "mimeType" | "fileSize">): void {
+  ensureParserFileSize(expected.fileName, actual.mimeType, actual.fileSize)
+  if (expected.mimeType !== actual.mimeType || expected.fileSize !== actual.fileSize) throw new ApplicationError(applicationErrorCodes.validation, parserFileValidationMessages.contentMismatch(sanitizeParserFileName(expected.fileName)), "Parser stored file metadata validation failed")
 }
 
 export function buildParserStoragePath(companyId: string, batchId: string, itemId: string, fileName: string): string {
@@ -90,27 +99,11 @@ export async function toParserAcceptedFile(file: File): Promise<ParserAcceptedFi
   const mimeType = resolveParserMimeType(file)
   ensureParserFileSize(file.name, mimeType, file.size)
   const buffer = Buffer.from(await file.arrayBuffer())
-  ensureParserFileSize(file.name, mimeType, buffer.length)
-  if (!hasParserContentSignature(buffer, mimeType)) {
-    throw new ApplicationError(applicationErrorCodes.validation, parserFileValidationMessages.contentMismatch(sanitizeParserFileName(file.name)), "Parser file content signature validation failed")
-  }
-  return { fileName: sanitizeParserFileName(file.name), mimeType, fileSize: buffer.length, buffer, fileHash: buildParserFileHash(buffer) }
+  return createParserAcceptedFile(file.name, mimeType, buffer)
 }
 
-function getParserFormDataEntries(formData: FormData): FormDataEntryValue[] {
-  const multiFileEntries = typeof formData.getAll === "function" ? formData.getAll("files") : []
-  const singleFileEntry = formData.get("file")
-  if (!singleFileEntry) return multiFileEntries
-  return multiFileEntries.concat(singleFileEntry)
-}
-
-export async function collectParserAcceptedFiles(formData: FormData): Promise<ParserAcceptedFile[]> {
-  const fileEntries = getParserFormDataEntries(formData).filter(isParserFileEntry)
-  const acceptedFiles: ParserAcceptedFile[] = []
-  for (const fileEntry of fileEntries) {
-    ensureParserTotalFileSize([...acceptedFiles, { fileSize: fileEntry.size }])
-    acceptedFiles.push(await toParserAcceptedFile(fileEntry))
-    ensureParserTotalFileSize(acceptedFiles)
-  }
-  return acceptedFiles
+export function createParserAcceptedFile(fileName: string, mimeType: string, buffer: Buffer): ParserAcceptedFile {
+  ensureParserFileSize(fileName, mimeType, buffer.length)
+  if (!hasParserContentSignature(buffer, mimeType)) throw new ApplicationError(applicationErrorCodes.validation, parserFileValidationMessages.contentMismatch(sanitizeParserFileName(fileName)), "Parser file content signature validation failed")
+  return { fileName: sanitizeParserFileName(fileName), mimeType, fileSize: buffer.length, buffer, fileHash: buildParserFileHash(buffer) }
 }

@@ -5,10 +5,11 @@ import { httpStatusCodes } from "src/lib/constants/http";
 import { parserBulkRetrySchema } from "src/lib/schemas/parser/parser-batch-schemas";
 import { VoucherParserService } from "src/services/parser/VoucherParser";
 import { resolveApplicationErrorResponse } from "src/lib/helpers/api/application-error-response";
+import { readJsonBody } from "src/lib/helpers/api/request-body";
 
 export async function POST(request: NextRequest): Promise<Response> {
   return executeRequestWithContext(request, async ({ companyId }) => {
-    const body = await request.json();
+    const body = await readJsonBody(request);
     const parsedBody = parserBulkRetrySchema.safeParse(body);
 
     if (!parsedBody.success) {

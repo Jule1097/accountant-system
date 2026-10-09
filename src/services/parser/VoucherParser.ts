@@ -2,23 +2,27 @@ import { randomUUID } from "node:crypto";
 import { parseInvoiceImage, parseInvoiceMarkdown, parseInvoiceVisualFieldRepair } from "src/lib/integrations/gemini";
 import {
   getParserBatchExpirationDate,
-  getParserBatchMaxFiles,
   hasReviewableParsedPayload,
   isParserBatchExpired,
 } from "src/lib/helpers/parser/parser-batch";
 import {
   buildParserStoragePath,
+  createParserAcceptedFile,
+  ensureParserStoredFileMetadata,
+  ensureParserUploadMetadata,
   ensureParserTotalFileSize,
   isParserImageMimeType,
   isParserPdfMimeType,
+  sanitizeParserFileName,
   ParserAcceptedFile,
 } from "src/lib/helpers/parser/parser-file";
+import { createParserUploadPlanToken, verifyParserUploadPlanToken } from "src/lib/helpers/parser/parser-upload-plan";
 import { resolveParserPdfStrategy } from "src/lib/helpers/parser/parser-pdf";
 import { getGeminiRepairFields, mergeGeminiRepairFields } from "src/lib/helpers/parser/parser-repair";
 import { CompanyRepository } from "src/repositories/company/company.repository";
 import { ParserBatchRepository } from "src/repositories/parser/parser-batch.repository";
 import { AsyncBatchRunner } from "src/types/parser/async-batch-runner";
-import { ParserBatchAsyncResponse, ParserBatchQueueJob, ParserBatchSingleResponse, ParserFailureReason, ParserInputStrategy, ParserRetryResponse, ParserVoucherType } from "src/types/parser/parser-batch";
+import { ParserBatchAsyncResponse, ParserBatchQueueJob, ParserBatchSingleResponse, ParserBatchUploadResponse, ParserFailureReason, ParserInputStrategy, ParserRetryResponse, ParserVoucherType } from "src/types/parser/parser-batch";
 import { RawGeminiParsedVoucher } from "src/types/parser/gemini-parser";
 import { AsyncBatchRunnerService } from "./AsyncBatchRunner";
 import { CompanyNotificationService } from "src/services/company/CompanyNotification";
@@ -27,8 +31,10 @@ import { ParserStorageService } from "./ParserStorage";
 import { applicationErrorCodes } from "src/lib/constants/application-error";
 import { apiResponseMessages } from "src/lib/constants/api-response";
 import { ApplicationError } from "src/lib/errors/application-error";
-import { parserRetryMessages } from "src/lib/constants/parser";
+import { parserFileValidationMessages, parserInternalMessages, parserResponseModes, parserRetryMessages } from "src/lib/constants/parser";
+import { parserUploadMessages, parserUploadPlanDurationMs } from "src/lib/constants/parser-upload";
 import { ParserFailureStage, resolveParserFailureMessage, resolveParserFailureReason } from "src/lib/helpers/parser/parser-failure";
+import { ParserUploadConfirmationInput, ParserUploadPlan, ParserUploadPlanInput, ParserUploadPlanResponse } from "src/types/parser/parser-upload";
 
 interface PreparedParserPayload {
   strategy: "pdf-text" | "pdf-visual" | "image-visual";
@@ -49,18 +55,12 @@ function resolveFallbackInputStrategy(mimeType: string): ParserInputStrategy {
   return isParserImageMimeType(mimeType) ? "image-visual" : "pdf-visual";
 }
 
-function ensureParserFileLimit(files: ParserAcceptedFile[]): void {
-  if (files.length > getParserBatchMaxFiles()) {
-    throw new ApplicationError(applicationErrorCodes.validation, `Se permiten hasta ${getParserBatchMaxFiles()} archivos por carga.`, "Parser batch file limit validation failed");
-  }
-}
-
 function ensureParserFilesAreUnique(files: ParserAcceptedFile[]): void {
   const hashes = new Set<string>();
 
   for (const file of files) {
     if (hashes.has(file.fileHash)) {
-      throw new ApplicationError(applicationErrorCodes.validation, `El archivo ${file.fileName} est\u00e1 duplicado dentro del lote.`, "Parser duplicate file validation failed");
+      throw new ApplicationError(applicationErrorCodes.validation, parserFileValidationMessages.duplicateFile(file.fileName), "Parser duplicate file validation failed");
     }
 
     hashes.add(file.fileHash);
@@ -95,6 +95,113 @@ export class VoucherParserService {
   private async getActiveCompanyCuit(companyId: string): Promise<string | undefined> {
     const company = await this.companyRepository.findById(companyId);
     return company?.cuit;
+  }
+
+  private buildUploadPlan(companyId: string, userId: string, input: ParserUploadPlanInput): ParserUploadPlan {
+    const planId = randomUUID();
+    const batchId = randomUUID();
+    const expiresAt = Date.now() + parserUploadPlanDurationMs;
+    const items = input.files.map((file) => {
+      const itemId = randomUUID();
+      const fileName = sanitizeParserFileName(file.fileName);
+      return { itemId, fileName, mimeType: file.mimeType, fileSize: file.fileSize, storagePath: buildParserStoragePath(companyId, batchId, itemId, fileName) };
+    });
+    return { planId, batchId, userId, companyId, voucherType: input.voucherKind, expiresAt, items };
+  }
+
+  private ensureUploadPlanOwnership(plan: ParserUploadPlan, companyId: string, userId: string): void {
+    if (plan.companyId !== companyId || plan.userId !== userId) throw new ApplicationError(applicationErrorCodes.forbidden, parserUploadMessages.ownershipDenied, "Parser upload plan ownership validation failed");
+  }
+
+  private ensureUploadPlanItems(plan: ParserUploadPlan, itemIds: string[]): void {
+    const expectedItemIds = new Set(plan.items.map((item) => item.itemId));
+    const receivedItemIds = new Set(itemIds);
+    const hasExpectedItems = itemIds.every((itemId) => expectedItemIds.has(itemId));
+    if (itemIds.length !== plan.items.length || receivedItemIds.size !== itemIds.length || !hasExpectedItems) throw new ApplicationError(applicationErrorCodes.validation, parserUploadMessages.incompleteUpload, "Parser upload plan item validation failed");
+  }
+
+  private async authorizeUploadPlan(plan: ParserUploadPlan): Promise<ParserUploadPlanResponse> {
+    const planToken = createParserUploadPlanToken(plan);
+    const uploads = [];
+    for (const item of plan.items) {
+      const authorization = await this.storageService.createSignedUploadUrl(item.storagePath);
+      uploads.push({ itemId: item.itemId, fileName: item.fileName, mimeType: item.mimeType, fileSize: item.fileSize, path: authorization.path, token: authorization.token });
+    }
+    return { planToken, expiresAt: new Date(plan.expiresAt).toISOString(), bucket: this.storageService.getBucketName(), uploads };
+  }
+
+  private async validateStoredFile(item: ParserUploadPlan["items"][number]): Promise<ParserAcceptedFile> {
+    const metadata = await this.storageService.getFileMetadata(item.storagePath);
+    if (!metadata) throw new ApplicationError(applicationErrorCodes.validation, parserUploadMessages.storageFileMissing, "Parser upload object is missing");
+    ensureParserStoredFileMetadata(item, metadata);
+    const buffer = await this.storageService.downloadFile(item.storagePath);
+    return createParserAcceptedFile(item.fileName, metadata.mimeType, buffer);
+  }
+
+  private async cleanupUploadPlan(plan: ParserUploadPlan): Promise<void> {
+    for (const item of plan.items) {
+      try {
+        await this.storageService.deleteFile(item.storagePath);
+      } catch (error: unknown) {
+        const errorName = error instanceof Error ? error.name : parserInternalMessages.unknownErrorName;
+        console.error(parserInternalMessages.temporaryObjectCleanupFailed, { operation: parserInternalMessages.uploadCleanupOperation, entityId: plan.planId, provider: parserInternalMessages.storageProvider, errorName });
+      }
+    }
+  }
+
+  private async validateStoredPlan(plan: ParserUploadPlan): Promise<ParserAcceptedFile[]> {
+    const files: ParserAcceptedFile[] = [];
+    try {
+      for (const item of plan.items) files.push(await this.validateStoredFile(item));
+      ensureParserTotalFileSize(files);
+      ensureParserFilesAreUnique(files);
+      return files;
+    } catch (error: unknown) {
+      await this.cleanupUploadPlan(plan);
+      throw error;
+    }
+  }
+
+  private async parseConfirmedSingleFile(companyId: string, plan: ParserUploadPlan, file: ParserAcceptedFile): Promise<ParserBatchSingleResponse> {
+    try {
+      return await this.parseSingleFile(companyId, plan.voucherType, file);
+    } finally {
+      await this.cleanupUploadPlan(plan);
+    }
+  }
+
+  private async createConfirmedBatch(companyId: string, userId: string, plan: ParserUploadPlan, files: ParserAcceptedFile[]): Promise<ParserBatchAsyncResponse> {
+    const expiresAt = getParserBatchExpirationDate();
+    let batchCreated = false;
+    try {
+      const batch = await this.batchRepository.createBatchWithItems(
+        { id: plan.batchId, companyId, createdByUserId: userId, voucherType: plan.voucherType, totalFiles: plan.items.length, expiresAt },
+        plan.items.map((item, index) => ({ id: item.itemId, batchId: plan.batchId, fileName: item.fileName, mimeType: item.mimeType, fileSize: item.fileSize, fileHash: files[index].fileHash, storagePath: item.storagePath, expiresAt }))
+      );
+      batchCreated = true;
+      await this.getRequiredAsyncBatchRunner().triggerParserBatch(batch.id);
+      return { mode: parserResponseModes.batch, batch };
+    } catch (error: unknown) {
+      if (!batchCreated) await this.cleanupUploadPlan(plan);
+      throw error;
+    }
+  }
+
+  async createUploadPlan(companyId: string, userId: string, input: ParserUploadPlanInput): Promise<ParserUploadPlanResponse> {
+    ensureParserUploadMetadata(input.files);
+    const plan = this.buildUploadPlan(companyId, userId, input);
+    return this.authorizeUploadPlan(plan);
+  }
+
+  async confirmUpload(companyId: string, userId: string, input: ParserUploadConfirmationInput): Promise<ParserBatchUploadResponse> {
+    const plan = verifyParserUploadPlanToken(input.planToken);
+    this.ensureUploadPlanOwnership(plan, companyId, userId);
+    this.ensureUploadPlanItems(plan, input.itemIds);
+    const existingBatch = plan.items.length > 1 ? await this.batchRepository.findBatchById(companyId, plan.batchId) : null;
+    if (existingBatch) return { mode: parserResponseModes.batch, batch: existingBatch };
+    const files = await this.validateStoredPlan(plan);
+    if (files.length === 1) return this.parseConfirmedSingleFile(companyId, plan, files[0]);
+    return this.createConfirmedBatch(companyId, userId, plan, files);
   }
 
   private async preparePayload(
@@ -161,84 +268,9 @@ export class VoucherParserService {
     const data = await this.responseService.buildResponse(companyId, voucherKind, rawResponse);
 
     return {
-      mode: "single",
+      mode: parserResponseModes.single,
       data,
     };
-  }
-
-  async createBatch(
-    companyId: string,
-    userId: string,
-    voucherKind: ParserVoucherType,
-    files: ParserAcceptedFile[]
-  ): Promise<ParserBatchAsyncResponse> {
-    ensureParserFileLimit(files);
-    ensureParserTotalFileSize(files);
-    ensureParserFilesAreUnique(files);
-
-    const batchId = randomUUID();
-    const expiresAt = getParserBatchExpirationDate();
-    const items = files.map((file) => {
-      const itemId = randomUUID();
-
-      return {
-        id: itemId,
-        batchId,
-        fileName: file.fileName,
-        mimeType: file.mimeType,
-        fileSize: file.fileSize,
-        fileHash: file.fileHash,
-        storagePath: buildParserStoragePath(companyId, batchId, itemId, file.fileName),
-        expiresAt,
-        buffer: file.buffer,
-      };
-    });
-    const uploadedPaths: string[] = [];
-    let batchCreated = false;
-
-    try {
-      for (const item of items) {
-        await this.storageService.uploadFile(item.storagePath, item.buffer, item.mimeType);
-        uploadedPaths.push(item.storagePath);
-      }
-
-      const batch = await this.batchRepository.createBatchWithItems(
-        {
-          id: batchId,
-          companyId,
-          createdByUserId: userId,
-          voucherType: voucherKind,
-          totalFiles: items.length,
-          expiresAt,
-        },
-        items.map((item) => ({
-          id: item.id,
-          batchId: item.batchId,
-          fileName: item.fileName,
-          mimeType: item.mimeType,
-          fileSize: item.fileSize,
-          fileHash: item.fileHash,
-          storagePath: item.storagePath,
-          expiresAt: item.expiresAt,
-        }))
-      );
-      batchCreated = true;
-
-      await this.getRequiredAsyncBatchRunner().triggerParserBatch(batch.id);
-
-      return {
-        mode: "batch",
-        batch,
-      };
-    } catch (error: unknown) {
-      if (!batchCreated) {
-        for (const uploadedPath of uploadedPaths) {
-          await this.storageService.deleteFile(uploadedPath);
-        }
-      }
-
-      throw error;
-    }
   }
 
   async getBatch(companyId: string, batchId: string) {
