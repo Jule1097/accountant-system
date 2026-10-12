@@ -5,14 +5,40 @@ import { VoucherService } from "src/services/voucher/Voucher";
 import { AsyncBatchRunner } from "src/types/parser/async-batch-runner";
 import { ConciliationPersistResult } from "src/types/conciliation/conciliations";
 import { ParserBatchItemContextRecord, ParserBatchPersistenceJob } from "src/types/parser/parser-batch";
+import { VoucherFormDateValue, VoucherFormNullableDateValue, VoucherFormPayload } from "src/types/voucher/voucher-form";
 import { AsyncBatchRunnerService } from "./AsyncBatchRunner";
 import { applicationErrorCodes } from "src/lib/constants/application-error";
 import { conciliationErrorMessages } from "src/lib/constants/conciliation-error";
 import { ApplicationError, isApplicationError } from "src/lib/errors/application-error";
 import { ParserStorageService } from "src/services/parser/ParserStorage";
+import { formatCanonicalDate, isSupportedDomainDate } from "src/lib/helpers/platform/canonical-date";
 
 function isDuplicateVoucherError(error: unknown): boolean {
   return isApplicationError(error) && error.code === applicationErrorCodes.duplicate;
+}
+
+function normalizePersistedDate(value: VoucherFormDateValue): string {
+  if (value instanceof Date) return formatCanonicalDate(value);
+  return isSupportedDomainDate(value) ? value.slice(0, 10) : value;
+}
+
+function normalizeOptionalPersistedDate(value: VoucherFormDateValue | undefined): string | undefined {
+  if (!value) return value;
+  return normalizePersistedDate(value);
+}
+
+function normalizeNullablePersistedDate(value: VoucherFormNullableDateValue): string | null {
+  if (!value) return value;
+  return normalizePersistedDate(value);
+}
+
+function normalizeValidatedPayload(payload: VoucherFormPayload): VoucherFormPayload {
+  return {
+    ...payload,
+    date: normalizePersistedDate(payload.date),
+    accountingPeriod: normalizeOptionalPersistedDate(payload.accountingPeriod),
+    paymentDate: normalizeNullablePersistedDate(payload.paymentDate),
+  };
 }
 
 export class VoucherPersistenceService {
@@ -62,7 +88,11 @@ export class VoucherPersistenceService {
 
   private async persistStagedItem(item: ParserBatchItemContextRecord): Promise<ConciliationPersistResult> {
     try {
-      const parsedPayload = voucherSchema.safeParse({ ...item.validatedPayload, companyId: item.batch.companyId });
+      if (!item.validatedPayload) {
+        throw new ApplicationError(applicationErrorCodes.validation, "Los datos validados son inv\u00e1lidos", "Validated voucher payload is missing");
+      }
+
+      const parsedPayload = voucherSchema.safeParse({ ...normalizeValidatedPayload(item.validatedPayload), companyId: item.batch.companyId });
 
       if (!parsedPayload.success) {
         throw new ApplicationError(applicationErrorCodes.validation, "Los datos validados son inv\u00e1lidos", "Validated voucher payload is invalid");
