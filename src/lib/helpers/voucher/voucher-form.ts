@@ -9,6 +9,7 @@ import { voucherCurrencyCodes, voucherCurrencySymbols, voucherTaxJurisdictionAbb
 import { resolveGeminiCatalogMatch } from "src/lib/helpers/parser/gemini-parser";
 import { roundToTwoDecimals } from "src/lib/helpers/platform/formatting";
 import { formatCanonicalDate, parseCanonicalDate } from "src/lib/helpers/platform/canonical-date";
+import { calculateVoucherAmounts } from "src/lib/helpers/voucher/voucher-calculations";
 import { resolveVoucherRecordType } from "src/lib/helpers/voucher/voucher-management";
 import { Money } from "src/models/voucher/Money";
 import { Sale } from "src/models/voucher/Sale";
@@ -425,6 +426,7 @@ export function buildVoucherFormPayload(values: VoucherFormValues, type: Voucher
   const voucherApiType = resolveVoucherRecordType(type);
   const retentionConceptNames = new Map(catalogs.retentionConcepts.map((concept) => [concept.id, concept.name]));
   const perceptionConceptNames = new Map(catalogs.perceptionConcepts.map((concept) => [concept.id, concept.name]));
+  const calculatedAmounts = calculateVoucherAmounts({ type: voucherApiType, subtotal: values.subtotal, vatAmount: values.vatAmount, nonTaxableAmount: values.nonTaxableAmount, exemptAmount: values.exemptAmount, retentions: values.retentions.map((item) => item.amount || 0), perceptions: values.perceptions.map((item) => item.amount || 0) });
   return {
     type: voucherApiType,
     voucherTypeId: values.voucherTypeId,
@@ -439,6 +441,7 @@ export function buildVoucherFormPayload(values: VoucherFormValues, type: Voucher
     exchangeRate: normalizeVoucherExchangeRate(values.currency, values.exchangeRate),
     subtotal: values.subtotal,
     vatAmount: values.vatAmount,
+    totalAmount: voucherApiType === "sale" ? calculatedAmounts.grossAmount : calculatedAmounts.netAmount,
     nonTaxableAmount: voucherApiType === "sale" ? 0 : values.nonTaxableAmount,
     exemptAmount: voucherApiType === "sale" ? 0 : values.exemptAmount,
     otherTaxesAmount: 0,
