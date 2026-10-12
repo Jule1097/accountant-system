@@ -128,6 +128,32 @@ describe("VoucherPersistenceService", () => {
     expect(batchRepositoryMock.markItemPersisted).toHaveBeenCalledWith("item-1");
   });
 
+  it("persists validated payloads after form dates are serialized as ISO strings", async () => {
+    const item = createPersistingItem();
+    item.validatedPayload = {
+      ...validatedPayload,
+      date: "2026-08-18T00:00:00.000Z",
+      accountingPeriod: "2026-08-01T00:00:00.000Z",
+      paymentDate: "2026-08-20T00:00:00.000Z",
+    };
+
+    batchRepositoryMock.findItemById.mockResolvedValue(item);
+    batchRepositoryMock.markItemPersisted.mockResolvedValue();
+    voucherServiceMock.createVoucher.mockResolvedValue({} as never);
+
+    await service.processJob({
+      batchId: "batch-1",
+      itemId: "item-1",
+    });
+
+    expect(voucherServiceMock.createVoucher).toHaveBeenCalledWith(expect.objectContaining({
+      date: "2026-08-18",
+      accountingPeriod: "2026-08-01",
+      paymentDate: "2026-08-20",
+    }));
+    expect(batchRepositoryMock.markItemPersisted).toHaveBeenCalledWith("item-1");
+  });
+
   it("restores validated work when the validated payload has a zeroed voucher number", async () => {
     const item = createPersistingItem();
 

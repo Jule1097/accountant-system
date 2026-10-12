@@ -114,6 +114,7 @@ describe("buildVoucherFormPayload", () => {
     expect(result.clientId).toBeNull();
     expect(result.supplierId).toBe("supplier-1");
     expect(result.exchangeRate).toBe(1);
+    expect(result.totalAmount).toBe(133);
     expect(result.retentions).toEqual([]);
     expect(result.perceptions).toEqual([
       {
@@ -338,8 +339,8 @@ describe("buildVoucherParsedPatch", () => {
     const result = buildVoucherParsedPatch(
       createParsedData({
         voucherType: "Factura B",
-        totalAmount: 121,
         vatAmount: 21,
+        totalAmount: 121,
         currency: "$",
       }),
       createCurrentValues(),
